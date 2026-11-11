@@ -1,0 +1,49 @@
+#!/bin/sh
+# First run on a fresh machine: checks the host, installs the npm dependencies into this folder,
+# runs the setup pass and the preflight checks. Idempotent: re-run it any time.
+# It never installs system packages; when something is missing it prints the command to run.
+#
+#   ./bin/bootstrap
+set -eu
+
+cd "$(dirname "$0")/.."
+
+say()  { printf '%s\n' "$*"; }
+fail() { printf '\nbootstrap: %s\n' "$*" >&2; exit 1; }
+
+OS=$(uname -s)
+case "$OS" in
+  Darwin) say "Host: macOS $(sw_vers -productVersion 2>/dev/null || true)" ;;
+  Linux)  say "Host: Linux $(uname -r)" ;;
+  *)      fail "unsupported OS '$OS': jobba-hunt runs on macOS and Linux desktops." ;;
+esac
+
+command -v git >/dev/null 2>&1 || fail "git is missing. macOS: xcode-select --install   Debian/Ubuntu: sudo apt-get install -y git"
+
+WANT=$(cat .nvmrc 2>/dev/null || echo 22)
+if ! command -v node >/dev/null 2>&1; then
+  say ""
+  say "Node.js is missing. Install Node $WANT with one of:"
+  say "  nvm:      nvm install $WANT && nvm use $WANT        (https://github.com/nvm-sh/nvm)"
+  say "  fnm:      fnm install $WANT && fnm use $WANT        (https://github.com/Schniz/fnm)"
+  [ "$OS" = Darwin ] && say "  Homebrew: brew install node@$WANT"
+  [ "$OS" = Linux ]  && say "  NodeSource (Debian/Ubuntu): curl -fsSL https://deb.nodesource.com/setup_$WANT.x | sudo -E bash - && sudo apt-get install -y nodejs"
+  fail "install Node, then run ./bin/bootstrap again."
+fi
+
+MAJOR=$(node -p 'process.versions.node.split(".")[0]')
+[ "$MAJOR" -ge 20 ] || fail "Node $(node -v) is too old: version 20 or newer is required (.nvmrc says $WANT). With nvm: nvm install $WANT && nvm use $WANT"
+say "Node $(node -v), npm $(npm -v)"
+
+say ""
+say "Installing npm dependencies into ./node_modules ..."
+if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+
+say ""
+node scripts/setup.mjs
+
+say ""
+node scripts/doctor.mjs --preflight || true
+
+say ""
+say "Next: open this folder in your agent (for Claude Code: claude) and run /hunt-onboard."

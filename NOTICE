@@ -1,0 +1,15 @@
+jobba-hunt
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This project bundles third-party material:
+
+- .agents/skills/bs-publish, bs-comment, bs-folder, bs-share
+  Agent skills from the bikeshed-now project (https://bikeshed.now), Apache License 2.0.
+  Vendored unchanged.
+
+- brand/fonts/
+  Typefaces under the SIL Open Font License 1.1. Each family's licence file sits next to its font files.
+
+- npm dependencies (node_modules/, installed by `npm ci`) keep their own licences:
+  cloakbrowser (MIT), playwright-core (Apache-2.0), bikeshed-now (Apache-2.0),
+  @googleworkspace/cli (Apache-2.0), pdf-lib (MIT), pdfjs-dist (Apache-2.0), docx (MIT).

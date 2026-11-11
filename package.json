@@ -1,0 +1,52 @@
+{
+  "name": "jobba-hunt",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An agentic job hunt that runs from one folder: paced read-only job-board sweeps, rubric triage, CVs and cover letters tailored per job from a claim bank, approve-then-apply automation, a read-only inbox scan and a live applications dashboard.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "onboard": "node scripts/onboard.mjs",
+    "skills:link": "node scripts/skills-link.mjs",
+    "bikeshed": "node scripts/tool.mjs bikeshed",
+    "gws": "node scripts/tool.mjs gws",
+    "sweep": "node scripts/sweep-jobs.mjs",
+    "tick": "node scripts/tick.mjs",
+    "dice-tick": "node scripts/dice-tick.mjs",
+    "apply": "node scripts/apply-job.mjs",
+    "tracker": "node scripts/tracker.mjs",
+    "watch": "node scripts/tracker-watch.mjs",
+    "jobs": "node scripts/linkedin-jobs.mjs",
+    "dice": "node scripts/dice-jobs.mjs",
+    "triage": "node scripts/record-triage.mjs",
+    "probe": "node scripts/probe-searches.mjs",
+    "probe-report": "node scripts/probe-report.mjs",
+    "cv": "node scripts/build-cv.mjs",
+    "cv-publish": "node scripts/publish-cvs.mjs",
+    "cover": "node scripts/build-cover.mjs",
+    "tailor": "node scripts/tailor.mjs",
+    "recruiter-pages": "node scripts/recruiter-pages.mjs",
+    "mail": "node scripts/mail-scan.mjs",
+    "log": "node scripts/log.mjs",
+    "check:pii": "node scripts/check-pii.mjs",
+    "check:portable": "node scripts/check-portable.mjs",
+    "test": "node scripts/run-tests.mjs"
+  },
+  "dependencies": {
+    "@googleworkspace/cli": "0.22.5",
+    "bikeshed-now": "0.21.0",
+    "cloakbrowser": "0.6.4",
+    "docx": "9.15.0",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "6.4.299",
+    "playwright-core": "1.62.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "allowScripts": {
+    "@googleworkspace/cli@0.22.5": true
+  }
+}

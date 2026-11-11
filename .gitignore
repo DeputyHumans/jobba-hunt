@@ -1,0 +1,10 @@
+# Personal data: the whole workspace (profile, collateral, pipeline, data, secrets). Never commit it.
+/workspace/
+# In-folder caches: the CloakBrowser binary and other downloads
+/.cache/
+node_modules/
+.env
+*.log
+.DS_Store
+# Local harness settings (deny rules written by onboarding)
+.claude/settings.local.json
