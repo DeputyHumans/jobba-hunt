@@ -1,0 +1,91 @@
+{
+  "_comment": "Standing preferences: the single source for every schedule, floor, threshold and option below. /hunt-onboard fills it; change it only on the user's word and record the decision in decisions.md.",
+  "schedule": {
+    "tz": "America/New_York",
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "tick_start": "08:00",
+    "tick_end": "18:00",
+    "ask_start": "09:00",
+    "ask_end": "18:00",
+    "reset_hour": 4,
+    "_why": "Ticks run inside tick_start-tick_end on the listed weekdays (0 = Sunday). Questions are asked only inside ask_start-ask_end, because a pending question blocks every later wakeup. Caps reset at reset_hour in tz."
+  },
+  "money": {
+    "ic_rate_floor": null,
+    "ft_salary_floor": null,
+    "ft_salary_target": null,
+    "_why": "Optional. A hands-on role whose posted hourly rate tops out under ic_rate_floor is dropped; a full-time IC role whose posted pay tops out under ft_salary_floor is rejected, and one under ft_salary_target is flagged Below target. null turns a check off. These numbers never appear on the tracker."
+  },
+  "tiers": {
+    "a": 80,
+    "b": 65
+  },
+  "recruiter_weights": {
+    "mandate": 35,
+    "domain": 20,
+    "stage": 20,
+    "stack": 10,
+    "signal": 15,
+    "_why": "Score weights for the recruiter-list lane (hunt-recruiter). They must sum to 100."
+  },
+  "lanes": [
+    "leadership",
+    "hands-on"
+  ],
+  "engagement": {
+    "accept": [
+      "full-time",
+      "contract",
+      "part-time",
+      "c2c",
+      "1099",
+      "w2"
+    ],
+    "_why": "Which employment structures pass gate G1. Remove an entry to reject it."
+  },
+  "location": {
+    "remote_required": true,
+    "onsite_metros": [],
+    "onsite_metro_label": "",
+    "_why": "remote_required: on-site or hybrid roles fail G2 unless they sit in one of onsite_metros (place-name regexes, e.g. \\\\bboston\\\\b)."
+  },
+  "cv": {
+    "pages": 2,
+    "paper": "letter",
+    "min_coverage": 60,
+    "keep_margin": 10,
+    "_why": "pages: exact page count every CV must render to. paper: letter or a4. min_coverage: an archetype CV is used as-is at or above this JD-term coverage. keep_margin: points a new archetype variant must gain to be kept."
+  },
+  "tailoring": {
+    "cv": "per-job",
+    "letter": "per-job",
+    "review": "bikeshed",
+    "max_rounds": 3,
+    "_why": "cv: per-job (a tailored CV for every application) or archetype. review: bikeshed (each newly tailored CV and letter is published for the user to approve first) or auto (sent without review; a standing decision recorded in decisions.md)."
+  },
+  "exclusions": {
+    "_why": "Excluded stacks, title words and companies live in config/prefilter.json (stack_title_drop, ic_title_drop, company_drop)."
+  },
+  "brand": {
+    "title": "Job hunt",
+    "accent": "#2F5D8A",
+    "wordmark": ""
+  },
+  "notify": {
+    "desktop": "auto"
+  },
+  "research": {
+    "_why": "Company research for kits uses the harness's WebSearch and WebFetch. Optional extra tools (firecrawl, Perplexity) are used only when the harness has them.",
+    "extra_tools": []
+  },
+  "voice": {
+    "banned": [],
+    "_why": "Extra words and phrases the tracker and drafts must never use, on top of the shipped list of marketing cliches."
+  }
+}

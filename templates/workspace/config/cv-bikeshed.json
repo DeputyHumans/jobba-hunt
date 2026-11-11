@@ -1,0 +1,5 @@
+{
+  "_comment": "Private bikeshed documents holding each CV render (npm run cv-publish), one per variant slug. folder_id null falls back to tracker.json bikeshed.folder_id. Ids are not secrets, but they are the user's: workspace only. A recruiter list keeps its own ids in pipeline/recruiter/<list>/bikeshed.json.",
+  "folder_id": null,
+  "docs": {}
+}

@@ -1,0 +1,69 @@
+{
+  "_comment": "Dice searches (read-only). Same rules as searches.json: the query set changes only through a Dice query probe; verified false until then. Never put \"A\" OR \"B\" in a Dice query: Dice's firewall answers 403 (scripts/lib/dice-url.mjs refuses it).",
+  "verified": false,
+  "base_url": "https://www.dice.com/jobs",
+  "country": "US",
+  "workplace": {
+    "remote": {
+      "filters.workplaceTypes": "Remote"
+    },
+    "any": {}
+  },
+  "employment": {
+    "contract": {
+      "filters.employmentType": "CONTRACTS|PARTTIME|THIRD_PARTY"
+    },
+    "any": {}
+  },
+  "canary": {
+    "id": "dice-canary-example",
+    "keywords": "senior engineer",
+    "scope": "dice",
+    "workplace": "remote",
+    "employment": "any",
+    "tpr_seconds": 604800,
+    "_why": "Example only."
+  },
+  "queries": [
+    {
+      "id": "dice-example",
+      "keywords": "engineering lead",
+      "scope": "dice",
+      "workplace": "remote",
+      "employment": "any",
+      "_why": "Example only, replaced by the onboarding probe."
+    }
+  ],
+  "paging": {
+    "page_size": 30,
+    "max_pages": 2
+  },
+  "pacing": {
+    "search_gap_ms": [
+      40000,
+      75000
+    ],
+    "view_gap_ms": [
+      20000,
+      45000
+    ],
+    "settle_ms": [
+      4500,
+      6000
+    ]
+  },
+  "window": {
+    "first_run_seconds": 604800,
+    "buffer_hours": 6,
+    "cap_seconds": 604800
+  },
+  "tick": {
+    "canary_every": 3,
+    "gap_seconds": [
+      1500,
+      2100
+    ],
+    "views_per_tick": 5,
+    "min_interval_hours": {}
+  }
+}

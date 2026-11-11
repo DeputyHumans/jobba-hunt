@@ -1,0 +1,44 @@
+{
+  "_comment": "The application answer bank. The apply runner maps form labels to these keys; an empty value counts as no answer, so a required question about it stops the run and goes to the user. learned[] grows with the user's answers to new questions (npm run apply -- learn). Personal data: never on a CV, the tracker or a committed file.",
+  "profile": {
+    "first_name": "",
+    "last_name": "",
+    "full_name": "",
+    "email": "",
+    "phone": "",
+    "phone_country": "",
+    "phone_extension": "",
+    "city": "",
+    "state": "",
+    "zip": "",
+    "country": "",
+    "street_address": "",
+    "address_full": "",
+    "linkedin": "",
+    "website": ""
+  },
+  "facts": {
+    "work_authorization": "",
+    "work_authorization_type": "",
+    "sponsorship": "",
+    "start_date": "",
+    "relocation": "",
+    "remote": "",
+    "years_total": "",
+    "how_heard": "",
+    "rate_hourly": "",
+    "rate_annual": "",
+    "contracting_entity": "",
+    "contract_types": "",
+    "cover_letter": ""
+  },
+  "eeo": {
+    "gender": "decline",
+    "race": "decline",
+    "hispanic": "decline",
+    "veteran": "decline",
+    "disability": "decline",
+    "_why": "Self-identification answers. 'decline' picks the form's decline-to-answer option. Change a value only on the user's explicit word."
+  },
+  "learned": []
+}

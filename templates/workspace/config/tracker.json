@@ -1,0 +1,17 @@
+{
+  "_comment": "The applications dashboard. publisher bikeshed (default): one private document updated in place, plus review documents for tailored CVs and letters; comments are watched and processed at once. publisher local: data/tracker/tracker.html only, no comments.",
+  "publisher": "bikeshed",
+  "title": "Job hunt · Applications",
+  "bikeshed": {
+    "folder_id": null,
+    "doc_id": null,
+    "url": null,
+    "letters_folder_id": null,
+    "reviews_folder_id": null
+  },
+  "watch": {
+    "enabled": true,
+    "poll_seconds": 30
+  },
+  "silent_days": 5
+}

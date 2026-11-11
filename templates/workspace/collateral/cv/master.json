@@ -1,0 +1,59 @@
+{
+  "_comment": "Single source for every CV. /hunt-onboard phase 2 drafts it from the originals in sources/; nothing here is usable until its claims are confirmed in collateral/claim-bank.md. Every text unit carries claim IDs. Variants (collateral/cv/variants/*.json) and tailored CVs (data/applications/<id>/cv/<slug>.json) only pick and order these units; they never add wording. person mirrors profile/person.json for the CV header and footer. Bullet keys are <role-key>-<topic>. A role shown in full needs contexts.default; a role shown inline among earlier roles needs line. titles, contexts and subheads are optional alternates, picked by key from a variant. Build: npm run cv -- --all.",
+  "person": {
+    "name": "<full name>",
+    "location": "<City, Region>",
+    "workplace": "<Remote (US)>",
+    "email": "<application email>",
+    "linkedin": "<linkedin.com/in/handle>",
+    "claims": ["C01"]
+  },
+  "bullets": {
+    "<role-key>-<topic>": {
+      "text": "<one achievement line in the claim's wording>",
+      "claims": ["C02"]
+    }
+  },
+  "roles": {
+    "<role-key>": {
+      "title": "<role title>",
+      "titles": {
+        "<title-key>": {
+          "text": "<alternate title for this role, if the operator held it>",
+          "claims": ["C03"]
+        }
+      },
+      "company": "<employer>",
+      "dates": "<Mon YYYY> – <Mon YYYY or Present>",
+      "claims": ["C03"],
+      "contexts": {
+        "default": {
+          "text": "<one line on what the company does and the remit of the role>",
+          "claims": ["C03"]
+        }
+      },
+      "subheads": {
+        "<subhead-key>": {
+          "label": "<program or team name>",
+          "dates": "<YYYY> – <YYYY>"
+        }
+      },
+      "line": {
+        "text": "<one-line summary, used when the role is shown inline among earlier roles>",
+        "claims": ["C03"]
+      }
+    }
+  },
+  "education": [
+    {
+      "degree": "<degree, field>",
+      "school": "<school>",
+      "year": "<YYYY>",
+      "claims": ["C04"]
+    }
+  ],
+  "languages": {
+    "text": "<Language (level), Language (level)>",
+    "claims": ["C05"]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "_comment": "Lint for CVs and cover letters. build-cv and build-cover fail on any hit, in the source model and in the PDF text layer. patterns: { id, re, why }, re a case-insensitive regex. sentence_rules: { id, if, requires, why }, a sentence that matches if without also matching requires fails. /hunt-onboard phase 3 adds the operator's own rows from the claim bank's Never claim table: titles never held, figures with no source, names to keep confidential, wordings the operator rejected. Each why names the claim-bank row or the profile/decisions.md date it comes from. Remove the phone pattern only when the operator asks for a phone on the CV (profile/person.json show_phone_on_cv).",
+  "patterns": [
+    { "id": "phone", "re": "\\(?\\b\\d{3}\\)?[ .-]?\\d{3}[ .-]\\d{4}\\b", "why": "No phone number on CVs or letters" }
+  ],
+  "sentence_rules": []
+}

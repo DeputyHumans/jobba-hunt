@@ -1,0 +1,94 @@
+{
+  "_comment": "LinkedIn Jobs searches (read-only). The query set changes only through a query probe (/hunt-probe, docs/query-probe-method.md): decision rules written before the data, a dated report, then this file. verified stays false until a probe verifies the set; the tick refuses until then. The schedule (tz, days, hours) comes from profile/preferences.json.",
+  "verified": false,
+  "base_url": "https://www.linkedin.com/jobs/search/",
+  "sort": "DD",
+  "geos": {
+    "us": {
+      "geoId": "103644278",
+      "label": "United States"
+    }
+  },
+  "workplace": {
+    "remote": {
+      "f_WT": "2"
+    },
+    "any": {}
+  },
+  "job_types": {
+    "contract-part-time": {
+      "f_JT": "C,P"
+    }
+  },
+  "defaults": {
+    "geo": "us",
+    "workplace": "remote",
+    "_why": "Defaults for a one-off `npm run jobs -- search` from the command line; configured queries name their own geo and workplace."
+  },
+  "canary": {
+    "id": "canary-example",
+    "keywords": "\"engineering manager\"",
+    "scope": "semantic",
+    "base_url": "https://www.linkedin.com/jobs/search-results/",
+    "geo": "us",
+    "workplace": "any",
+    "tpr_seconds": 604800,
+    "_why": "Example only. The canary is a productive query on the AI search endpoint: an empty page without the no-results marker signals throttling or selector rot."
+  },
+  "queries": [
+    {
+      "id": "example-leadership",
+      "keywords": "\"head of engineering\" OR \"VP engineering\"",
+      "scope": "classic",
+      "geo": "us",
+      "workplace": "remote",
+      "lane": "leadership",
+      "_why": "Example only, replaced by the onboarding probe."
+    },
+    {
+      "id": "example-hands-on",
+      "keywords": "\"staff engineer\" OR \"principal engineer\"",
+      "scope": "classic",
+      "geo": "us",
+      "workplace": "remote",
+      "lane": "hands-on",
+      "_why": "Example only, replaced by the onboarding probe."
+    }
+  ],
+  "paging": {
+    "page_size": 25,
+    "max_pages": 2,
+    "new_share_for_next": 0.6
+  },
+  "pacing": {
+    "search_gap_ms": [
+      40000,
+      75000
+    ],
+    "view_gap_ms": [
+      20000,
+      45000
+    ],
+    "settle_ms": [
+      3500,
+      4500
+    ]
+  },
+  "views": {
+    "max_per_sweep": 20
+  },
+  "window": {
+    "first_run_seconds": 604800,
+    "buffer_hours": 6,
+    "cap_seconds": 604800
+  },
+  "tick": {
+    "canary_every": 3,
+    "gap_seconds": [
+      1500,
+      2100
+    ],
+    "views_per_tick": 10,
+    "min_interval_hours": {}
+  }
+}

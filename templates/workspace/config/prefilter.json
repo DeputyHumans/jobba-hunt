@@ -1,0 +1,155 @@
+{
+  "_comment": "Deterministic prefilter, run before any job view. Regexes are case-insensitive. Generic lists ship here; the user's own exclusions (stack_title_drop, company_drop, onsite_metro_markers) are filled by /hunt-onboard.",
+  "title_drop": [
+    "\\bintern(ship)?\\b",
+    "\\bjunior\\b",
+    "\\bjr\\.?\\b",
+    "\\bentry[- ]level\\b",
+    "\\bgraduate\\b",
+    "\\bstudent\\b",
+    "\\brecruit(er|ing)\\b",
+    "\\baccount executive\\b",
+    "\\b(sdr|bdr)\\b",
+    "\\bsales (manager|representative|rep)\\b",
+    "\\b(teacher|tutor|nurse|physician)\\b",
+    "\\bdata entry\\b"
+  ],
+  "title_leadership": [
+    "\\bcto\\b",
+    "chief (technology|technical|ai|digital|product|information) officer",
+    "\\bc[a-z]?io\\b",
+    "\\bvp\\b",
+    "vice president",
+    "head of",
+    "\\bdirector\\b",
+    "engineering manager",
+    "technical (lead|advisor|adviser|co-?founder|partner)",
+    "\\bfractional\\b",
+    "\\binterim\\b",
+    "\\badvis(or|er)\\b",
+    "\\bconsultant\\b",
+    "\\btransformation\\b",
+    "\\barchitect\\b",
+    "\\bprincipal\\b"
+  ],
+  "title_ic": [
+    "\\bsenior\\b",
+    "\\bsr\\.?\\b",
+    "\\blead\\b",
+    "\\bprincipal\\b",
+    "\\bstaff\\b",
+    "\\barchitect\\b"
+  ],
+  "title_ic_role": [
+    "engineer",
+    "developer",
+    "architect",
+    "programmer",
+    "\\bswe\\b",
+    "\\bsde\\b",
+    "full[- ]?stack",
+    "back[- ]?end",
+    "front[- ]?end",
+    "\\bdevops\\b",
+    "\\bsre\\b"
+  ],
+  "title_exec": [
+    "\\bcto\\b",
+    "chief (technology|technical|ai|digital|product|information) officer",
+    "\\bc[a-z]?io\\b",
+    "\\bvp\\b",
+    "vice president",
+    "head of",
+    "\\bdirector\\b",
+    "engineering manager"
+  ],
+  "ic_title_drop": [
+    "desktop support",
+    "help ?desk",
+    "service desk",
+    "\\btechnician\\b",
+    "\\btester\\b",
+    "manual (qa|test)",
+    "data entry"
+  ],
+  "dice_w2_title": [
+    "\\bonly\\s*w-?2\\b",
+    "\\bw-?2\\s*only\\b",
+    "^\\s*w-?2\\b",
+    "\\bw-?2\\s+(position|role|contract)\\b"
+  ],
+  "stack_title_drop": [],
+  "stack_title_keep": [],
+  "title_ai": [
+    "\\bai\\b",
+    "\\bgen ?ai\\b",
+    "\\bllms?\\b",
+    "agentic",
+    "\\bagents?\\b",
+    "generative",
+    "machine learning",
+    "\\bml\\b",
+    "\\brag\\b"
+  ],
+  "scope_signals": [
+    "\\bfractional\\b",
+    "\\binterim\\b",
+    "part[- ]time",
+    "\\bcontract(or)?\\b",
+    "\\bfreelance\\b",
+    "\\bconsult(ant|ing)\\b",
+    "\\badvis(or|er|ory)\\b",
+    "\\bretainer\\b",
+    "\\bproject[- ]based\\b",
+    "\\b\\d{1,2}\\s*(-|to)\\s*\\d{1,2}\\s*(hrs|hours)\\s*(/|per|a)\\s*(wk|week)\\b",
+    "\\b\\d{1,2}\\s*(hrs|hours)\\s*(/|per|a)\\s*(wk|week)\\b",
+    "\\bon-demand\\b",
+    "\\b1099\\b",
+    "\\bc2c\\b"
+  ],
+  "probe_core_title": [],
+  "probe_strict_scope": [
+    "\\bfractional\\b",
+    "\\binterim\\b",
+    "part[- ]time",
+    "\\bcontract(or)?\\b",
+    "\\bfreelance\\b",
+    "\\bon-demand\\b"
+  ],
+  "_probe_why": "Query-probe labels (scripts/lib/probe-metrics.mjs): core = probe_core_title (empty means title_exec), fit = core plus a probe_strict_scope word in the title. Keep advisor and consulting out of the strict list: many advisor titles are full-time, and a consulting director is a department.",
+  "full_time_markers": [
+    "^full[- ]time$"
+  ],
+  "remote_markers": [
+    "\\bremote\\b"
+  ],
+  "onsite_markers": [
+    "\\bon-?site\\b"
+  ],
+  "hybrid_markers": [
+    "\\bhybrid\\b"
+  ],
+  "onsite_metro_markers": [],
+  "company_drop": [],
+  "aggregators": [
+    "toptal",
+    "crossover",
+    "braintrust",
+    "turing",
+    "mercor",
+    "outlier",
+    "dataannotation",
+    "jobot",
+    "dice",
+    "lensa",
+    "talentify",
+    "jobs via dice",
+    "hirenza",
+    "a.team",
+    "gun.io",
+    "upwork"
+  ],
+  "repost_window_days": 30,
+  "_stack_why": "stack_title_drop: a non-exec title naming an excluded stack drops before any view (reason stack-excluded); stack_title_keep exempts a title that also matches it (e.g. title_ai words, so an AI title naming the stack stays).",
+  "_onsite_why": "onsite_metro_markers (merged with preferences.location.onsite_metros): an on-site or hybrid role whose card location matches goes to review as onsite-metro-ask instead of dropping. repost_window_days: a new ID with the same company and title inside this window is a repost."
+}

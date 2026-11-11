@@ -1,0 +1,108 @@
+{
+  "_comment": "Read-only inbox scan. adapter: gws (the bundled Google Workspace CLI), bridge (the agent fetches with a mail connector through request/response files in data/mail/, see scripts/mail-scan.mjs), or none. Headers are read first; a body opens only on a hunt signal; never_open beats every signal. first_scan_after (ISO date) is where the first scan starts.",
+  "adapter": "none",
+  "gws": {
+    "bin": ""
+  },
+  "bridge": {
+    "wait_seconds": 180,
+    "max_list": 500,
+    "_why": "wait_seconds: how long a code wait (security code, one-time password, verify link) polls for the agent's response before handing off. max_list: the most headers one scan asks the agent to list."
+  },
+  "me": "",
+  "first_scan_after": null,
+  "query": "(in:inbox OR category:promotions)",
+  "max_per_run": 200,
+  "hunt_senders": [
+    "linkedin.com",
+    "dice.com",
+    "greenhouse.io",
+    "greenhouse-mail.io",
+    "lever.co",
+    "ashbyhq.com",
+    "jobdiva.com",
+    "myworkday.com",
+    "icims.com",
+    "smartrecruiters.com",
+    "workablemail.com",
+    "rippling.com"
+  ],
+  "subject_strong": [
+    "c2c",
+    "w2",
+    "1099",
+    "corp to corp",
+    "position",
+    "requirement",
+    "hiring",
+    "job opportunity",
+    "job description",
+    "recruiter",
+    "contract to hire",
+    "thank you for applying",
+    "thanks for applying",
+    "thank you for your application",
+    "your application to",
+    "application received",
+    "interview confirmation",
+    "interview schedule",
+    "interview invitation"
+  ],
+  "subject_words": [
+    "role",
+    "opportunity",
+    "contract",
+    "interview",
+    "architect",
+    "engineer",
+    "developer",
+    "lead",
+    "remote",
+    "principal",
+    "senior",
+    "director",
+    "manager"
+  ],
+  "security": {
+    "senders": [
+      "linkedin.com",
+      "dice.com",
+      "google.com",
+      "bikeshed.now"
+    ],
+    "subject": "password|sign-?in|security alert|new device|verify your"
+  },
+  "never_open": {
+    "domains": [],
+    "senders": [
+      "invitations@linkedin.com",
+      "notifications-noreply@linkedin.com"
+    ],
+    "_why": "The user's own domains, clients, family and anything else never to open, whatever its subject."
+  },
+  "noise": {
+    "senders": [
+      "jobalerts-noreply@linkedin.com",
+      "jobs-noreply@linkedin.com",
+      "jobs-listings@linkedin.com",
+      "groups-noreply@linkedin.com",
+      "editors-noreply@linkedin.com",
+      "newsletters-noreply@linkedin.com"
+    ],
+    "subjects": [
+      "job alert",
+      "jobs for you",
+      "newsletter",
+      "digest",
+      "recommended jobs",
+      "jobs you may be interested in",
+      "get noticed",
+      "land your next job",
+      "expert help",
+      "learning spotlight",
+      "what you missed from",
+      "others are hiring for",
+      "security code for your application"
+    ]
+  }
+}

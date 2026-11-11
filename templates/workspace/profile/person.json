@@ -1,0 +1,22 @@
+{
+  "_comment": "Who the documents and forms are for. Filled by /hunt-onboard. Never committed: this file lives in the gitignored workspace.",
+  "name": "",
+  "display_name": "",
+  "file_prefix": "",
+  "email": "",
+  "application_email": "",
+  "phone": "",
+  "location": {
+    "city": "",
+    "region": "",
+    "country": "",
+    "display": ""
+  },
+  "workplace": "",
+  "links": {
+    "linkedin": "",
+    "website": "",
+    "github": ""
+  },
+  "show_phone_on_cv": false
+}

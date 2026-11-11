@@ -1,0 +1,18 @@
+{
+  "name": "canary-check",
+  "_why": "One headed, captured load of the AI-search canary, to tell selector rot (cards on screen, 0 parsed) from throttling (nothing on screen). Keep keywords in sync with config/searches.json canary.",
+  "tpr_seconds": 604800,
+  "defaults": {
+    "geo": "us",
+    "workplace": "any"
+  },
+  "views": [],
+  "searches": [
+    {
+      "id": "canary",
+      "keywords": "\"engineering manager\"",
+      "base_url": "https://www.linkedin.com/jobs/search-results/",
+      "capture": true
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# For a private git repository inside the workspace (git init in this folder).
+# Keep that repository private. It holds personal data even with these rules.
+
+# Browser profiles: live session cookies
+data/browser/
+
+# Raw run snapshots and page captures (captures show the signed-in page)
+data/raw/
+data/captures/
+
+# Dry-run folders: screenshots of filled application forms
+data/applications/*/*-dry-run/
+
+# Credentials: bikeshed and gws sign-ins, .env
+.secrets/
+
+# Originals (CVs, letters, profile exports). Uncomment to keep them out of the history too.
+# sources/
+
+*.log
+.DS_Store

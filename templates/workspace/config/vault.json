@@ -1,0 +1,10 @@
+{
+  "_comment": "Password vault for ATS accounts. adapter none (default): no account is ever created or used; the role goes to the user. adapter op: 1Password CLI, generated passwords stored before any sign-up form is sent. op.account and op.vault empty: op's own defaults. op.bin empty: op on PATH (JOBBA_OP_BIN overrides). Account creation also needs config/apply.json accounts.create true.",
+  "adapter": "none",
+  "op": {
+    "account": "",
+    "vault": "",
+    "tag": "jobba-hunt",
+    "bin": ""
+  }
+}

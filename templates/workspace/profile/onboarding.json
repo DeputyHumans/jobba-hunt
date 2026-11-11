@@ -1,0 +1,16 @@
+{
+  "_comment": "Onboarding progress (/hunt-onboard). Each phase records when it finished, so an interrupted onboarding resumes where it stopped.",
+  "phases": {
+    "preflight": null,
+    "init": null,
+    "ingest": null,
+    "claims": null,
+    "interview": null,
+    "answers": null,
+    "calibration": null,
+    "access": null,
+    "cvs": null,
+    "searches": null,
+    "ready": null
+  }
+}

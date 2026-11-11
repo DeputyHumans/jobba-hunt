@@ -1,0 +1,53 @@
+{
+  "_comment": "Apply runner settings. A channel submits for real only after the user checked its headed dry run and ran npm run apply -- verify --channel <name> --evidence <that run's dir>, which sets verified and writes verified_log. Never hand-edit verified. Per-host company-site channels (site:<host>) are added by verify the same way.",
+  "verified": {
+    "easy": false,
+    "dice-easy": false,
+    "greenhouse": false,
+    "lever": false,
+    "ashby": false,
+    "workday": false,
+    "appcast": false,
+    "paycor": false,
+    "paylocity": false,
+    "workable": false,
+    "rippling": false,
+    "walmart": false,
+    "icims": false
+  },
+  "verified_log": {},
+  "auto_apply": {
+    "enabled": false,
+    "min_score": 80,
+    "channels": [],
+    "min_cv_coverage": 70,
+    "cover_letter": {},
+    "_why": "Off until the user opts in (onboarding or later, recorded in profile/decisions.md). When on, a role is approved without a question only if: score >= min_score, every gate passes, its channel is verified and listed, and the CV coverage is >= min_cv_coverage. Tailored documents still follow preferences.tailoring.review."
+  },
+  "accounts": {
+    "create": false,
+    "_why": "ATS account creation needs a vault adapter (config/vault.json) and the user's opt-in. Without both, an account portal is handed to the user."
+  },
+  "pacing": {
+    "field_gap_ms": [
+      350,
+      900
+    ],
+    "step_gap_ms": [
+      2500,
+      6000
+    ],
+    "type_delay_ms": [
+      35,
+      85
+    ]
+  },
+  "max_steps": 15,
+  "bot_check_wait_minutes": 10,
+  "code_wait_seconds": 180,
+  "dice": {
+    "resume": "replace-then-verify",
+    "profile_resume": "",
+    "_why": "The runner replaces the resume in the Dice wizard with the approved CV, then reads the Dice profile resume read-only to confirm it did not change. profile_resume: the file name of the resume on the Dice profile; empty lists the profile files without comparing."
+  }
+}

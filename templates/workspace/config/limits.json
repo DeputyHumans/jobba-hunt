@@ -1,0 +1,69 @@
+{
+  "_comment": "Daily caps per platform and action. They reset at preferences.schedule.reset_hour in preferences.schedule.tz. Lower them any time; raise one only on the user's explicit word, recorded in profile/decisions.md. There is deliberately no force flag.",
+  "linkedin_jobs": {
+    "sweeps_per_day": {
+      "max": 1,
+      "windowHours": 24
+    },
+    "ticks_per_day": {
+      "max": 16,
+      "windowHours": 24,
+      "jitterMin": 25,
+      "jitterMax": 35
+    },
+    "searches_per_day": {
+      "max": 32,
+      "windowHours": 24
+    },
+    "job_views_per_day": {
+      "max": 100,
+      "windowHours": 24
+    }
+  },
+  "linkedin_apply": {
+    "applications_per_day": {
+      "max": 20,
+      "windowHours": 24
+    },
+    "apply_page_loads_per_day": {
+      "max": 80,
+      "windowHours": 24
+    }
+  },
+  "ats_apply": {
+    "applications_per_day": {
+      "max": 20,
+      "windowHours": 24
+    }
+  },
+  "dice_jobs": {
+    "sweeps_per_day": {
+      "max": 1,
+      "windowHours": 24
+    },
+    "ticks_per_day": {
+      "max": 16,
+      "windowHours": 24,
+      "jitterMin": 25,
+      "jitterMax": 35
+    },
+    "searches_per_day": {
+      "max": 50,
+      "windowHours": 24
+    },
+    "job_views_per_day": {
+      "max": 50,
+      "windowHours": 24
+    }
+  },
+  "dice_apply": {
+    "applications_per_day": {
+      "max": 40,
+      "windowHours": 24
+    },
+    "apply_page_loads_per_day": {
+      "max": 50,
+      "windowHours": 24
+    }
+  }
+}
