@@ -1,0 +1,52 @@
+<!doctype html>
+<!-- iCIMS login page as the portal frame draws it (<tenant>.icims.com/jobs/<id>/.../login?in_iframe=1), from a live page,
+     trimmed: stylesheets, scripts and tag-manager blocks removed, the hCaptcha site key zeroed, the employer
+     name, host and job id replaced.
+     form#enterEmailForm: input#email, input#accept_privacy inside its label ("I confirm I have read the Candidate Data Privacy
+     Notice linked below."), input#enterEmailSubmitButton "Next" disabled until ticked, an invisible hCaptcha. -->
+<html lang="en-US" class="framed no-touch"><head><title>Login | General Data Protection Regulation (GDPR)</title></head>
+<body class="iCIMS_chrome has-hcaptcha">
+<div class="iCIMS_MainWrapper iCIMS_LoginPage  ">
+<div class="iCIMS_TopHeader">
+<div class="iCIMS_BackToWelcome">
+<div class="iCIMS_Navigation">
+<div class="iCIMS_NavigationIconContainer">
+<a class="iCIMS_Anchor_Nav" href="https://us-careers-globex.icims.com/jobs/intro?in_iframe=1">
+<span class="halflings halflings-menu-left" aria-hidden="true"></span>
+<span class="iCIMS_NavigationText">Welcome page</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+<div id="iCIMS_ErrorMessage_login" class="iCIMS_Message iCIMS_ErrorMessage NoDisplay" tabindex="-1"></div>
+<div class="container-fluid iCIMS_SignUpContainer">
+<div class="modal-dialog modal-lg">
+<div class="modal-content modal-body">
+<div id="iCIMS_Header" tabindex="-1"><h1 class="iCIMS_Header">Enter Your Information</h1></div>
+<form id="enterEmailForm" class="iCIMS_SignIn" method="post" accept-charset="utf-8" enctype="multipart/form-data" action="https://us-careers-globex.icims.com/jobs/2002/staff-platform-engineer/login?step=email&amp;in_iframe=1&amp;hashed=-1000000002" onsubmit="if (!$('#accept_privacy').is(':checked')) return false;icimsDisableSaveAndSubmitButtons('enterEmailSubmitButton', '', 'enterEmailForm');">
+<label for="email">Email</label>
+<input type="email" autocomplete="email" id="email" name="css_loginName" class="form-control" value="" autofocus="" aria-describedby="iCIMS_ErrorMessage_login">
+<div class="checkbox">
+<label for="accept_privacy"><input type="checkbox" id="accept_privacy" name="accept_privacy" value="1" aria-required="true" aria-describedby="icims_accept_privacy_desc">I confirm I have read the Candidate Data Privacy Notice linked below.</label>
+<span id="icims_accept_privacy_desc" class="sr-only">You must indicate that you have read and accept the Privacy Policy before you can continue.</span>
+</div>
+<div id="gdpr_container" style="display: block;">
+<input type="hidden" id="consentCaptureTitle" value="General Data Protection Regulation (GDPR)">
+<div id="gdpr_legal_text" tabindex="-1">
+<div class="gdpr_candidateNotification_wrapper gdpr_wrapper notificationGDPRWrapperNoEuResident gdprWrapperNoEuResident">
+<p class="gdpr_candidateNotification">
+</p><p style="margin: 0px;">Read the complete <a href="https://globex.example/privacy#notices" target="_blank" rel="noopener">Candidate Data Privacy Notice</a>, which contains additional details and important information about the collection, use, disclosure and other handling of my Candidate Personal Data.</p><p style="margin: 0px;">&nbsp;</p><p></p>
+</div>
+</div>
+</div>
+<input id="enterEmailSubmitButton" type="submit" class="iCIMS_PrimaryButton gdprAnswerSubmitButton" value="Next" disabled="">
+<div id="h-captcha" class="h-captcha" data-sitekey="00000000-0000-0000-0000-000000000000" data-size="invisible"><iframe aria-hidden="true" data-hcaptcha-widget-id="0wayqsqyp7cm" data-hcaptcha-response="" src="https://newassets.hcaptcha.com/captcha/v1/b7cb55144cfb1f79ab8b18a24ea5786dc178370e/static/hcaptcha.html#frame=checkbox-invisible" style="display: none;"></iframe><textarea id="h-captcha-response-0wayqsqyp7cm" name="h-captcha-response" style="display: none;"></textarea></div>
+</form>
+</div>
+</div>
+</div>
+<div class="iCIMS_Logo"><a class="iCIMS_Faq_Link" title="Application FAQs (Opens new window)" href="https://icims.help/candidate-faq" target="_blank">Application FAQs</a><span class="iCIMS_Logo_Image"></span><p class="iCIMS_Logo_Text">Software Powered by ICIMS<br><a href="http://www.icims.com/platform_help?utm_source=platform&amp;utm_medium=link&amp;utm_content=page1&amp;utm_campaign=platform%20help" target="_blank" title="Powered by the ICIMS Talent Platform (Opens new window)" class="iCIMS_Logo_Link">www.icims.com</a></p></div>
+</div><div id="hCaptcha-attribution"><span class="glyphicons glyphicons-remove-sign" tabindex="0" role="button" aria-label="Close hCaptcha attribution notice"></span><div>Protected by hCaptcha <a href="https://www.hcaptcha.com/privacy" target="hca">Privacy</a> | <a href="https://www.hcaptcha.com/terms" target="hca">Terms</a></div></div>
+<div aria-hidden="true" style="background-color: rgb(255, 255, 255); border: 1px solid rgb(215, 215, 215); box-shadow: rgba(0, 0, 0, 0.1) 0px 0px 4px; border-radius: 4px; left: auto; top: -10000px; z-index: -2147483648; position: absolute; pointer-events: auto; transition: opacity 0.15s ease-out; opacity: 0; visibility: hidden;"><div style="position: relative; z-index: 1;"><iframe src="https://newassets.hcaptcha.com/captcha/v1/b7cb55144cfb1f79ab8b18a24ea5786dc178370e/static/hcaptcha.html#frame=challenge&amp;id=0x1&amp;size=invisible" frameborder="0" scrolling="no" allow="private-state-token-redemption" title="hCaptcha challenge" style="border: 0px; z-index: 2000000000; position: relative;"></iframe></div><div style="width: 100%; height: 100%; position: fixed; pointer-events: none; top: 0px; left: 0px; z-index: 0; background-color: rgb(255, 255, 255); opacity: 0.05;"></div><div style="border-width: 11px; border-style: none; position: absolute; pointer-events: none; margin-top: -11px; z-index: 1; right: 100%;"><div style="border-width: 10px; border-style: solid; border-color: transparent rgb(255, 255, 255) transparent transparent; position: relative; top: 10px; z-index: 1;"></div><div style="border-width: 11px; border-style: solid; border-color: transparent rgb(215, 215, 215) transparent transparent; position: relative; top: -11px; z-index: 0;"></div></div></div>
+</body></html>

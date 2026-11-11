@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- Workday's own error page (synthetic, modelled on Workday tenant markup):
+     after sign-in the progress bar still shows My Information as the active step, but the step's form is
+     replaced by "Something went wrong / Please refresh the page and then try again. / Error Code: VPS|<id>".
+     No Save and Continue footer. No personal values. -->
+<html><head><meta charset="utf-8"><title>workday error fixture</title></head><body>
+<div data-automation-id="header"><span data-automation-id="headerTitle">Careers</span><ul data-automation-id="navigationContainer"><li data-automation-id="navigationItem-Candidate Home">Candidate Home</li></ul></div>
+<main><div data-automation-id="applyFlowPage">
+  <button type="button" data-automation-id="backToJobPosting">Back to Job Posting</button>
+  <h2 data-automation-id="jobTitleHeading">Staff Engineer</h2>
+  <div aria-label="Application Progress"><ol data-automation-id="progressBar">
+    <li data-automation-id="progressBarActiveStep"><label aria-live="polite">current step 1 of 5</label><label>My Information</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label aria-live="polite">step 2 of 5</label><label>My Experience</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label aria-live="polite">step 3 of 5</label><label>Application Questions</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label aria-live="polite">step 4 of 5</label><label>Voluntary Disclosures</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label aria-live="polite">step 5 of 5</label><label>Review</label></li>
+  </ol></div>
+  <div><span></span><h1>Something went wrong</h1><div>Please refresh the page and then try again.</div><div>Error Code: VPS|00000000-0000-4000-8000-000000000001</div></div>
+</div></main>
+<div data-automation-id="footerContainer"><h4 data-automation-id="followUs">Follow Us</h4><a data-automation-id="privacyLink" href="#">Privacy</a></div>
+</body></html>

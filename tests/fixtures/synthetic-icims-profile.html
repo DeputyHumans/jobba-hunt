@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- Synthetic iCIMS candidate profile page (/jobs/<id>/<title>/candidate?in_iframe=1), modelled on classic
+     iCIMS portal markup: a résumé upload with import buttons beside it, name and
+     contact fields by label[for] with a required star, a state select, then Next. -->
+<html><head><title>Candidate Profile | Staff Software Engineer at Acme Corp</title></head>
+<body>
+<div class="iCIMS_MainWrapper">
+  <form id="cp_form" method="post" action="/jobs/1001/staff-software-engineer/candidate?in_iframe=1" enctype="multipart/form-data">
+    <h1>Candidate Profile</h1>
+    <p>We are an equal opportunity employer. Please complete the form below.</p>
+    <div class="iCIMS_Resume">
+      <label for="PersonProfileFields.Resume">Resume <span class="iCIMS_Required">*</span></label>
+      <input type="file" id="PersonProfileFields.Resume" name="PersonProfileFields.Resume" required>
+      <button type="button">Apply with LinkedIn</button><button type="button">Apply with Indeed</button><button type="button">Dropbox</button>
+    </div>
+    <div><label for="PersonProfileFields.FirstName">First Name <span class="iCIMS_Required">*</span></label><input type="text" id="PersonProfileFields.FirstName" required></div>
+    <div><label for="PersonProfileFields.LastName">Last Name <span class="iCIMS_Required">*</span></label><input type="text" id="PersonProfileFields.LastName" required></div>
+    <div><label for="PersonProfileFields.Email">Email <span class="iCIMS_Required">*</span></label><input type="email" id="PersonProfileFields.Email" value="candidate@example.com" required></div>
+    <div><label for="PersonProfileFields.Phone">Phone <span class="iCIMS_Required">*</span></label><input type="tel" id="PersonProfileFields.Phone" required></div>
+    <div><label for="PersonProfileFields.State">State</label><select id="PersonProfileFields.State"><option value="">Select</option><option>California</option><option>Washington</option></select></div>
+    <button type="button">Back</button>
+    <input type="submit" value="Next">
+  </form>
+</div>
+</body></html>

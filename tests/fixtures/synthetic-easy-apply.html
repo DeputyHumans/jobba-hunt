@@ -1,0 +1,18 @@
+<!doctype html><html><body>
+<main><h1>Fractional CTO</h1><button aria-label="Easy Apply to this job">Easy Apply</button></main>
+<div role="dialog" aria-labelledby="t"><h2 id="t">Apply to Acme</h2>
+ <div><h3>Contact info</h3>
+  <div><label for="email">Email address</label><select id="email" required><option>Select an option</option><option selected>jordan@example.com</option></select></div>
+  <div><label for="phone">Mobile phone number</label><input id="phone" type="text" required value=""></div>
+ </div>
+ <fieldset><legend><span aria-hidden="true">Are you legally authorized to work in the United States?</span><span style="position:absolute;clip:rect(0 0 0 0)">Are you legally authorized to work in the United States?</span><span style="position:absolute;clip:rect(0 0 0 0)">Required</span></legend>
+  <div><input type="radio" id="wa-y" name="wa" value="Yes" required style="opacity:0;position:absolute;width:0;height:0"><label for="wa-y">Yes</label></div>
+  <div><input type="radio" id="wa-n" name="wa" value="No" required style="opacity:0;position:absolute;width:0;height:0"><label for="wa-n">No</label></div>
+ </fieldset>
+ <div><label for="yrs">How many years of work experience do you have with Supabase?</label><input id="yrs" type="text" required><div role="alert">Enter a whole number between 0 and 99</div></div>
+ <div><label for="cv">Upload resume</label><input id="cv" type="file" accept=".pdf"></div>
+ <div><input type="checkbox" id="follow" checked><label for="follow">Follow Acme to stay up to date with their page.</label></div>
+ <input type="hidden" name="csrf" value="x">
+ <footer><button aria-label="Dismiss">x</button><button aria-label="Continue to next step">Next</button></footer>
+</div>
+</body></html>

@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- Synthetic Walmart careers questionnaire page (/us/en/jobs/apply), modelled on its bundle's question renderer:
+     the form aria-labelledby="questionnaire-title", LD text fields and selects (label for), a radio
+     group, a question button ("Use my last application", data-testid button-input_use_last_application_button),
+     the resume upload button over a hidden file input, and the page actions (primary Next, secondary Back)
+     as plain buttons with no test id. The site search form sits in the header. -->
+<html><head><title>Apply - Walmart Careers</title></head>
+<body>
+<header><form role="search"><input type="search" aria-label="Search for jobs"><button type="submit" aria-label="Search">Go</button></form></header>
+<main class="flex flex-col w-full">
+  <div class="relative">
+    <header><h1 class="sr-only">About you</h1></header>
+    <nav aria-label="Progress"><div><span>About you</span> <span>Personal information</span> <span>Step 1 of 4</span></div></nav>
+    <form aria-labelledby="questionnaire-title">
+      <div role="region" aria-labelledby="questionnaire-title"><div id="questionnaire-title" class="sr-only" aria-hidden="true">About you</div><h2>About you</h2><p>Fields marked with an asterisk (*) are required</p></div>
+      <div class="flex flex-col gap-10">
+        <div class="w-full mb-4"><div class="grid grid-cols-1"><button type="button" aria-label="Use my last application" data-testid="button-input_use_last_application_button">Use my last application</button></div></div>
+        <div class="w-full mb-4" role="group" aria-labelledby="q-resume-label">
+          <div id="q-resume-label">Upload resume <span>*</span></div>
+          <input type="file" accept=".pdf,.doc,.docx" style="display:none" data-testid="file-input-q-resume">
+          <button type="button">Upload resume</button>
+        </div>
+        <div class="flex flex-col gap-2"><label for="q-first"><div>Legal first name<span class="sr-only"> (Required)</span><span aria-hidden="true">*</span></div></label><input id="q-first" type="text" data-testid="text-q-first" aria-required="true" value=""></div>
+        <div class="flex flex-col gap-2"><label for="q-last"><div>Legal last name<span class="sr-only"> (Required)</span><span aria-hidden="true">*</span></div></label><input id="q-last" type="text" data-testid="text-q-last" aria-required="true" value=""></div>
+        <div class="flex flex-col gap-2"><label for="q-phone"><div>Mobile phone<span aria-hidden="true">*</span></div></label><input id="q-phone" type="tel" data-testid="text-q-phone" aria-required="true" value=""></div>
+        <div class="flex flex-col gap-2" data-testid="radio-q-assoc">
+          <fieldset><legend>Are you a current or former Walmart associate?<span aria-hidden="true">*</span></legend>
+            <label><input type="radio" name="q-assoc" value="o1" required> <span>Yes, I am a current associate</span></label>
+            <label><input type="radio" name="q-assoc" value="o2"> <span>Yes, I am a former associate</span></label>
+            <label><input type="radio" name="q-assoc" value="o3"> <span>No</span></label>
+          </fieldset>
+        </div>
+        <div class="flex flex-col gap-2"><label for="q-auth"><div>Are you legally authorized to work in the United States?<span aria-hidden="true">*</span></div></label>
+          <select id="q-auth" data-testid="select-q-auth" aria-required="true"><option value="" disabled selected>Select</option><option value="y">Yes</option><option value="n">No</option></select></div>
+      </div>
+      <div class="flex flex-row-reverse justify-start gap-4 pt-8"><button type="button" class="ld_p ld_r ld_w">Next</button><button type="button" class="ld_p ld_s ld_w">Back</button></div>
+    </form>
+  </div>
+</main>
+</body></html>

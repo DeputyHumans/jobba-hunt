@@ -1,0 +1,14 @@
+<!doctype html>
+<!-- Synthetic Paylocity recruiting apply page: a hidden file input
+     whose only name is the button after it, and a visual label before each text field. No real data. -->
+<html><head><meta charset="utf-8"><title>Apply</title><style>input{width:300px;height:24px}</style></head>
+<body>
+  <div class="rounded-box">
+    <div><input accept=".doc,.docx,.pdf" id="btn-resume" type="file" style="display: none;"><button class="button" data-automation-id="btn-resume"><span>Select Resume to Upload</span></button></div>
+    <div><label>First Name (required)</label><div><input data-for="First Name" id="info.firstName" type="text" value=""></div></div>
+    <div><label>Email Address (required)</label><div><input data-for="Email Address" id="info.email" type="text" value=""></div></div>
+    <div><label for="wh-0-country"><span>Country</span><div class="pcty-input-select-input-container"><div class="input-select-input-single-value">United States</div><div class="pcty-input-select__input"><input aria-autocomplete="list" id="wh-0-country" required type="text" value=""></div></div></label></div>
+    <div><label for="wh-0-state"><span>State</span><div class="pcty-input-select-input-container"><div class="input-select-input-single-value">Select a state</div><div class="pcty-input-select__input"><input aria-autocomplete="list" id="wh-0-state" required type="text" value=""></div></div></label></div>
+    <button data-automation-id="btnNext" id="btn-submit">Next</button>
+  </div>
+</body></html>

@@ -1,0 +1,24 @@
+<!doctype html><html><body>
+<!-- Synthetic LinkedIn Easy Apply resume picker, in the live dialog's markup: each row is a
+     div[role=button] card with the file name, a download link, and a separate div[aria-label] holding
+     a hidden radio. Clicking the card selects the row. The list scrolls inside the dialog. -->
+<div role="dialog" aria-label="Apply to Acme Corp" style="width:600px">
+  <h3>Resume*</h3>
+  <div id="list" style="height:160px; overflow-y:auto; border:1px solid #ccc">
+  </div>
+  <button type="button">Next</button>
+</div>
+<script>
+  const names = ['jordan-example-cv-lead-engineer-ai.pdf', 'jordan-example-cv-cto-head-of-engineering.pdf', 'jordan-example-cv-ai-architect.pdf', 'jordan-example-cv-head-of-engineering.pdf', 'jordan-example-cv-fractional-cto.pdf', 'jordan-example-cv-interim-a.pdf'];
+  const list = document.getElementById('list');
+  names.forEach((n, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; align-items:center; height:60px; border-bottom:1px solid #eee';
+    row.innerHTML = `<div role="button" tabindex="0" style="flex:1"><p>PDF</p><p><span>${n}</span></p><p>11/${6 - i}/2026</p></div>` +
+      `<a href="#dl-${i}" onclick="event.stopPropagation(); window.downloads=(window.downloads||0)+1; return false" style="width:200px">Download</a>` +
+      `<div><div aria-label="${n}"><input id="r${i}" aria-label="${n}" type="radio" name="radio-group-x" style="opacity:0; width:1px; height:1px" ${i === 0 ? 'checked' : ''}><label for="r${i}"></label></div></div>`;
+    row.querySelector('[role="button"]').addEventListener('click', () => { row.querySelector('input').checked = true; });
+    list.appendChild(row);
+  });
+</script>
+</body></html>

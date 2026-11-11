@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- Synthetic company-site application form: placeholder-labelled inputs, a hidden CV input, a message box, a privacy checkbox with an empty styled
+     <label for> before the text <label for>, and a footer newsletter form that must never be the root.
+     No real data. -->
+<html><head><meta charset="utf-8"><title>Careers</title>
+<style>.hidden{display:none}.opacity-0{opacity:0;position:absolute} input,textarea{width:300px;height:24px} .box{display:inline-block;width:24px;height:24px}</style></head>
+<body>
+<main>
+  <h2>Ready to start your journey?</h2>
+  <form>
+    <input type="text" name="name" placeholder="Name" autocomplete="name">
+    <input type="email" name="email" placeholder="Email" autocomplete="email">
+    <input type="tel" name="phone" placeholder="Phone (+44 20 7946 0958)" autocomplete="tel">
+    <label for="fileInput_1">UPLOAD CV</label>
+    <input id="fileInput_1" type="file" accept=".doc,.docx,.pdf" name="cv" class="hidden">
+    <textarea name="cover_letter" placeholder="Write your message here"></textarea>
+    <div><input id="checkboxInput_2" type="checkbox" name="gdpr" class="opacity-0"><label for="checkboxInput_2" class="box"></label><label for="checkboxInput_2">I accept the <a href="/privacy">Privacy Policy</a></label></div>
+    <button type="submit">Send application</button>
+  </form>
+</main>
+<footer>
+  <form><input type="email" placeholder="Email address..."><button type="submit">Sign up</button></form>
+</footer>
+</body></html>

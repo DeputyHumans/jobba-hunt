@@ -1,0 +1,15 @@
+<!doctype html>
+<!-- Synthetic iCIMS email verification step: a code box named "Verification Code",
+     a postal code box that is no code box, Verify. -->
+<html><head><title>Verify Your Email</title></head>
+<body class="iCIMS_chrome">
+<div class="iCIMS_MainWrapper iCIMS_LoginPage">
+  <div id="iCIMS_Header"><h1 class="iCIMS_Header">Verify Your Email</h1></div>
+  <p>We sent a verification code to c********@example.com. Enter the code below.</p>
+  <form id="verifyForm" method="post" action="/jobs/1001/staff-software-engineer/login?step=verify&amp;in_iframe=1">
+    <label for="verificationCode">Verification Code</label><input type="text" id="verificationCode" name="verificationCode" autocomplete="one-time-code" maxlength="6" class="form-control">
+    <label for="zip">Postal Code</label><input type="text" id="zip" name="zipCode" class="form-control">
+    <input id="verifyButton" type="submit" class="iCIMS_PrimaryButton" value="Verify">
+  </form>
+</div>
+</body></html>

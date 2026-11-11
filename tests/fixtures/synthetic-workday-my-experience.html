@@ -1,0 +1,44 @@
+<!doctype html>
+<!-- Workday "My Experience" (synthetic, modelled on Workday tenant markup): the Work
+     Experience and Education groups ([role=group][aria-labelledby=*-section]) with an Add button that
+     renders an entry whose field ids carry the page's own number (workExperience-7--jobTitle), month and
+     year date sections, a degree listbox, a field-of-study prompt, the resume upload
+     (file-upload-input-ref) and an optional LinkedIn box. No personal values. -->
+<html><head><meta charset="utf-8"><title>workday fixture</title></head><body>
+<div data-automation-id="applyFlowPage">
+  <div aria-label="Application Progress"><ol data-automation-id="progressBar">
+    <li data-automation-id="progressBarCompletedStep"><label>step 1 of 6</label><label>Create Account/Sign In</label></li>
+    <li data-automation-id="progressBarCompletedStep"><label>step 2 of 6</label><label>My Information</label></li>
+    <li data-automation-id="progressBarActiveStep"><label aria-live="polite">current step 3 of 6</label><label>My Experience</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>step 4 of 6</label><label>Application Questions</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>step 5 of 6</label><label>Voluntary Disclosures</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>step 6 of 6</label><label>Review</label></li>
+  </ol></div>
+  <div data-automation-id="applyFlowMyExpPage"><h2>My Experience</h2>
+    <div role="group" aria-labelledby="Work-Experience-section"><h3 id="Work-Experience-section">Work Experience</h3>
+      <button type="button" data-automation-id="add-button" aria-label="Add Work Experience" data-entry="tpl-work">Add</button></div>
+    <div role="group" aria-labelledby="Education-section"><h3 id="Education-section">Education</h3>
+      <button type="button" data-automation-id="add-button" aria-label="Add Education" data-entry="tpl-edu">Add</button></div>
+    <div data-automation-id="formField-attachments" data-fkit-id="resumeAttachments--attachments"><label for="resumeAttachments--attachments"><span>Resume/CV<abbr aria-hidden="true">*</abbr></span></label>
+      <div data-automation-id="file-upload-drop-zone"><input type="file" id="resumeAttachments--attachments" data-automation-id="file-upload-input-ref" multiple><button type="button" data-automation-id="select-files">Select files</button></div><div data-wd-files></div></div>
+    <div data-automation-id="formField-linkedInAccount" data-fkit-id="socialNetworkAccounts--linkedInAccount"><label for="socialNetworkAccounts--linkedInAccount"><span>LinkedIn</span></label><input type="text" id="socialNetworkAccounts--linkedInAccount" value=""></div>
+  </div>
+  <div data-automation-id="pageFooter"><button type="button" data-automation-id="pageFooterBackButton">Back</button><button type="button" data-automation-id="pageFooterNextButton">Save and Continue</button></div>
+</div>
+<template id="tpl-work" data-start="7"><div role="group" aria-labelledby="Work-Experience-{i}-panel" data-wd-entry="1"><h4 id="Work-Experience-{i}-panel">Work Experience {i}</h4>
+  <div data-automation-id="formField-jobTitle" data-fkit-id="workExperience-{n}--jobTitle"><label for="workExperience-{n}--jobTitle"><span>Job Title<abbr aria-hidden="true">*</abbr></span></label><input type="text" id="workExperience-{n}--jobTitle" aria-required="true" value=""></div>
+  <div data-automation-id="formField-companyName" data-fkit-id="workExperience-{n}--companyName"><label for="workExperience-{n}--companyName"><span>Company<abbr aria-hidden="true">*</abbr></span></label><input type="text" id="workExperience-{n}--companyName" aria-required="true" value=""></div>
+  <div data-automation-id="formField-location" data-fkit-id="workExperience-{n}--location"><label for="workExperience-{n}--location"><span>Location</span></label><input type="text" id="workExperience-{n}--location" value=""></div>
+  <div data-automation-id="formField-currentlyWorkHere" data-fkit-id="workExperience-{n}--currentlyWorkHere"><div><input type="checkbox" id="workExperience-{n}--currentlyWorkHere" aria-checked="false"><label for="workExperience-{n}--currentlyWorkHere">I currently work here</label></div></div>
+  <div data-automation-id="formField-startDate" data-fkit-id="workExperience-{n}--startDate"><label for="workExperience-{n}--startDate-dateSectionMonth-input"><span>From<abbr aria-hidden="true">*</abbr></span></label><div data-automation-id="dateInputWrapper"><input type="text" role="spinbutton" aria-label="Month" id="workExperience-{n}--startDate-dateSectionMonth-input" data-automation-id="dateSectionMonth-input" value=""><input type="text" role="spinbutton" aria-label="Year" id="workExperience-{n}--startDate-dateSectionYear-input" data-automation-id="dateSectionYear-input" value=""></div></div>
+  <div data-automation-id="formField-endDate" data-fkit-id="workExperience-{n}--endDate"><label for="workExperience-{n}--endDate-dateSectionMonth-input"><span>To<abbr aria-hidden="true">*</abbr></span></label><div data-automation-id="dateInputWrapper"><input type="text" role="spinbutton" aria-label="Month" id="workExperience-{n}--endDate-dateSectionMonth-input" data-automation-id="dateSectionMonth-input" value=""><input type="text" role="spinbutton" aria-label="Year" id="workExperience-{n}--endDate-dateSectionYear-input" data-automation-id="dateSectionYear-input" value=""></div></div>
+  <div data-automation-id="formField-roleDescription" data-fkit-id="workExperience-{n}--roleDescription"><label for="workExperience-{n}--roleDescription"><span>Role Description</span></label><textarea id="workExperience-{n}--roleDescription"></textarea></div>
+</div></template>
+<template id="tpl-edu" data-start="12"><div role="group" aria-labelledby="Education-{i}-panel" data-wd-entry="1"><h4 id="Education-{i}-panel">Education {i}</h4>
+  <div data-automation-id="formField-schoolName" data-fkit-id="education-{n}--schoolName"><label for="education-{n}--schoolName"><span>School or University<abbr aria-hidden="true">*</abbr></span></label><input type="text" id="education-{n}--schoolName" aria-required="true" value=""></div>
+  <div data-automation-id="formField-degree" data-fkit-id="education-{n}--degree"><label for="education-{n}--degree"><span>Degree<abbr aria-hidden="true">*</abbr></span></label><button type="button" id="education-{n}--degree" aria-haspopup="listbox" data-options='["Associate&apos;s Degree","Bachelor&apos;s Degree","Master&apos;s Degree","Doctorate"]'>Select One</button></div>
+  <div data-automation-id="formField-fieldOfStudy" data-fkit-id="education-{n}--fieldOfStudy"><label for="education-{n}--fieldOfStudy"><span>Field of Study</span></label><div data-automation-id="multiSelectContainer"><ul data-automation-id="selectedItemList" role="listbox"></ul><input type="text" id="education-{n}--fieldOfStudy" placeholder="Search" data-uxi-widget-type="selectinput" data-single="1" data-tree='{"Applied Mathematics":null,"Computer Science":null,"Mathematics":null}'></div></div>
+  <div data-automation-id="formField-lastYearAttended" data-fkit-id="education-{n}--lastYearAttended"><label for="education-{n}--lastYearAttended-dateSectionYear-input"><span>To (Actual or Expected)</span></label><div data-automation-id="dateInputWrapper"><input type="text" role="spinbutton" aria-label="Year" id="education-{n}--lastYearAttended-dateSectionYear-input" data-automation-id="dateSectionYear-input" value=""></div></div>
+</div></template>
+<!-- workday-widgets -->
+</body></html>

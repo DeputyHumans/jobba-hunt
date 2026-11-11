@@ -1,0 +1,39 @@
+<!doctype html><html><head><title>Search Jobs | Dice.com</title></head><body>
+<header><button aria-label="Toggle menu"></button><div role="menu"><a role="menuitem" href="/logout">Log Out</a></div>
+<form><input data-testid="job-search-bar" value="python LLM"><button data-testid="job-search-search-bar-search-button">Search</button></form></header>
+<main>
+<p>3 results (2 new)</p>
+<div aria-label="Job search results">
+  <!-- Layout A: plain card, company on the card -->
+  <div role="listitem"><div data-id="aaa111aaa111aaa111aaa111aaa111aa" data-job-guid="11111111-1111-4111-8111-111111111111" data-testid="job-card" role="article">
+    <a tabindex="-1" aria-label="View Details for Lead Full Stack Engineer (aaa111aaa111aaa111aaa111aaa111aa)" data-testid="job-search-job-card-link" href="/job-detail/11111111-1111-4111-8111-111111111111"> </a>
+    <a aria-label="Company Logo" href="/company-profile/c1?companyname=Example%20Staffing%20LLC"><img alt="Example Staffing LLC"></a>
+    <a data-testid="job-search-job-detail-link" aria-label="Lead Full Stack Engineer" href="/job-detail/11111111-1111-4111-8111-111111111111">Lead Full Stack Engineer</a>
+    <a href="/company-profile/c1?companyname=Example%20Staffing%20LLC"><p data-testid="job-card-company-name" title="Example Staffing LLC">Example Staffing LLC</p></a>
+    <p>Remote<!-- --> • <!-- -->Today</p>
+    <div><div aria-labelledby="easyApply-label"><p id="easyApply-label">Easy Apply</p></div>
+    <div aria-labelledby="employmentType-label"><p id="employmentType-label">Third Party, Contract</p></div>
+    <div aria-labelledby="salary-label"><p id="salary-label">$70 - $80</p></div></div>
+  </div></div>
+  <!-- Layout B: company as p[title] in a span, location and posted in separate p, a snippet -->
+  <div role="listitem"><div data-id="bbb222bbb222bbb222bbb222bbb222bb" data-job-guid="22222222-2222-4222-8222-222222222222" data-testid="job-card" role="article">
+    <a tabindex="-1" aria-label="View Details for AI Architect (bbb222bbb222bbb222bbb222bbb222bb)" href="/job-detail/22222222-2222-4222-8222-222222222222"> </a>
+    <span><a href="/company-profile/c2?companyname=Sample%20Tech%20Inc."><p title="Sample Tech Inc.">Sample Tech Inc.</p></a></span>
+    <div role="main" aria-label="Details for AI Architect position"><a data-testid="job-search-job-detail-link" href="/job-detail/22222222-2222-4222-8222-222222222222">AI Architect</a></div>
+    <span><p>Remote or Hybrid in Chicago, Illinois</p><p>•</p><p>Yesterday</p></span>
+    <span><p>Job Title: AI Architect. We are looking for an experienced AI architect with many years of experience designing and implementing AI solutions for large enterprises with LLMs, RAG and agents.</p></span>
+    <div><div aria-labelledby="employmentType-label"><p id="employmentType-label">Contract</p></div>
+    <div aria-labelledby="salary-label"><p id="salary-label">null</p></div></div>
+  </div></div>
+  <!-- Layout C: "Group by company", the company in the group header -->
+  <div role="listitem"><div><div><img alt=""></div><a href="/company-profile/c3?companyname=Grouped%20Partners">Grouped Partners</a></div>
+    <div data-id="ccc333ccc333ccc333ccc333ccc333cc" data-job-guid="33333333-3333-4333-8333-333333333333" data-testid="grouped-job-entry" role="article">
+      <a tabindex="-1" aria-label="View Details for Senior .NET Developer (ccc333ccc333ccc333ccc333ccc333cc)" data-testid="grouped-job-entry-link" href="/job-detail/33333333-3333-4333-8333-333333333333"> </a>
+      <a data-testid="grouped-job-entry-title" href="/job-detail/33333333-3333-4333-8333-333333333333">Senior .NET Developer</a>
+      <p>Remote • 2d ago</p>
+      <div><div aria-labelledby="easyApply-label"><p id="easyApply-label">Easy Apply</p></div>
+      <div aria-labelledby="employmentType-label"><p id="employmentType-label">Full-time</p></div></div>
+    </div>
+  </div>
+</div>
+</main></body></html>

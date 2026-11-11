@@ -1,0 +1,221 @@
+{
+  "_comment": "Synthetic known-role set for the calibration tests (persona: tests/fixtures/workspace). A real workspace keeps its own set in data/calibration.json, built by /hunt-onboard. Score each role with /hunt-triage calibrate, then: node scripts/check-calibration.mjs --file <results.json> [--fixture <set>]. Expectation types: order, tier_at_least, gate_is, reject_on.",
+  "roles": [
+    {
+      "job_id": "9000000001",
+      "label": "acme-head-of-engineering",
+      "title": "Head of Engineering (Fractional)",
+      "company": "Acme Corp (B2B logistics SaaS)",
+      "location": "Remote (US)",
+      "employment_type": "Contract",
+      "description_text": "Fractional Head of Engineering, 15-20 hrs/week, 6-month term. Acme Corp runs a B2B logistics platform built by a team of 12 engineers and an outside agency. Own the architecture, the delivery process and hiring; audit the agency; bring AI-assisted development into the team. Stack: TypeScript, React, Node.js, PostgreSQL, AWS. Must have: led engineering teams of 10+; shipped B2B SaaS.",
+      "source": "synthetic positive control: a leadership role squarely in the record"
+    },
+    {
+      "job_id": "9000000002",
+      "label": "globex-insurance-cto",
+      "title": "Fractional CTO",
+      "company": "Globex (insurance software)",
+      "location": "Remote (US)",
+      "employment_type": "Part-time",
+      "description_text": "Fractional CTO, 5-8 hrs/week, for an insurance policy-administration product. Manage two contractors and the vendor security reviews. Deep insurance-industry experience is required: candidates without years inside insurance carriers will not be considered.",
+      "source": "synthetic control: a domain must-have the record lacks scores below the Acme role"
+    },
+    {
+      "job_id": "9000000003",
+      "label": "initech-mvp-cto",
+      "title": "Fractional CTO (MVP build)",
+      "company": "Initech (pre-seed B2B SaaS)",
+      "location": "Remote",
+      "employment_type": "Contract",
+      "description_text": "Solo founder needs a fractional CTO to build the MVP fast with AI coding tools, own the architecture after launch and help hire the first two engineers. About 2 days a week for 6 months.",
+      "source": "synthetic positive control: hands-on leadership, MVP build"
+    },
+    {
+      "job_id": "9000000004",
+      "label": "hooli-vp-full-time",
+      "title": "VP Engineering",
+      "company": "Hooli (Series C SaaS)",
+      "location": "United States (Remote)",
+      "employment_type": "Full-time",
+      "description_text": "Full-time VP Engineering. Lead 60 engineers across four teams, own hiring and performance management. Salary, equity, 401k and health benefits. Permanent role.",
+      "source": "synthetic control: full-time leadership passes G1 when preferences.engagement.accept lists full-time"
+    },
+    {
+      "job_id": "9000000005",
+      "label": "umbrella-boston-onsite",
+      "title": "Fractional CTO",
+      "company": "Umbrella Labs (fintech)",
+      "location": "Boston, MA (On-site)",
+      "employment_type": "Contract",
+      "description_text": "Fractional CTO, 15 hrs/week, in our Boston office three days a week. Payments platform on Node.js and React.",
+      "source": "synthetic negative control: on-site outside the home metros fails G2"
+    },
+    {
+      "job_id": "9000000006",
+      "label": "soylent-erx",
+      "title": "Fractional CTO",
+      "company": "Soylent Systems (digital pharmacy)",
+      "location": "United States (Remote)",
+      "employment_type": "Contract",
+      "description_text": "Fractional CTO for a digital pharmacy. Must have: a prior CTO role at a healthtech startup and hands-on experience building e-prescribing (e-Rx) and telehealth platforms. 10 hrs/week.",
+      "source": "synthetic negative control: a must-have outside the record fails G4"
+    },
+    {
+      "job_id": "9000000007",
+      "label": "globex-springfield-hybrid",
+      "title": "Fractional CTO",
+      "company": "Globex Ventures (Series A SaaS)",
+      "location": "Springfield, IL (On-site)",
+      "employment_type": "Part-time",
+      "description_text": "Fractional CTO, 15-20 hrs/week, in our Springfield office Tuesday through Thursday. Seed-to-Series A B2B SaaS on TypeScript and GCP, with an agentic AI roadmap.",
+      "source": "synthetic control: an office in a home metro (preferences.location.onsite_metros) passes G2"
+    },
+    {
+      "job_id": "dice-11111111-1111-4111-8111-111111111101",
+      "label": "dice-lead-full-stack-ai",
+      "title": "Lead Full Stack Engineer - TypeScript/React/Node + LLM",
+      "company": "Staffco (Dice poster) for a Series B fintech",
+      "location": "Remote",
+      "employment_type": "Contract Corp To Corp, Contract Independent",
+      "description_text": "Lead Full Stack Engineer (TypeScript, React, Node.js, LLM/RAG). 100% remote, US hours. 6-month contract, extension likely. C2C and 1099 welcome. Rate $110/hr C2C. Lead a team of 4 engineers, own the architecture of a React and Node.js platform on AWS with PostgreSQL, and build retrieval-augmented generation (RAG) features with LLM APIs. Must have: 10+ years software development; TypeScript, React and Node.js in production; PostgreSQL; AWS; LLM integration and RAG pipelines; CI/CD.",
+      "source": "synthetic Dice role: hands-on lane positive control"
+    },
+    {
+      "job_id": "dice-11111111-1111-4111-8111-111111111102",
+      "label": "dice-senior-python-ai",
+      "title": "Senior Python AI Engineer (LLM, Agents)",
+      "company": "Staffco (Dice poster) for an enterprise SaaS company",
+      "location": "Remote",
+      "employment_type": "Contract Independent",
+      "description_text": "Senior Python AI Engineer, fully remote, 12-month 1099 contract. Build LLM-based agents and RAG services for an enterprise SaaS product. Must have: 8+ years software engineering; Python in production; LLM APIs, prompt design, retrieval-augmented generation and vector search; REST APIs; PostgreSQL; GCP or AWS; CI/CD.",
+      "source": "synthetic Dice role: hands-on lane positive control"
+    },
+    {
+      "job_id": "dice-11111111-1111-4111-8111-111111111103",
+      "label": "dice-lead-full-stack-w2",
+      "title": "Lead Full Stack Engineer - TypeScript/React/Node + LLM",
+      "company": "Staffco (Dice poster) for a Series B fintech",
+      "location": "Remote",
+      "employment_type": "Contract W2",
+      "description_text": "Lead Full Stack Engineer (TypeScript, React, Node.js, LLM/RAG). 100% remote. 6-month contract, W2 only, no C2C, no 1099. Rate $70/hr on W2. Same team and stack as the C2C posting: React and Node.js on AWS with PostgreSQL, RAG features with LLM APIs.",
+      "source": "synthetic control: a W2-only contract passes G1 when preferences.engagement.accept lists w2 (the IC rate floor is a separate check)"
+    },
+    {
+      "job_id": "dice-11111111-1111-4111-8111-111111111104",
+      "label": "dice-desktop-support",
+      "title": "Senior Desktop Support Engineer",
+      "company": "Staffco (Dice poster)",
+      "location": "Remote",
+      "employment_type": "Contract Corp To Corp",
+      "description_text": "Senior Desktop Support Engineer, remote, 6-month contract, C2C OK. Tier 2 and tier 3 desktop support for 2,000 users: Windows 11 imaging, Intune and SCCM, Microsoft 365 and Teams troubleshooting, VPN and printer issues, ServiceNow ticket queue. Must have: 5+ years desktop support, CompTIA A+.",
+      "source": "synthetic negative control: support, not hands-on development, fails G3"
+    },
+    {
+      "job_id": "9000000101",
+      "label": "li-ai-engineer-contract",
+      "title": "Senior AI Engineer (Contract)",
+      "company": "Staffco for a payments company",
+      "location": "United States (Remote)",
+      "employment_type": "Contract",
+      "description_text": "Senior AI Engineer, 6-month contract, 100% remote, 40 hours a week. Design and build RAG features and AI agents in Python and TypeScript, ship them to production on AWS with PostgreSQL, add evaluation pipelines, and review code for two other engineers. Must have: 8+ years of software engineering; Python and TypeScript in production; LLM APIs, RAG and agents shipped to production; AWS; PostgreSQL; CI/CD. Rate $120/hr.",
+      "source": "synthetic LinkedIn hands-on positive control"
+    },
+    {
+      "job_id": "9000000102",
+      "label": "li-ai-training-gig",
+      "title": "Senior Software Engineer, AI Training (Contract)",
+      "company": "Hooli Data (AI training marketplace)",
+      "location": "United States (Remote)",
+      "employment_type": "Contract",
+      "description_text": "Join our network of software engineers helping AI labs train coding models. Remote and flexible, 10-40 hours a week, up to $120/hr as an independent contractor. Write coding prompts, rank model responses, label errors in model output and write reference solutions. No team, no meetings.",
+      "source": "synthetic negative control: AI-training gig work fails G3"
+    },
+    {
+      "job_id": "9000000103",
+      "label": "li-staff-engineer-full-time",
+      "title": "Staff Software Engineer",
+      "company": "Initech Cloud (Series B SaaS)",
+      "location": "United States (Remote)",
+      "employment_type": "Full-time",
+      "description_text": "Full-time Staff Software Engineer on the platform team. Permanent role with salary, equity, 401k and health benefits. Design TypeScript and Node.js services on AWS, mentor engineers and lead design reviews. Must have: 10+ years of software engineering; TypeScript and Node.js; AWS; PostgreSQL.",
+      "source": "synthetic control: a full-time permanent IC role with no pay stated passes G1 when full-time is accepted"
+    }
+  ],
+  "expectations": [
+    {
+      "type": "order",
+      "higher": "acme-head-of-engineering",
+      "lower": "globex-insurance-cto"
+    },
+    {
+      "type": "tier_at_least",
+      "label": "acme-head-of-engineering",
+      "tier": "B"
+    },
+    {
+      "type": "tier_at_least",
+      "label": "initech-mvp-cto",
+      "tier": "B"
+    },
+    {
+      "type": "gate_is",
+      "label": "hooli-vp-full-time",
+      "gate": "G1",
+      "value": "pass"
+    },
+    {
+      "type": "reject_on",
+      "label": "umbrella-boston-onsite",
+      "gate": "G2"
+    },
+    {
+      "type": "reject_on",
+      "label": "soylent-erx",
+      "gate": "G4"
+    },
+    {
+      "type": "gate_is",
+      "label": "globex-springfield-hybrid",
+      "gate": "G2",
+      "value": "pass"
+    },
+    {
+      "type": "tier_at_least",
+      "label": "dice-lead-full-stack-ai",
+      "tier": "B"
+    },
+    {
+      "type": "tier_at_least",
+      "label": "dice-senior-python-ai",
+      "tier": "B"
+    },
+    {
+      "type": "gate_is",
+      "label": "dice-lead-full-stack-w2",
+      "gate": "G1",
+      "value": "pass"
+    },
+    {
+      "type": "reject_on",
+      "label": "dice-desktop-support",
+      "gate": "G3"
+    },
+    {
+      "type": "tier_at_least",
+      "label": "li-ai-engineer-contract",
+      "tier": "B"
+    },
+    {
+      "type": "reject_on",
+      "label": "li-ai-training-gig",
+      "gate": "G3"
+    },
+    {
+      "type": "gate_is",
+      "label": "li-staff-engineer-full-time",
+      "gate": "G1",
+      "value": "pass"
+    }
+  ]
+}

@@ -1,0 +1,188 @@
+{
+  "slug": "head-of-engineering",
+  "share": "head-of-engineering",
+  "target_title": "Head of Engineering",
+  "headline": "Head of Engineering · Scaling Teams, Delivery and Platform",
+  "summary": {
+    "text": "Engineering leader with 17 years in software, the last ten running teams. At Acme Corp, took engineering from a dozen people to 45 and made daily releases the norm. Before that, led 60 engineers at Globex through a move of 140 services to AWS and Kubernetes. Still writes design docs and reviews code in TypeScript, Python and Go.",
+    "claims": [
+      "C01",
+      "C03",
+      "C04",
+      "C08",
+      "C09",
+      "C23"
+    ]
+  },
+  "highlights": [
+    {
+      "label": "Scaling",
+      "text": "turned a 12-person team into six teams of 45, with a career ladder and managers promoted from inside.",
+      "claims": [
+        "C03",
+        "C21",
+        "C22"
+      ]
+    },
+    {
+      "label": "Delivery",
+      "text": "daily releases for every team, on trunk-based development and one shared pipeline.",
+      "claims": [
+        "C04"
+      ]
+    },
+    {
+      "label": "Reliability",
+      "text": "45% fewer incidents at Globex once every service ran against an SLO and an error budget.",
+      "claims": [
+        "C11"
+      ]
+    },
+    {
+      "label": "Security and cost",
+      "text": "a clean first SOC 2 Type II audit, and cloud spend down 32% in two quarters.",
+      "claims": [
+        "C05",
+        "C07"
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "label": "Leadership",
+      "terms": [
+        "engineering strategy",
+        "org design",
+        "hiring",
+        "career frameworks",
+        "OKRs",
+        "board reporting",
+        "budgets"
+      ],
+      "claims": [
+        "C03",
+        "C21",
+        "C26",
+        "C29",
+        "C25"
+      ]
+    },
+    {
+      "label": "Delivery",
+      "terms": [
+        "CI/CD",
+        "trunk-based development",
+        "feature flags",
+        "DORA metrics",
+        "incident management",
+        "SLOs"
+      ],
+      "claims": [
+        "C04",
+        "C11",
+        "C29"
+      ]
+    },
+    {
+      "label": "Platform",
+      "terms": [
+        "AWS",
+        "Kubernetes",
+        "Terraform",
+        "Kafka",
+        "PostgreSQL",
+        "observability"
+      ],
+      "claims": [
+        "C09",
+        "C10",
+        "CV:22"
+      ]
+    },
+    {
+      "label": "Languages",
+      "terms": [
+        "TypeScript",
+        "Python",
+        "Go",
+        "SQL"
+      ],
+      "claims": [
+        "C23"
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "role": "acme",
+      "context": "ai",
+      "items": [
+        "acme-scale",
+        "acme-delivery",
+        "acme-soc2",
+        "acme-tenant",
+        "acme-ai-review",
+        "acme-llm",
+        "acme-cloud",
+        "acme-ladder",
+        "acme-board"
+      ]
+    },
+    {
+      "role": "globex",
+      "context": "default",
+      "items": [
+        {
+          "sub": "platform"
+        },
+        "globex-migration",
+        "globex-sre",
+        "globex-platform-team",
+        {
+          "sub": "data"
+        },
+        "globex-streaming",
+        "globex-data-contracts",
+        {
+          "sub": "org"
+        },
+        "globex-hiring",
+        "globex-budget",
+        "globex-remote"
+      ]
+    },
+    {
+      "role": "initech",
+      "context": "default",
+      "items": [
+        "initech-team",
+        "initech-tokenization",
+        "initech-latency",
+        "initech-fraud"
+      ]
+    }
+  ],
+  "earlier": [
+    "umbrella",
+    "hooli",
+    "soylent"
+  ],
+  "target_keywords": [
+    "head of engineering",
+    "engineering leader",
+    "hiring",
+    "CI/CD",
+    "Kubernetes",
+    "AWS",
+    "SOC 2",
+    "career ladder",
+    "OKRs",
+    "TypeScript",
+    "Python",
+    "incident",
+    "Rust"
+  ],
+  "honest_gaps": [
+    "Rust"
+  ]
+}

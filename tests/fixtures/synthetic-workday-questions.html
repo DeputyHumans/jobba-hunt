@@ -1,0 +1,20 @@
+<!doctype html>
+<!-- Workday "Application Questions" (synthetic, modelled on Workday tenant markup): questionnaire
+     listboxes (primaryQuestionnaire--<id>) named by a long label, a multi-select question drawn as
+     checkboxes, and an optional free-text box. No personal values. -->
+<html><head><meta charset="utf-8"><title>workday fixture</title></head><body>
+<div data-automation-id="applyFlowPage">
+<div aria-label="Application Progress"><ol data-automation-id="progressBar"><li data-automation-id="progressBarInactiveStep"><label>step 1 of 7</label><label>Create Account/Sign In</label></li><li data-automation-id="progressBarInactiveStep"><label>step 2 of 7</label><label>My Information</label></li><li data-automation-id="progressBarInactiveStep"><label>step 3 of 7</label><label>My Experience</label></li><li data-automation-id="progressBarActiveStep"><label aria-live="polite">current step 4 of 7</label><label>Application Questions</label></li><li data-automation-id="progressBarInactiveStep"><label>step 5 of 7</label><label>Voluntary Disclosures</label></li><li data-automation-id="progressBarInactiveStep"><label>step 6 of 7</label><label>Self Identify</label></li><li data-automation-id="progressBarInactiveStep"><label>step 7 of 7</label><label>Review</label></li></ol></div>
+<div data-automation-id="applyFlowPrimaryQuestionnairePage"><h2>Application Questions</h2>
+  <div data-automation-id="formField-q1" data-fkit-id="primaryQuestionnaire--a1b2"><label for="primaryQuestionnaire--a1b2"><span><p>Are you legally authorized to work in the United States?</p><abbr aria-hidden="true">*</abbr></span></label><button type="button" id="primaryQuestionnaire--a1b2" aria-haspopup="listbox" data-options='["Yes","No"]'>Select One</button></div>
+  <div data-automation-id="formField-q2" data-fkit-id="primaryQuestionnaire--c3d4"><label for="primaryQuestionnaire--c3d4"><span><p>Will you now or in the future require sponsorship for employment visa status (e.g., H-1B visa status)?</p><abbr aria-hidden="true">*</abbr></span></label><button type="button" id="primaryQuestionnaire--c3d4" aria-haspopup="listbox" data-options='["Yes","No"]'>Select One</button></div>
+  <div data-automation-id="formField-q3" data-fkit-id="primaryQuestionnaire--e5f6"><label for="primaryQuestionnaire--e5f6"><span><p>Do you have a current active security clearance?</p><abbr aria-hidden="true">*</abbr></span></label><button type="button" id="primaryQuestionnaire--e5f6" aria-haspopup="listbox" data-options='["Yes","No"]'>Select One</button></div>
+  <div data-automation-id="formField-q4" data-fkit-id="primaryQuestionnaire--g7h8"><fieldset><legend><label><span><p>Which work arrangements are you open to?</p><abbr aria-hidden="true">*</abbr></span></label></legend>
+    <div><input type="checkbox" id="g7h8-0" name="primaryQuestionnaire--g7h8"><label for="g7h8-0">On-site</label></div>
+    <div><input type="checkbox" id="g7h8-1" name="primaryQuestionnaire--g7h8"><label for="g7h8-1">Remote</label></div></fieldset></div>
+  <div data-automation-id="formField-q5" data-fkit-id="primaryQuestionnaire--i9j0"><label for="primaryQuestionnaire--i9j0"><span><p>Is there anything else you would like us to know?</p></span></label><textarea id="primaryQuestionnaire--i9j0"></textarea></div>
+</div>
+<div data-automation-id="pageFooter"><button type="button" data-automation-id="pageFooterBackButton">Back</button><button type="button" data-automation-id="pageFooterNextButton">Save and Continue</button></div>
+</div>
+<!-- workday-widgets -->
+</body></html>

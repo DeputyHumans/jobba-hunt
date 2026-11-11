@@ -1,0 +1,25 @@
+<!doctype html><html><body>
+<!-- Synthetic 8-character security-code widget like Greenhouse's: one input per character, focus
+     moves on after each one. ?flaky=1 drops the first keystroke the fifth box gets; ?broken=1 always
+     swaps the fifth box's character for "4". ?backjump=1 is Walmart's widget: Backspace in an empty
+     box clears the previous box and moves focus back to it. -->
+<form id="code"><div class="boxes"></div><button type="button">Submit application</button></form>
+<script>
+const q = new URLSearchParams(location.search);
+const flaky = q.get('flaky') === '1', broken = q.get('broken') === '1', backjump = q.get('backjump') === '1';
+const wrap = document.querySelector('.boxes');
+let dropped = false;
+for (let i = 0; i < 8; i++) {
+  const b = document.createElement('input'); b.maxLength = 1; b.setAttribute('aria-label', `Character ${i + 1}`);
+  b.addEventListener('input', () => {
+    if (i === 4 && flaky && !dropped && b.value) { dropped = true; b.value = ''; return; }
+    if (i === 4 && broken && b.value) b.value = '4';
+    if (b.value && i < 7) wrap.children[i + 1].focus();
+  });
+  b.addEventListener('keydown', (e) => {
+    if (backjump && e.key === 'Backspace' && !b.value && i > 0) { e.preventDefault(); const prev = wrap.children[i - 1]; prev.value = ''; prev.focus(); }
+  });
+  wrap.appendChild(b);
+}
+</script>
+</body></html>

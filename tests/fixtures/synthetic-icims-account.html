@@ -1,0 +1,18 @@
+<!doctype html>
+<!-- Synthetic iCIMS account step, in the login page's frame markup: an email
+     box, a password and its confirmation, a terms box, Create Account. The runner fills both password boxes
+     from 1Password and presses the form's own submit. -->
+<html><head><title>Create Account</title></head>
+<body class="iCIMS_chrome has-hcaptcha">
+<div class="iCIMS_MainWrapper iCIMS_LoginPage">
+  <div id="iCIMS_Header"><h1 class="iCIMS_Header">Create Your Account</h1></div>
+  <form id="createAccountForm" class="iCIMS_SignIn" method="post" action="/jobs/1001/staff-software-engineer/login?step=create&amp;in_iframe=1">
+    <label for="email">Email</label><input type="email" id="email" name="css_loginName" class="form-control" value="candidate@example.com">
+    <label for="password">Password</label><input type="password" id="password" name="password" class="form-control">
+    <label for="password2">Confirm Password</label><input type="password" id="password2" name="password2" class="form-control">
+    <div class="checkbox"><label for="accept_terms"><input type="checkbox" id="accept_terms" name="accept_terms" value="1">I agree to the Terms of Use and the Privacy Policy.</label></div>
+    <input id="createAccountButton" type="submit" class="iCIMS_PrimaryButton" value="Create Account">
+  </form>
+  <div id="hCaptcha-attribution"><div>Protected by hCaptcha <a href="#">Privacy</a> | <a href="#">Terms</a></div></div>
+</div>
+</body></html>

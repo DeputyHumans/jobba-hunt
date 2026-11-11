@@ -1,0 +1,23 @@
+<!-- SYNTHETIC fixture modelled on the 2025-2026 LinkedIn Jobs search list markup.
+     Replace with a sanitized live capture after the Phase 0 headed discovery session. -->
+<html><body>
+<header id="global-nav"><a href="/feed/">Home</a></header>
+<main>
+  <div class="jobs-search-results-list__subtitle"><span>37 results</span></div>
+  <ul class="scaffold-layout__list-container">
+    <li data-occludable-job-id="9000000001" class="jobs-search-results__list-item">
+      <div data-job-id="9000000001" class="job-card-container">
+        <a class="job-card-container__link" href="/jobs/view/9000000001/?eBP=abc&amp;refId=xyz&amp;trackingId=q1">Fractional CTO</a>
+      </div>
+    </li>
+    <li data-occludable-job-id="9000000002" class="jobs-search-results__list-item">
+      <div data-job-id="9000000002"><a href="https://www.linkedin.com/jobs/view/9000000002/">Interim CTO</a></div>
+    </li>
+    <li data-occludable-job-id="9000000003" class="jobs-search-results__list-item"></li>
+  </ul>
+  <a href="/jobs/search/?currentJobId=9000000004&amp;keywords=cto">selected</a>
+  <a href="/jobs/view/9000000001/">duplicate link to first job</a>
+  <a href="/company/12345/">company id must not be read as a job</a>
+  <span data-job-id="123">short ids are ignored</span>
+</main>
+</body></html>

@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- Workday "Self Identify" (synthetic, modelled on Workday tenant markup): the US disability form
+     (CC-305): its language prefilled, Name, a month/day/year Date, and three boxes of which one is
+     checked. No personal values. -->
+<html><head><meta charset="utf-8"><title>workday fixture</title></head><body>
+<div data-automation-id="applyFlowPage">
+<div aria-label="Application Progress"><ol data-automation-id="progressBar"><li data-automation-id="progressBarInactiveStep"><label>step 1 of 7</label><label>Create Account/Sign In</label></li><li data-automation-id="progressBarInactiveStep"><label>step 2 of 7</label><label>My Information</label></li><li data-automation-id="progressBarInactiveStep"><label>step 3 of 7</label><label>My Experience</label></li><li data-automation-id="progressBarInactiveStep"><label>step 4 of 7</label><label>Application Questions</label></li><li data-automation-id="progressBarInactiveStep"><label>step 5 of 7</label><label>Voluntary Disclosures</label></li><li data-automation-id="progressBarActiveStep"><label aria-live="polite">current step 6 of 7</label><label>Self Identify</label></li><li data-automation-id="progressBarInactiveStep"><label>step 7 of 7</label><label>Review</label></li></ol></div>
+<div data-automation-id="applyFlowSelfIdentifyPage"><h2>Self Identify</h2>
+  <div data-automation-id="formField-disabilityForm" data-fkit-id="selfIdentifiedDisabilityData--disabilityForm"><label for="selfIdentifiedDisabilityData--disabilityForm"><span>Language<abbr aria-hidden="true">*</abbr></span></label><button type="button" id="selfIdentifiedDisabilityData--disabilityForm" aria-haspopup="listbox" data-options='["English","Spanish"]'>English</button></div>
+  <div data-automation-id="formField-name" data-fkit-id="selfIdentifiedDisabilityData--name"><label for="selfIdentifiedDisabilityData--name"><span>Name<abbr aria-hidden="true">*</abbr></span></label><input type="text" id="selfIdentifiedDisabilityData--name" aria-required="true" value=""></div>
+  <div data-automation-id="formField-employeeId" data-fkit-id="selfIdentifiedDisabilityData--employeeId"><label for="selfIdentifiedDisabilityData--employeeId"><span>Employee ID (if applicable)</span></label><input type="text" id="selfIdentifiedDisabilityData--employeeId" value=""></div>
+  <div data-automation-id="formField-dateSignedOn" data-fkit-id="selfIdentifiedDisabilityData--dateSignedOn"><label for="selfIdentifiedDisabilityData--dateSignedOn-dateSectionMonth-input"><span>Date<abbr aria-hidden="true">*</abbr></span></label><div data-automation-id="dateInputWrapper"><input type="text" role="spinbutton" aria-label="Month" id="selfIdentifiedDisabilityData--dateSignedOn-dateSectionMonth-input" data-automation-id="dateSectionMonth-input" value=""><input type="text" role="spinbutton" aria-label="Day" id="selfIdentifiedDisabilityData--dateSignedOn-dateSectionDay-input" data-automation-id="dateSectionDay-input" value=""><input type="text" role="spinbutton" aria-label="Year" id="selfIdentifiedDisabilityData--dateSignedOn-dateSectionYear-input" data-automation-id="dateSectionYear-input" value=""></div></div>
+  <div data-automation-id="formField-disabilityStatus" data-fkit-id="selfIdentifiedDisabilityData--disabilityStatus"><fieldset><legend><label><span>Please check one of the boxes below:<abbr aria-hidden="true">*</abbr></span></label></legend>
+    <div><input type="checkbox" id="ds-0" name="disabilityStatus"><label for="ds-0">Yes, I have a disability (or previously had a disability)</label></div>
+    <div><input type="checkbox" id="ds-1" name="disabilityStatus"><label for="ds-1">No, I do not have a disability and have not had one in the past</label></div>
+    <div><input type="checkbox" id="ds-2" name="disabilityStatus"><label for="ds-2">I do not want to answer</label></div></fieldset></div>
+</div>
+<div data-automation-id="pageFooter"><button type="button" data-automation-id="pageFooterBackButton">Back</button><button type="button" data-automation-id="pageFooterNextButton">Save and Continue</button></div>
+</div>
+<!-- workday-widgets -->
+</body></html>

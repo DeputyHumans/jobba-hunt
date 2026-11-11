@@ -1,0 +1,41 @@
+{
+  "_comment": "Synthetic answer bank.",
+  "profile": {
+    "first_name": "Jordan",
+    "last_name": "Example",
+    "full_name": "Jordan Example",
+    "email": "jordan@example.com",
+    "phone": "(555) 555-0100",
+    "phone_country": "United States (+1)",
+    "city": "Springfield, Illinois, United States",
+    "state": "Illinois",
+    "zip": "62701",
+    "country": "United States",
+    "street_address": "100 Main St",
+    "address_full": "100 Main St, Springfield, IL 62701",
+    "linkedin": "https://www.linkedin.com/in/jordan-example",
+    "website": "https://jordan.example.com"
+  },
+  "facts": {
+    "work_authorization": "Yes",
+    "work_authorization_type": "US Citizen",
+    "sponsorship": "No",
+    "start_date": "Immediately",
+    "relocation": "No",
+    "remote": "Yes",
+    "years_total": "15",
+    "how_heard": "LinkedIn",
+    "rate_hourly": "150",
+    "rate_annual": "240000",
+    "contracting_entity": "Example Consulting LLC",
+    "contract_types": "Corp-to-Corp; Independent (1099)"
+  },
+  "eeo": {
+    "gender": "decline",
+    "race": "decline",
+    "hispanic": "decline",
+    "veteran": "decline",
+    "disability": "decline"
+  },
+  "learned": []
+}

@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- Synthetic Walmart careers code page (the contact page after Continue), modelled on its bundle:
+     six one-digit boxes data-testid otp-input-0..5, Resend, and Verify (data-testid otp-verify-button). -->
+<html><head><title>Contact details - Walmart Careers</title></head>
+<body>
+<div class="w-full bg-white">
+  <div class="w-full max-w-[744px] mx-auto">
+    <div><h1>Check your email for the verification code.</h1></div>
+    <div><p>We have sent a verification code to ab****@example.com. Please enter it below.</p>
+      <div role="group" aria-label="Verification code input">
+        <div><input type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Digit 1 of 6" data-testid="otp-input-0"></div>
+        <div><input type="text" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Digit 2 of 6" data-testid="otp-input-1"></div>
+        <div><input type="text" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Digit 3 of 6" data-testid="otp-input-2"></div>
+        <div><input type="text" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Digit 4 of 6" data-testid="otp-input-3"></div>
+        <div><input type="text" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Digit 5 of 6" data-testid="otp-input-4"></div>
+        <div><input type="text" inputmode="numeric" maxlength="1" autocomplete="off" aria-label="Digit 6 of 6" data-testid="otp-input-5"></div>
+      </div>
+    </div>
+    <div><span>Didn't get one?</span><button type="button" disabled>Resend code (59s)</button>
+      <button type="button" data-testid="otp-verify-button" disabled>Verify</button></div>
+  </div>
+</div>
+</body></html>

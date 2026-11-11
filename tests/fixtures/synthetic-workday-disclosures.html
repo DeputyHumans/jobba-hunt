@@ -1,0 +1,18 @@
+<!doctype html>
+<!-- Workday "Voluntary Disclosures" (synthetic, modelled on Workday tenant markup): EEO listboxes whose
+     list renders at the end of <body> (aria-controls set only once open) and a terms box under its
+     notice. No personal values. -->
+<html><head><meta charset="utf-8"><title>workday fixture</title></head><body>
+<div data-automation-id="applyFlowPage">
+<div aria-label="Application Progress"><ol data-automation-id="progressBar"><li data-automation-id="progressBarInactiveStep"><label>step 1 of 7</label><label>Create Account/Sign In</label></li><li data-automation-id="progressBarInactiveStep"><label>step 2 of 7</label><label>My Information</label></li><li data-automation-id="progressBarInactiveStep"><label>step 3 of 7</label><label>My Experience</label></li><li data-automation-id="progressBarInactiveStep"><label>step 4 of 7</label><label>Application Questions</label></li><li data-automation-id="progressBarActiveStep"><label aria-live="polite">current step 5 of 7</label><label>Voluntary Disclosures</label></li><li data-automation-id="progressBarInactiveStep"><label>step 6 of 7</label><label>Self Identify</label></li><li data-automation-id="progressBarInactiveStep"><label>step 7 of 7</label><label>Review</label></li></ol></div>
+<div data-automation-id="applyFlowVoluntaryDisclosuresPage"><h2>Voluntary Disclosures</h2>
+  <div data-automation-id="formField-gender" data-fkit-id="personalInfoUS--gender"><label for="personalInfoUS--gender"><span>Gender<abbr aria-hidden="true">*</abbr></span></label><button type="button" id="personalInfoUS--gender" aria-haspopup="listbox" data-portal="1" data-options='["Female","Male","I do not wish to answer"]'>Select One</button></div>
+  <div data-automation-id="formField-ethnicity" data-fkit-id="personalInfoUS--ethnicity"><label for="personalInfoUS--ethnicity"><span>Ethnicity<abbr aria-hidden="true">*</abbr></span></label><button type="button" id="personalInfoUS--ethnicity" aria-haspopup="listbox" data-portal="1" data-options='["Asian (Not Hispanic or Latino) (United States of America)","Black or African American (Not Hispanic or Latino) (United States of America)","Hispanic or Latino (United States of America)","White (Not Hispanic or Latino) (United States of America)","I do not wish to answer. (United States of America)"]'>Select One</button></div>
+  <div data-automation-id="formField-veteranStatus" data-fkit-id="personalInfoUS--veteranStatus"><label for="personalInfoUS--veteranStatus"><span>Veteran Status<abbr aria-hidden="true">*</abbr></span></label><button type="button" id="personalInfoUS--veteranStatus" aria-haspopup="listbox" data-portal="1" data-options='["I am not a protected veteran","I identify as one or more of the classifications of protected veteran","I do not wish to self-identify"]'>Select One</button></div>
+  <div role="group" aria-labelledby="Terms-and-Conditions-section"><h3 id="Terms-and-Conditions-section">Terms and Conditions</h3><div data-automation-id="instructionalText"><p>Acme collects what you provide to review your application.</p></div>
+    <div data-automation-id="formField-acceptTermsAndAgreements" data-fkit-id="termsAndConditions--acceptTermsAndAgreements"><div><input type="checkbox" id="termsAndConditions--acceptTermsAndAgreements" aria-required="true"><label for="termsAndConditions--acceptTermsAndAgreements"><span>Yes, I have read and consent to the terms and conditions<abbr aria-hidden="true">*</abbr></span></label></div></div></div>
+</div>
+<div data-automation-id="pageFooter"><button type="button" data-automation-id="pageFooterBackButton">Back</button><button type="button" data-automation-id="pageFooterNextButton">Save and Continue</button></div>
+</div>
+<!-- workday-widgets -->
+</body></html>

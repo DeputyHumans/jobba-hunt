@@ -1,0 +1,176 @@
+{
+  "slug": "platform-director",
+  "share": "platform-engineering-director",
+  "target_title": "Director of Platform Engineering",
+  "headline": "Director of Platform Engineering · Cloud, Reliability and Data",
+  "summary": {
+    "text": "Platform and reliability leader with 17 years in software. Led the move of 140 Globex services to AWS and Kubernetes, then cut the incident rate by 45% with SLOs and error budgets. At Acme Corp, runs engineering, platform and security, and moved every team to daily releases.",
+    "claims": [
+      "C01",
+      "C09",
+      "C11",
+      "C02",
+      "C04"
+    ]
+  },
+  "highlights": [
+    {
+      "label": "Cloud migration",
+      "text": "a 20-month move off on-premises hosting with zero customer-facing downtime at cutover.",
+      "claims": [
+        "C09"
+      ]
+    },
+    {
+      "label": "Reliability",
+      "text": "incident rate down 45% after SLOs, error budgets and standard logging, metrics and tracing.",
+      "claims": [
+        "C11"
+      ]
+    },
+    {
+      "label": "Data platform",
+      "text": "Kafka and Flink streams feeding fraud, pricing and reporting, held together by data contracts between teams.",
+      "claims": [
+        "C10"
+      ]
+    },
+    {
+      "label": "Cost",
+      "text": "cloud spend down 32% in two quarters, with cost dashboards owned by each team.",
+      "claims": [
+        "C07"
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "label": "Platform",
+      "terms": [
+        "AWS",
+        "Kubernetes",
+        "Terraform",
+        "internal developer portal",
+        "golden paths",
+        "CI/CD"
+      ],
+      "claims": [
+        "C09",
+        "C04",
+        "CV:22"
+      ]
+    },
+    {
+      "label": "Reliability",
+      "terms": [
+        "SLOs",
+        "error budgets",
+        "on-call",
+        "incident reviews",
+        "observability",
+        "tracing"
+      ],
+      "claims": [
+        "C11"
+      ]
+    },
+    {
+      "label": "Data",
+      "terms": [
+        "Kafka",
+        "Flink",
+        "dbt",
+        "data contracts",
+        "PostgreSQL",
+        "warehouse design"
+      ],
+      "claims": [
+        "C10",
+        "C24"
+      ]
+    },
+    {
+      "label": "Leadership",
+      "terms": [
+        "org design",
+        "hiring",
+        "budgets",
+        "vendor management",
+        "OKRs"
+      ],
+      "claims": [
+        "C08",
+        "C12",
+        "C25",
+        "C26"
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "role": "acme",
+      "context": "default",
+      "items": [
+        "acme-delivery",
+        "acme-tenant",
+        "acme-cloud",
+        "acme-soc2",
+        "acme-analytics",
+        "acme-scale",
+        "acme-board"
+      ]
+    },
+    {
+      "role": "globex",
+      "context": "platform",
+      "items": [
+        {
+          "sub": "platform"
+        },
+        "globex-migration",
+        "globex-platform-team",
+        "globex-sre",
+        "globex-observability",
+        {
+          "sub": "data"
+        },
+        "globex-streaming",
+        "globex-data-contracts",
+        {
+          "sub": "org"
+        },
+        "globex-hiring",
+        "globex-budget"
+      ]
+    },
+    {
+      "role": "initech",
+      "context": "default",
+      "items": [
+        "initech-latency",
+        "initech-tokenization",
+        "initech-oncall"
+      ]
+    }
+  ],
+  "earlier": [
+    "umbrella",
+    "hooli",
+    "soylent"
+  ],
+  "target_keywords": [
+    "platform engineering",
+    "Kubernetes",
+    "AWS",
+    "Terraform",
+    "SLO",
+    "observability",
+    "Kafka",
+    "incident",
+    "CI/CD",
+    "cost",
+    "data platform",
+    "on-call"
+  ],
+  "honest_gaps": []
+}

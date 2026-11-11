@@ -1,0 +1,99 @@
+{
+  "_comment": "Synthetic test persona: every role, number and claim is fictional. The person block holds CV-only fields; name, email, location and links fall back to profile/person.json.",
+  "source_ref_prefixes": ["CV"],
+  "nobreak": ["SOC 2", "PCI DSS", "2 billion"],
+  "person": {
+    "claims": ["C01"]
+  },
+  "bullets": {
+    "acme-scale": { "text": "Grew engineering from 12 to 45 engineers across six product and platform teams, with a hiring plan, team charters and a manager bench built from inside.", "claims": ["C03", "C22"] },
+    "acme-delivery": { "text": "Cut release lead time from 10 days to under one day by moving every team to trunk-based delivery, feature flags and a shared CI/CD pipeline.", "claims": ["C04"] },
+    "acme-soc2": { "text": "Led the SOC 2 Type II program from gap assessment to a clean first audit, with controls owned by the teams that run the systems.", "claims": ["C05"] },
+    "acme-ai-review": { "text": "Introduced AI-assisted code review and test generation, with human approval on every merge and a weekly review of what the tools got wrong.", "claims": ["C06"] },
+    "acme-llm": { "text": "Shipped an LLM support-ticket triage feature that cut first response time by 40%, with an evaluation set built from past tickets before launch.", "claims": ["C27"] },
+    "acme-cloud": { "text": "Reduced cloud spend by 32% in two quarters through rightsizing, reserved capacity and cost dashboards each team reads on its own.", "claims": ["C07"] },
+    "acme-ladder": { "text": "Wrote the career ladder and performance framework engineering uses today, later adopted by product and design.", "claims": ["C21"] },
+    "acme-tenant": { "text": "Designed the multi-tenant architecture for enterprise customers: SSO and SAML, per-tenant audit logs and data isolation reviewed with customers' security teams.", "claims": ["C31"] },
+    "acme-analytics": { "text": "Built the product analytics stack (event schema, dbt models, warehouse) that replaced three disconnected tools and a spreadsheet of metric definitions.", "claims": ["C24"] },
+    "acme-board": { "text": "Reports DORA metrics and engineering health to the board each quarter, next to the roadmap and hiring plan.", "claims": ["C29", "C26"] },
+    "globex-migration": { "text": "Moved 140 services from on-premises hosting to AWS and Kubernetes over 20 months, without a customer-facing outage during cutover.", "claims": ["C09"] },
+    "globex-sre": { "text": "Brought incident rate down 45% with service-level objectives, error budgets and an on-call rotation that paid for the hours it took.", "claims": ["C11"] },
+    "globex-platform-team": { "text": "Formed the platform group (paved-road templates, golden paths, internal developer portal) that cut new-service setup from three weeks to two days.", "claims": ["C09"] },
+    "globex-observability": { "text": "Standardised logging, metrics and tracing across every service, so an on-call engineer could follow one request end to end.", "claims": ["C11"] },
+    "globex-streaming": { "text": "Led the streaming data platform on Kafka and Flink, carrying 2 billion events a day into fraud, pricing and reporting systems.", "claims": ["C10"] },
+    "globex-data-contracts": { "text": "Introduced data contracts between producing and consuming teams, which ended a run of silent schema breaks in downstream reports.", "claims": ["C10"] },
+    "globex-hiring": { "text": "Built a structured interview loop with calibrated rubrics and hired 35 engineers in 18 months, with offer acceptance above 80%.", "claims": ["C12"] },
+    "globex-budget": { "text": "Owned a $6M annual engineering budget and the vendor contracts behind it, renegotiating two that had grown past their use.", "claims": ["C25"] },
+    "globex-mobile": { "text": "Sponsored the mobile app rebuild in React Native, which lifted the store rating from 3.9 to 4.7 within two releases.", "claims": ["C30"] },
+    "globex-remote": { "text": "Ran a remote-first organisation across five time zones with written decisions, recorded demos and overlap hours agreed per team.", "claims": ["C28"] },
+    "initech-tokenization": { "text": "Reduced PCI DSS scope by moving card data behind a tokenization service, taking 30 systems out of the audit boundary.", "claims": ["C14"] },
+    "initech-latency": { "text": "Brought checkout p95 latency from 1.2 s to 400 ms by profiling the payment path, which lifted conversion by 8%.", "claims": ["C15"] },
+    "initech-fraud": { "text": "Built a fraud rules engine with the risk team that cut chargebacks by 25% while keeping manual review volume flat.", "claims": ["C32"] },
+    "initech-team": { "text": "Managed a payments team of nine engineers through two re-platforming projects and a card-network certification.", "claims": ["C13"] },
+    "initech-oncall": { "text": "Set up the team's first on-call rotation and incident reviews, written so the next team could adopt them without a meeting.", "claims": ["C13", "C11"] }
+  },
+  "roles": {
+    "acme": {
+      "title": "Head of Engineering",
+      "titles": {
+        "vp": { "text": "Head of Engineering (VP level)", "claims": ["C02"] }
+      },
+      "company": "Acme Corp",
+      "dates": "Mar 2023 – Present",
+      "claims": ["C02"],
+      "contexts": {
+        "default": { "text": "B2B workflow software for mid-market manufacturers. Reports to the CEO, owns engineering, platform and security.", "claims": ["C02"] },
+        "ai": { "text": "B2B workflow software for mid-market manufacturers. Reports to the CEO, owns engineering, platform, security and the first AI features.", "claims": ["C02", "C27"] }
+      }
+    },
+    "globex": {
+      "title": "Director of Engineering",
+      "company": "Globex",
+      "dates": "Jan 2019 – Feb 2023",
+      "claims": ["C08"],
+      "contexts": {
+        "default": { "text": "Online marketplace with 8 million monthly buyers. Led four managers and 60 engineers across platform, data and mobile.", "claims": ["C08"] },
+        "platform": { "text": "Online marketplace with 8 million monthly buyers. Led the platform and data groups: four managers, 60 engineers.", "claims": ["C08"] }
+      },
+      "subheads": {
+        "platform": { "label": "Platform and reliability", "dates": "2019 – 2023" },
+        "data": { "label": "Data platform", "dates": "2020 – 2023" },
+        "org": { "label": "Organisation and hiring", "dates": "2019 – 2023" }
+      }
+    },
+    "initech": {
+      "title": "Engineering Manager",
+      "company": "Initech",
+      "dates": "Jun 2016 – Dec 2018",
+      "claims": ["C13"],
+      "contexts": {
+        "default": { "text": "Payments processor for regional banks. Managed the checkout and payments team.", "claims": ["C13"] }
+      }
+    },
+    "umbrella": {
+      "title": "Senior Software Engineer",
+      "company": "Umbrella Labs",
+      "dates": "2013 – 2016",
+      "claims": ["C16"],
+      "line": { "text": "Lab data systems: instrument data ingestion and the LIMS integration used by four research sites", "claims": ["C16", "C33"] }
+    },
+    "hooli": {
+      "title": "Software Engineer",
+      "company": "Hooli",
+      "dates": "2010 – 2013",
+      "claims": ["C17"],
+      "line": { "text": "Search ads backend: bidding services and the reporting pipeline behind advertiser dashboards", "claims": ["C17"] }
+    },
+    "soylent": {
+      "title": "Software Engineer",
+      "company": "Soylent Systems",
+      "dates": "2008 – 2010",
+      "claims": ["C18"],
+      "line": { "text": "Supply chain web applications for warehouse and carrier scheduling", "claims": ["C18"] }
+    }
+  },
+  "education": [
+    { "degree": "B.S. Computer Science", "school": "Example State University", "year": "2008", "claims": ["C19"] }
+  ],
+  "languages": { "text": "English (native), Spanish (professional)", "claims": ["C35"] }
+}

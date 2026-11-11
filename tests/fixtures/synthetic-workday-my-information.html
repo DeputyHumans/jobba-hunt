@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- Workday "My Information" (synthetic, modelled on Workday tenant markup): formField-*
+     containers named by data-fkit-id, a label[for] whose text ends in * when required, listbox buttons,
+     search prompts with selectedItem pills, Yes/No radios with value true/false and sibling labels,
+     the beecatcher honeypot, and the footer's Save and Continue. No personal values. -->
+<html><head><meta charset="utf-8"><title>workday fixture</title></head><body>
+<div data-automation-id="applyFlowPage">
+  <h2 data-automation-id="jobTitleHeading">Staff Engineer</h2>
+  <div aria-label="Application Progress"><ol data-automation-id="progressBar">
+    <li data-automation-id="progressBarCompletedStep"><label>step 1 of 6</label><label>Create Account/Sign In</label></li>
+    <li data-automation-id="progressBarActiveStep"><label aria-live="polite">current step 2 of 6</label><label>My Information</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>step 3 of 6</label><label>My Experience</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>step 4 of 6</label><label>Application Questions</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>step 5 of 6</label><label>Voluntary Disclosures</label></li>
+    <li data-automation-id="progressBarInactiveStep"><label>step 6 of 6</label><label>Review</label></li>
+  </ol></div>
+  <div data-automation-id="applyFlowMyInfoPage"><h2>My Information</h2>
+    <div data-automation-id="formField-source" data-fkit-id="source--source"><label for="source--source"><span>How Did You Hear About Us?<abbr aria-hidden="true">*</abbr></span></label>
+      <div data-automation-id="multiSelectContainer"><ul data-automation-id="selectedItemList" role="listbox" aria-label="items selected"></ul>
+      <input type="text" id="source--source" placeholder="Search" data-uxi-widget-type="selectinput" data-automation-id="searchBox" data-single="1" data-tree='{"Job Board":["LinkedIn","Indeed"],"Corporate Website":null,"Employee Referral":null}'></div></div>
+    <div data-automation-id="formField-candidateIsPreviousWorker" data-fkit-id="previousWorker--candidateIsPreviousWorker"><fieldset><legend><label><span>Have you previously worked for Acme?<abbr aria-hidden="true">*</abbr></span></label></legend>
+      <div><input type="radio" id="pw-yes" name="candidateIsPreviousWorker" value="true"><label for="pw-yes">Yes</label></div>
+      <div><input type="radio" id="pw-no" name="candidateIsPreviousWorker" value="false"><label for="pw-no">No</label></div></fieldset></div>
+    <div data-automation-id="formField-country" data-fkit-id="country--country"><label for="country--country"><span>Country<abbr aria-hidden="true">*</abbr></span></label>
+      <button type="button" id="country--country" aria-haspopup="listbox" aria-label="Country United States of America Required" data-options='["Canada","United States of America"]'>United States of America</button></div>
+    <div data-automation-id="formField-legalName--firstName" data-fkit-id="name--legalName--firstName"><label for="name--legalName--firstName"><span>First Name<abbr aria-hidden="true">*</abbr></span></label><input type="text" id="name--legalName--firstName" aria-required="true" value=""></div>
+    <div data-automation-id="formField-legalName--lastName" data-fkit-id="name--legalName--lastName"><label for="name--legalName--lastName"><span>Last Name<abbr aria-hidden="true">*</abbr></span></label><input type="text" id="name--legalName--lastName" aria-required="true" value=""></div>
+    <div data-automation-id="formField-preferredCheck" data-fkit-id="name--preferredCheck"><div><input type="checkbox" id="name--preferredCheck" aria-checked="false"><label for="name--preferredCheck">I have a preferred name</label></div></div>
+    <div data-automation-id="formField-addressLine1" data-fkit-id="address--addressLine1"><label for="address--addressLine1"><span>Address Line 1<abbr aria-hidden="true">*</abbr></span></label><input type="text" id="address--addressLine1" aria-required="true" value=""></div>
+    <div data-automation-id="formField-city" data-fkit-id="address--city"><label for="address--city"><span>City<abbr aria-hidden="true">*</abbr></span></label><input type="text" id="address--city" aria-required="true" value=""></div>
+    <div data-automation-id="formField-countryRegion" data-fkit-id="address--countryRegion"><label for="address--countryRegion"><span>State<abbr aria-hidden="true">*</abbr></span></label>
+      <button type="button" id="address--countryRegion" aria-haspopup="listbox" aria-label="State Select One Required" data-options='["Arizona","Illinois","Texas"]'>Select One</button></div>
+    <div data-automation-id="formField-postalCode" data-fkit-id="address--postalCode"><label for="address--postalCode"><span>Postal Code<abbr aria-hidden="true">*</abbr></span></label><input type="text" id="address--postalCode" aria-required="true" value=""></div>
+    <div data-automation-id="formField-email" data-fkit-id="emailAddress--emailAddress"><label for="emailAddress--emailAddress"><span>Email Address</span></label><input type="text" id="emailAddress--emailAddress" value="jordan@example.com" readonly></div>
+    <div data-automation-id="formField-phoneType" data-fkit-id="phoneNumber--phoneType"><label for="phoneNumber--phoneType"><span>Phone Device Type<abbr aria-hidden="true">*</abbr></span></label>
+      <button type="button" id="phoneNumber--phoneType" aria-haspopup="listbox" data-options='["Home","Mobile","Work"]'>Select One</button></div>
+    <div data-automation-id="formField-countryPhoneCode" data-fkit-id="phoneNumber--countryPhoneCode"><label for="phoneNumber--countryPhoneCode"><span>Country Phone Code<abbr aria-hidden="true">*</abbr></span></label>
+      <div data-automation-id="multiSelectContainer"><ul data-automation-id="selectedItemList" role="listbox"><li><div data-automation-id="selectedItem" role="option" title="United States of America (+1)"><p data-automation-id="promptOption">United States of America (+1)</p></div></li></ul>
+      <input type="text" id="phoneNumber--countryPhoneCode" placeholder="Search" data-uxi-widget-type="selectinput" data-single="1" data-tree='{"Canada (+1)":null,"United States of America (+1)":null}'></div></div>
+    <div data-automation-id="formField-phoneNumber" data-fkit-id="phoneNumber--phoneNumber"><label for="phoneNumber--phoneNumber"><span>Phone Number<abbr aria-hidden="true">*</abbr></span></label><input type="text" id="phoneNumber--phoneNumber" aria-required="true" value=""></div>
+    <div data-automation-id="formField-extension" data-fkit-id="phoneNumber--extension"><label for="phoneNumber--extension"><span>Phone Extension</span></label><input type="text" id="phoneNumber--extension" value=""></div>
+    <div><label for="hp1">Enter website. This input is for robots only, do not enter if you're human.</label><input data-automation-id="beecatcher" id="hp1" name="website" type="text"></div>
+  </div>
+  <div data-automation-id="pageFooter"><button type="button" data-automation-id="pageFooterBackButton">Back</button><button type="button" data-automation-id="pageFooterNextButton">Save and Continue</button></div>
+</div>
+<!-- workday-widgets -->
+</body></html>

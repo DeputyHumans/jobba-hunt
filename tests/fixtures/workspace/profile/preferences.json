@@ -1,0 +1,40 @@
+{
+  "_comment": "Synthetic test preferences.",
+  "schedule": {
+    "tz": "America/Chicago",
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "tick_start": "07:00",
+    "tick_end": "18:00",
+    "ask_start": "08:00",
+    "ask_end": "18:00",
+    "reset_hour": 4
+  },
+  "money": {
+    "ic_rate_floor": 95,
+    "ft_salary_floor": 200000,
+    "ft_salary_target": 260000
+  },
+  "tiers": {
+    "a": 80,
+    "b": 65
+  },
+  "location": {
+    "remote_required": true,
+    "onsite_metros": [
+      "\\bspringfield\\b",
+      "\\bshelbyville\\b"
+    ],
+    "onsite_metro_label": "Springfield area"
+  },
+  "brand": {
+    "title": "Job hunt",
+    "accent": "#2F5D8A",
+    "wordmark": "Jordan Example"
+  }
+}

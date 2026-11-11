@@ -1,0 +1,17 @@
+<!doctype html>
+<!-- Synthetic Ashby application form: an optional "Autofill from
+     resume" upload, the real Resume upload, and Yes/No questions drawn as aria-pressed buttons over a
+     hidden checkbox that has a name but no id. No real data. -->
+<html><head><meta charset="utf-8"><title>Apply</title><style>input{width:300px;height:24px}.hid{opacity:0;position:absolute;width:1px;height:1px}</style></head>
+<body>
+<div class="tabs"><a>Overview</a> <a>Application</a></div>
+<div class="ashby-application-form-container">
+  <div class="ashby-application-form-autofill-input-root"><div><div><h3>Autofill from resume</h3></div><p>Upload your resume here to autofill key application fields.</p><div><button>Upload file</button></div></div>
+    <input type="file" accept=".pdf,.docx" class="hid"></div>
+  <div><label for="_systemfield_name" class="_required_x">Name</label><input id="_systemfield_name" name="_systemfield_name" required type="text"></div>
+  <div><label for="_systemfield_resume">Resume</label><div><button>Upload File</button><input id="_systemfield_resume" type="file" accept=".pdf" class="hid"></div></div>
+  <div class="ashby-application-form-field-entry"><label class="_heading _required_f7cvd_91" for="q-visa">Will you now or in the future require visa sponsorship to work in the US?</label>
+    <div class="ashby-application-form-input-yesno"><button aria-pressed="false" data-option="yes">Yes</button><button aria-pressed="false" data-option="no">No</button><input type="checkbox" class="hid" tabindex="-1" name="q-visa"></div></div>
+  <button type="submit">Submit Application</button>
+</div>
+</body></html>

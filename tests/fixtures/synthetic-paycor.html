@@ -1,0 +1,17 @@
+<!doctype html>
+<!-- Synthetic Paycor Recruiting last page: the resume upload is its own
+     <form>, apart from the form that holds the fields and Submit. No real data. -->
+<html><head><meta charset="utf-8"><title>Apply</title><style>input,select,textarea{width:300px;height:24px}</style></head>
+<body><div id="gnewtonCareerBody">
+  <div class="gnewtonSectionClass"><p><img src="star.svg" alt="*"> Apply with a Resume</p>
+    <form id="resumeUpload" enctype="multipart/form-data"><input type="file" id="uploadResumeInput" name="fileUpload"><a href="#">Choose a File</a></form></div>
+  <form id="applyForm">
+    <label for="firstName"><img src="star.svg" alt="*"> First Name</label><input id="firstName" name="firstName" required type="text">
+    <label for="lastName"><img src="star.svg" alt="*"> Last Name</label><input id="lastName" name="lastName" required type="text">
+    <label for="email"><img src="star.svg" alt="*"> Email</label><input id="email" name="email" required type="text">
+    <label for="originalComments">Comments</label><textarea id="originalComments" name="originalComments"></textarea>
+    <dl><dt>Opt in to Text Messages</dt><dd><div><img src="star.svg" alt="*"> Would you like to receive SMS messages regarding your job application?</div>
+      <div id="gnewtonTextMessagingFieldInput"><div><input type="radio" name="candidateTextMessagingOptIn" value="true" id="sms1" required>Yes </div><div><input type="radio" name="candidateTextMessagingOptIn" value="false" id="sms2" required>No </div></div></dd></dl>
+    <input type="submit" value="Submit">
+  </form>
+</div></body></html>

@@ -1,0 +1,13 @@
+{
+  "_comment": "Synthetic never-claim rules for the test persona. patterns: a match anywhere fails the lint. sentence_rules: a sentence matching `if` must also match `requires`.",
+  "patterns": [
+    { "id": "phone", "re": "\\(?\\b\\d{3}\\)?[ .-]?\\d{3}[ .-]\\d{4}\\b", "why": "No phone number on a CV or letter." },
+    { "id": "old-email", "re": "jordan@oldmail\\.example", "why": "Retired address." },
+    { "id": "team-inflation", "re": "\\b(100|200|500|1,000)\\+ engineers", "why": "The largest organisation led was 60 engineers (C08)." },
+    { "id": "accuracy-pct", "re": "\\b\\d{2}(\\.\\d)?% accuracy", "why": "No model accuracy figures: none were measured on a public benchmark." },
+    { "id": "cto-title", "re": "\\bCTO (at|of) (Acme|Globex|Initech)", "why": "Never held a CTO title." }
+  ],
+  "sentence_rules": [
+    { "id": "ai-human-check", "if": "AI-assisted|\\bLLM\\b", "requires": "human|review|evaluation", "why": "Every AI claim names the human check behind it." }
+  ]
+}
