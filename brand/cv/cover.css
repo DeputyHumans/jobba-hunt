@@ -1,0 +1,57 @@
+/* Cover letter: lean and precise, one page. Loaded after template.css, so the header, fonts,
+   type and colour tokens are the CV's: the letter and the CV read as one set. Margins come
+   from build-cover.mjs; the sheet size from preferences.cv.paper. */
+body { font-size: 11pt; line-height: 1.6; }
+header { padding-bottom: 9pt; margin-bottom: 0; }
+
+.meta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 24pt;
+  row-gap: 3pt;
+  margin: 18pt 0 22pt;
+  font-size: 9.2pt;
+  line-height: 1.45;
+  color: var(--text);
+}
+.meta dl { margin: 0; display: grid; grid-template-columns: 26pt 1fr; row-gap: 3pt; }
+.meta dt, .meta .date-label {
+  font-size: 7.4pt;
+  font-weight: 700;
+  letter-spacing: 0.9pt;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 1.5pt;
+}
+.meta dd { margin: 0; }
+.meta dd .ref { color: var(--muted); }
+.meta .date { text-align: right; }
+.meta .date-value { display: block; color: var(--ink); }
+
+.letter p { margin: 0 0 11pt; }
+.letter .greeting { margin-bottom: 12pt; color: var(--ink); }
+
+.sign { margin-top: 20pt; break-inside: avoid; }
+.sign .closing { margin: 0 0 14pt; }
+.sign .name {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 13.5pt;
+  letter-spacing: 0.1pt;
+  color: var(--ink);
+  margin: 0 0 2pt;
+}
+
+/* Requirements map: the posting's words beside the record. Quotes in the muted ink and
+   italic, the record in the text ink; hairline rules between rows. */
+.map { margin: 4pt 0 14pt; border-top: 1.1pt solid var(--accent); }
+.map-head, .map-row { display: grid; grid-template-columns: 2.35in 1fr; column-gap: 16pt; }
+.map-head { padding: 5pt 0 4pt; border-bottom: 0.6pt solid var(--rule); }
+.map-head span { font-size: 7.4pt; font-weight: 700; letter-spacing: 0.9pt; text-transform: uppercase; color: var(--muted); }
+.map-row { padding: 7pt 0; border-bottom: 0.6pt solid var(--rule); break-inside: avoid; }
+.map-row p { margin: 0; }
+.map .ask { font-size: 9.4pt; line-height: 1.45; font-style: italic; color: #56677a; }
+.map .ask::before { content: '\201C'; }
+.map .ask::after { content: '\201D'; }
+.map .answer { font-size: 10.2pt; line-height: 1.5; color: var(--text); }
+.letter p.rampup { font-size: 9.6pt; color: var(--muted); margin-top: -2pt; }

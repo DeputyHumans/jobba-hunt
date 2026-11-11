@@ -1,0 +1,181 @@
+/* CV: one reading column (ATS-safe), design from type and spacing.
+   Charis (the SIL Open Font License derivative of Bitstream Charter) for the name and section
+   titles, Nunito Sans for text. Both are static faces bundled in brand/fonts, so Chromium embeds
+   them as named CID TrueType fonts; a variable font would be embedded as Type 3, which an ATS
+   cannot read reliably. The build inlines every url() below as a data: URI.
+     charis-*.woff2       Charis 7.000 from SIL (software.sil.org/charis), unmodified
+     nunito-sans-*.woff2  static instances (opsz 12, wdth 100, YTLC 500) of the Nunito Sans
+                          variable font from Google Fonts (github.com/google/fonts, ofl/nunitosans)
+   Nunito Sans stands in for Avenir Next: average advance within 2%, cap height 0.705 em (0.708),
+   x-height 0.486 em (0.468), ascent plus descent 1.364 em (1.366). Emphasis uses Nunito Sans
+   Bold (700), whose stems match Avenir Next Demi Bold (0.128 em against 0.126); its SemiBold is
+   a full step lighter.
+   Page size and margins come from build-cv.mjs (page.pdf), which also draws the PDF footer. */
+@font-face { font-family: "Nunito Sans"; src: url("../fonts/nunito-sans-regular.woff2") format("woff2"); font-weight: 400; font-style: normal; }
+@font-face { font-family: "Nunito Sans"; src: url("../fonts/nunito-sans-italic.woff2") format("woff2"); font-weight: 400; font-style: italic; }
+@font-face { font-family: "Nunito Sans"; src: url("../fonts/nunito-sans-medium.woff2") format("woff2"); font-weight: 500; font-style: normal; }
+@font-face { font-family: "Nunito Sans"; src: url("../fonts/nunito-sans-bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+@font-face { font-family: "Charis"; src: url("../fonts/charis-bold.woff2") format("woff2"); font-weight: 700; font-style: normal; }
+:root {
+  --ink: #1a1e24;
+  --text: #2a3038;
+  --muted: #5f6873;
+  --accent: #23466b;
+  --rule: #d3dae3;
+  --sheet-w: 8.5in;
+  --sheet-h: 11in;
+  --sans: "Nunito Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --serif: "Charis", Georgia, serif;
+}
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 9.3pt;
+  line-height: 1.36;
+  letter-spacing: 0.005em; /* matches Avenir Next's set width: lines break where they did */
+  color: var(--text);
+  font-kerning: normal;
+  text-rendering: geometricPrecision;
+}
+a { color: inherit; text-decoration: none; }
+
+header { padding-bottom: 7pt; margin-bottom: 2pt; border-bottom: 1.4pt solid var(--accent); }
+h1 {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 25pt;
+  line-height: 1.05;
+  letter-spacing: 0.15pt;
+  color: var(--ink);
+  margin: 0 0 3pt;
+}
+.headline { font-size: 10.4pt; margin: 0 0 3pt; letter-spacing: 0.1pt; }
+.headline .ht { font-weight: 700; color: var(--accent); }
+.headline .hs { font-weight: 500; color: #56677a; }
+.contact { font-size: 8.6pt; color: var(--muted); margin: 0; }
+.contact .sep, .role-sep { color: #a3acb7; }
+
+h2 {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 9.8pt;
+  text-transform: uppercase;
+  letter-spacing: 0.35pt;
+  color: var(--accent);
+  margin: 8pt 0 4.5pt;
+  padding-bottom: 2.5pt;
+  border-bottom: 0.6pt solid var(--rule);
+  break-after: avoid;
+}
+p { margin: 0 0 3.5pt; text-wrap: pretty; }
+ul { margin: 2pt 0 3pt; padding-left: 0; list-style: none; }
+li { margin: 0 0 2pt; padding-left: 10pt; text-indent: -10pt; break-inside: avoid; text-wrap: pretty; }
+li .b { display: inline-block; width: 10pt; text-indent: 0; color: var(--accent); font-weight: 700; }
+strong { font-weight: 700; color: var(--ink); }
+
+.summary p { font-size: 9.5pt; line-height: 1.4; color: var(--text); }
+.skills ul { margin-top: 1pt; }
+.skills li { margin-bottom: 1pt; font-size: 8.9pt; }
+.skills li strong { color: #4a5866; }
+
+.role { margin: 0 0 9.5pt; }
+.role .context { break-after: avoid; }
+.role-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12pt;
+  break-after: avoid;
+}
+.role-title { font-weight: 700; font-size: 9.9pt; color: var(--ink); }
+.role-company { font-weight: 500; font-size: 9.9pt; color: var(--ink); }
+.dates { font-size: 8.6pt; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums lining-nums; }
+.role-head .dates { font-weight: 500; color: var(--text); }
+.context { font-style: italic; color: var(--muted); font-size: 8.9pt; margin: 0.5pt 0 2.5pt; }
+.sub-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 9pt;
+  font-weight: 700;
+  color: #4a5866;
+  margin: 5pt 0 1.5pt;
+  padding-left: 10pt;
+  break-after: avoid;
+}
+.sub-head + ul { margin-top: 1pt; }
+.sub-head .dates { font-weight: 400; color: var(--muted); font-size: 8.6pt; }
+.headline .hsep { color: #a3b1c0; font-weight: 500; }
+.role.early { break-inside: avoid; }
+
+.earlier { margin-top: 12pt; }
+.role.early { margin-bottom: 4pt; }
+.role.early .role-title, .role.early .role-company { font-size: 9.4pt; }
+.role.early .early-dates { font-size: 8.9pt; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums lining-nums; }
+.role.early .early-line { font-size: 9.1pt; color: var(--text); }
+.sub-group { break-inside: avoid; }
+
+.education li.edu { display: flex; text-indent: 0; padding-left: 0; }
+.education li.edu .b { flex: 0 0 10pt; }
+.role-head.inline { flex: 1; }
+.nb { white-space: nowrap; }
+
+/* Screen: the HTML shows the same pages as the PDF. build-cv.mjs splits the content at the
+   PDF's own page starts (scripts/lib/cv-pages.mjs) and wraps each page in a sheet on a grey
+   background. The PDF prints the unsplit HTML, so none of this reaches it. */
+@media screen {
+  html { background: #e6e9ee; }
+  body { padding: 28px 0 36px; }
+  .page {
+    position: relative;
+    width: var(--sheet-w);
+    min-height: var(--sheet-h);
+    margin: 0 auto 28px;
+    padding: 0.5in 0.62in 0.55in;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(20, 30, 45, 0.1), 0 10px 30px rgba(20, 30, 45, 0.1);
+  }
+  .page-foot {
+    position: absolute;
+    left: 0.62in;
+    right: 0.62in;
+    bottom: 0.22in;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 7.5pt;
+    letter-spacing: 0.2px;
+    color: #6b7480;
+  }
+  .page-foot span:last-child { white-space: nowrap; }
+}
+.page-body { display: flow-root; }
+/* Narrower than a sheet (phones): the pages become plain cards that fit the screen. */
+@media screen and (max-width: 8.9in) {
+  body { padding: 0; }
+  .page { width: auto; min-height: 0; margin: 0 0 10px; padding: 24px 16px 44px; box-shadow: none; }
+  .page-foot { left: 16px; right: 16px; bottom: 14px; }
+}
+/* Printing or saving the split HTML as PDF from a browser (a published copy included): each
+   sheet is one page and carries its own margins and footer with "X / Y", because a browser
+   print never runs build-cv.mjs's footer. The saved HTML adds @page { margin: 0 }, which also
+   leaves no room for the browser's own URL and date lines. The PDF build prints the unsplit
+   HTML, which has no sheets, so these rules never reach it. */
+@media print {
+  .page { position: relative; width: var(--sheet-w); min-height: calc(var(--sheet-h) - 0.01in); padding: 0.5in 0.62in 0.55in; break-after: page; }
+  .page:last-child { break-after: auto; }
+  .page-foot {
+    position: absolute;
+    left: 0.62in;
+    right: 0.62in;
+    bottom: 0.22in;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 7.5pt;
+    letter-spacing: 0.2px;
+    color: #6b7480;
+  }
+}
