@@ -26,6 +26,7 @@
     "cv": "node scripts/build-cv.mjs",
     "cv-publish": "node scripts/publish-cvs.mjs",
     "cover": "node scripts/build-cover.mjs",
+    "brief": "node scripts/build-brief.mjs",
     "tailor": "node scripts/tailor.mjs",
     "recruiter-pages": "node scripts/recruiter-pages.mjs",
     "mail": "node scripts/mail-scan.mjs",
@@ -39,6 +40,7 @@
     "bikeshed-now": "0.21.0",
     "cloakbrowser": "0.6.4",
     "docx": "9.15.0",
+    "marked": "17.0.3",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "6.4.299",
     "playwright-core": "1.62.1"

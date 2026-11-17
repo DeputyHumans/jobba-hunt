@@ -27,7 +27,8 @@ Run from the repo root. Read `CLAUDE.md` first. Paths starting `workspace/` are 
    - Salary, rate and budget answers are `[bracketed]` lines only the operator fills. Never a number from a draft.
 6. **Number guardrails (section 9):** one row per figure the call may touch. "Say" is the exact figure a claim carries; "Never say" lists the tempting inflations (the claim's Do-not-say column: more years, a bigger team, a title not held). Comp numbers come only from the operator.
 7. **Questions to ask, risks, checklist, sources** (sections 10 to 13). Risks are for the operator's own decision.
-8. **Opportunity file:** add a stage-log row ("brief written") with the brief's path.
+8. **Page:** `npm run brief -- <brief.md> --write-claims` renders the designed HTML next to the markdown (claim IDs open the exact claim-bank wording; a `<stem>-glossary.json` of `{ "terms": [{ "term", "def", "here" }] }` adds term hints). It fails on a claim ID the bank does not hold. A CV named outside a link is a warning: link the exact version sent. With the bikeshed publisher, publish the HTML as its own private document in the tracker's folder (`npm run bikeshed -- publish <brief.html> --title "<Company> brief: <role> (<date time>)" --folder <config/tracker.json bikeshed.folder_id> --json`) and revise it with `npm run bikeshed -- update <docId> <brief.html>`.
+9. **Opportunity file:** add a stage-log row ("brief written") with the brief's path and the page's URL.
 
 ## Debrief
 1. **Source:** the operator's notes, or a recording or transcript the operator names. Nothing inferred is written as said.

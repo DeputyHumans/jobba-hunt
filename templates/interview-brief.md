@@ -3,6 +3,7 @@ title: <Company> <Role>, <Stage> Brief
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 status: Draft
+call: "<day YYYY-MM-DD, HH:MM tz>, <medium>"
 tags: [interview, brief, <company-slug>]
 ---
 
@@ -83,6 +84,8 @@ tags: [interview, brief, <company-slug>]
 
 | JD requirement | Evidence (claim ID, sayable form) | Strength |
 |---|---|---|
+
+**Claims** `[CLAIMS TABLE]`
 
 ## 8. Answer bank
 

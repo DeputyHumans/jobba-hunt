@@ -96,7 +96,7 @@ Each skill is a procedure in `.agents/skills/<name>/SKILL.md`: when it applies, 
 |---|---|
 | Purpose | A brief before a call and a debrief after it, from `templates/interview-brief.md` and `templates/interview-debrief.md`: facts with URLs, claims only |
 | Triggers | A scheduled screen or interview; "prep me for the call with <company>"; notes from a finished call |
-| Commands | None (it writes from the templates into `pipeline/interviews/`) |
+| Commands | `npm run brief -- <brief.md> [--glossary <json>] [--write-claims]` renders the brief as the designed HTML page next to it |
 | Dependencies | The harness's web search and fetch |
 
 ### hunt-recruiter

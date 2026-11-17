@@ -17,7 +17,7 @@ Entry point for any coding agent (Codex, OpenCode, Cursor, Pi, Antigravity, Clau
 | `hunt-kit` | `npm run cv -- --match <id>` | web search and fetch |
 | `hunt-status` | `npm run jobs -- limits`, `npm run log` | none |
 | `hunt-probe` | `npm run probe -- --file <probe> [--dry-run] [--headed]`, `npm run probe-report -- <files>` | none |
-| `hunt-interview` | none (writes from templates) | web search and fetch |
+| `hunt-interview` | `npm run brief -- <brief.md>` | web search and fetch |
 | `hunt-recruiter` | `npm run cv -- --dir <list>/cv ...`, `npm run cv-publish -- --dir ...`, `npm run recruiter-pages -- --dir <list> --publish` | none |
 | `authentic-prose`, `humanizing-prose` | none (`python3 .agents/skills/authentic-prose/scripts/metrics.py` optional) | none |
 | `bs-publish`, `bs-comment`, `bs-folder`, `bs-share` | `npm run bikeshed -- <args>` | none |
