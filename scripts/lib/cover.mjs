@@ -12,6 +12,10 @@
 
 import { PAPER, pageRuleCss } from './cv.mjs';
 
+// The company part of the letter's file name. Accented letters keep their base letter, so
+// "ÉTOILE" names the upload "...-etoile.pdf", not "...-toile.pdf".
+export const coverSlug = (company) => String(company || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const blockText = (p) => (p.map ? p.map.map((r) => `${r.ask} ${r.answer}`).join(' ') : p.text || '');
 export const coverWords = (letter) => [letter.greeting, ...letter.paragraphs.map(blockText), letter.closing].join(' ').split(/\s+/).filter(Boolean).length;

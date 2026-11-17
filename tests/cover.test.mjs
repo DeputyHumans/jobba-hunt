@@ -1,7 +1,7 @@
 // Cover letters: claims-only, lean, no em dash or semicolon, one page.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateCover, renderCoverHtml, coverText, coverWords, coverSheetHtml } from '../scripts/lib/cover.mjs';
+import { validateCover, renderCoverHtml, coverText, coverWords, coverSheetHtml, coverSlug } from '../scripts/lib/cover.mjs';
 import { paperOf } from '../scripts/lib/cv.mjs';
 
 const ids = new Set(['C03', 'C04', 'C27']);
@@ -60,4 +60,11 @@ test('render: an on-site or hybrid role drops the workplace line from the header
   assert.doesNotMatch(contact('Full-time, Springfield, in-office'), /Remote \(US\)/);
   assert.match(contact('Full-time, remote (US)'), /Springfield, IL<span class="sep"> · <\/span>Remote \(US\)/);
   assert.match(contact('Position ID 1'), /Remote \(US\)/);
+});
+
+test('file slug keeps accented letters as their base letter', () => {
+  assert.equal(coverSlug('ÉTOILE Example'), 'etoile-example');
+  assert.equal(coverSlug('Société Générale Labs'), 'societe-generale-labs');
+  assert.equal(coverSlug('Example Co.'), 'example-co');
+  assert.equal(coverSlug(''), '');
 });

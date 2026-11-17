@@ -16,7 +16,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { claimIdsFromBank, lintText, cvPerson, inlineFonts, paperOf, sheetCss } from './lib/cv.mjs';
-import { validateCover, renderCoverHtml, coverText, coverWords, coverSheetHtml } from './lib/cover.mjs';
+import { validateCover, renderCoverHtml, coverText, coverWords, coverSheetHtml, coverSlug } from './lib/cover.mjs';
 import { pdfInfo, pdfFonts, fontProblems, pdfText, launchChromium } from './lib/pdf.mjs';
 import { CV_SRC, COLLATERAL_DIR, DATA_DIR, brandFile, display } from './lib/paths.mjs';
 import { requireWorkspace } from './lib/config.mjs';
@@ -43,7 +43,7 @@ const srcLint = lintText(text, rules);
 if (errs.length || srcLint.length) fail('letter checks failed', { errors: errs, lint: srcLint });
 
 const paper = paperOf(preferences().cv?.paper);
-const slug = letter.company.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const slug = coverSlug(letter.company);
 const base = join(dir, coverFileBase(slug));
 const readFont = (name) => readFileSync(brandFile('fonts', name));
 const css = `${inlineFonts(`${readFileSync(brandFile('cv', 'template.css'), 'utf8')}\n${readFileSync(brandFile('cv', 'cover.css'), 'utf8')}`, readFont)}\n${sheetCss(paper)}`;
