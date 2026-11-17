@@ -279,6 +279,8 @@ export function planFill(fields, bank, ctx) {
       // is left empty rather than asked. An optional portfolio or work-sample slot is left empty
       // ("Portfolio (if applicable)").
       if (!f.required && /portfolio|work samples?|writing samples?/i.test(fl)) continue;
+      // An optional slot labelled just "Other" (beside Resume and Cover Letter) is left empty.
+      if (!f.required && /^\W*other\W*$/i.test(fl.trim())) continue;
       if (/\badditional\b.*\battach|\bother\b.*\battach|supporting doc/i.test(fl)) {
         if (ctx.coverPdf) { actions.push({ key: f.key, action: 'file', value: ctx.coverPdf, source: 'cover' }); continue; }
         if (!f.required) continue;
@@ -286,6 +288,9 @@ export function planFill(fields, bank, ctx) {
       miss(f, 'unlabeled-file');
       continue;
     }
+    // The free-text box a list's Other entry brought, which the pick typed the answer into: its own
+    // label ("Other") is no question.
+    if (f.other_for && nonEmpty(f.value)) continue;
     const got = answerFor(f, bank, ctx);
     const { source, blank } = got;
     // A form with its own country-code field takes the national number as digits ("(555) ..."
@@ -328,7 +333,25 @@ export function planFill(fields, bank, ctx) {
       // input-less menu on Rippling): the runner opens it and picks the answer then. An EEO
       // answer carries its label, so the option is chosen by eeoPick once the list is read.
       if (f.widget && !(f.options || []).length) {
-        if (!sameChoice(f.value, answer, country)) actions.push({ key: f.key, action: 'pick', value: answer, source, ...(source === 'eeo' ? { eeo: f.label } : {}) });
+        // A react-select v1 list also holds the answer when it shows its loose match ("Masters"), or
+        // its Other entry with the answer in the box beside it.
+        const rs = f.widget === 'react-select';
+        // Several values ("Computer Science | Mathematics") for a list drawn as one row per value (a
+        // "Field of Study (Max 2)" list, rows sharing rs_group): one pick on the first row carries them
+        // all and adds the rows it needs. The other rows are covered by it. Held when the rows show
+        // exactly those values.
+        const many = rs ? listValues(answer) : [];
+        if (many.length > 1) {
+          const rows = f.rs_group ? fields.filter((g) => g.widget === 'react-select' && g.rs_group === f.rs_group) : [f];
+          if (rows[0] !== f) { covered.push(f.key); continue; }
+          const shown = rows.map((g) => g.value).filter((v) => nonEmpty(v));
+          const holds = shown.length === many.length && many.every((v) => shown.some((x) => sameChoice(x, v, country) || !!listChoice([x], v)));
+          if (!holds) actions.push({ key: f.key, action: 'pick', value: answer, values: many, source, ...(f.required ? {} : { optional: true }) });
+          continue;
+        }
+        const held = sameChoice(f.value, answer, country) || (rs && (!!listChoice(f.value ? [f.value] : [], answer)
+          || (!!otherOption([f.value]) && sameValue(f.other_text, answer))));
+        if (!held) actions.push({ key: f.key, action: 'pick', value: answer, source, ...(source === 'eeo' ? { eeo: f.label } : {}), ...(rs && !f.required ? { optional: true } : {}) });
         continue;
       }
       // A checkbox group answered with several values ("Docker | Kubernetes"): one action that ticks
@@ -1231,8 +1254,43 @@ export function otherOption(texts) {
   return (texts || []).find((t) => /^\W*other\b(?!\w)/i.test(String(t).trim()) && !/^\W*other\w/i.test(String(t).trim())) || null;
 }
 
+// ---------- Searched lists (react-select v1) ----------
+// The option of a searched list that is the answer: the same text (case, spacing, accents and curly
+// apostrophes ignored), else the one option that says the same words once punctuation, the word "degree"
+// and a plural s are dropped ("Master's Degree" is "Masters"). Two such options, or none, is no choice:
+// never a near guess such as "Master of Science" for "Master's Degree".
+const listNorm = (t) => String(t || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[\u2018\u2019`]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+const listWords = (t) => listNorm(t).replace(/[^a-z0-9 ]+/g, '').split(' ').filter(Boolean)
+  .map((w) => (w.length > 3 && w.endsWith('s') ? w.slice(0, -1) : w)).filter((w) => w !== 'degree').join(' ');
+// A list that writes a school as "<name> - <abbreviation> - <country>" ("Example State University of
+// Science Technology and Arts - ESU - Freedonia") holds the answer in the one option whose name segment,
+// before the first " - ", says the same words.
+export function listChoice(texts, answer) {
+  const want = listNorm(answer);
+  if (!want) return null;
+  const opts = (texts || []).filter((t) => listNorm(t));
+  const exact = opts.find((t) => listNorm(t) === want);
+  if (exact) return exact;
+  const one = (pick) => { const hit = opts.filter((t) => { const w = listWords(pick(t)); return w && w === listWords(answer); }); return hit.length === 1 ? hit[0] : null; };
+  return one((t) => t) || (/ - /.test(answer) ? null : one((t) => String(t).split(' - ')[0]));
+}
+
+// What the runner types into such a list: the whole answer, then short searches, its first and its last
+// word with a possessive dropped (3+ letters), so a list that words the option a little differently still
+// shows it, and a miss shows the nearest options ("Applied Linguistics": "Linguistics",
+// "Psycholinguistics").
+export function listSearches(answer) {
+  const whole = String(answer || '').trim();
+  const word = (w) => (w || '').replace(/['\u2019]s$/i, '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  const words = whole.split(/[\s,]+/).filter(Boolean);
+  const out = [whole];
+  for (const w of [word(words[0]), word(words.at(-1))]) if (w.length >= 3 && !out.includes(w)) out.push(w);
+  return out;
+}
+
 // The values of an answer that names several, split on "|" ("Docker | Kubernetes" for a checkbox
-// group that takes more than one). One value stays one.
+// group that takes more than one, "Computer Science | Mathematics" for a list drawn as one row per
+// value). One value stays one.
 export function listValues(answer) {
   return String(answer || '').split('|').map((v) => v.trim()).filter(Boolean);
 }

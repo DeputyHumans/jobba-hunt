@@ -1,5 +1,5 @@
 // Playwright click helpers for the apply runner, kept apart so real-Chrome tests can drive them.
-import { otherOption } from './apply-forms.mjs';
+import { otherOption, listChoice, listSearches } from './apply-forms.mjs';
 
 // A styled radio hides its input inside a <label> (appcast, Paylocity). Click the label first;
 // when the label swallows the click, check the input itself, then click it from the page.
@@ -582,4 +582,199 @@ export async function icimsPickOther(loc, value) {
   if (!(await other.count().catch(() => 0))) return false;
   if (!(await icimsPick(loc, 'Other', { choose: otherOption, query: 'Other' }))) return false;
   return typeText(other, String(value), { direct: true });
+}
+
+// ---------- react-select v1 lists ----------
+// div.Select > div.Select-control holds the search input (role=combobox, `loc`) and the choice in .Select-value-label.
+// Options render only after typing, inside .Select-menu-outer: plain v1 rows are .Select-option, taken on mousedown (an
+// async list shows "Loading..." in .Select-noresults first). A site can draw react-virtualized-select over v1: rows
+// are div.VirtualizedSelectOption, taken on click, and only the rows in view of its div.VirtualSelectGrid are
+// rendered. A list with no match may show no menu at all. Typed text is dropped on blur: only
+// a picked option is a value. The search text is set in the page (typeText direct), not typed by the humanized
+// keyboard, and a row gets dispatched mousedown and click events, so no stray real click lands on the form.
+const rsWait = (ms) => new Promise((r) => setTimeout(r, ms));
+const rsNorm = (t) => String(t || '').replace(/[\u2018\u2019`]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+const rsBox = (loc) => loc.locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " Select ")][1]');
+const RS_ROWS = '.Select-menu-outer .Select-option, .Select-menu-outer .VirtualizedSelectOption';
+
+// The choices the list shows (one for a single list), [] when none.
+export async function rsShown(loc) {
+  return (await rsBox(loc).locator('.Select-value-label').allInnerTexts().catch(() => [])).map((t) => t.replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
+
+// Every row of the open menu, in order. A virtualized grid is scrolled through and each row read once, then scrolled
+// back to the top. With `want`, the scroll stops at the row whose text is `want` and tags it data-hunt-rs-row; true
+// when it was found.
+async function rsRows(loc, want = null) {
+  return rsBox(loc).evaluate(async (b, [sel, w]) => {
+    const norm = (t) => String(t || '').replace(/[\u2018\u2019`]/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+    const textOf = (o) => (o.innerText || o.textContent || '').replace(/\s+/g, ' ').trim();
+    const rows = () => [...b.querySelectorAll(sel)];
+    for (const o of b.querySelectorAll('[data-hunt-rs-row]')) o.removeAttribute('data-hunt-rs-row');
+    const find = () => (w == null ? null : rows().find((o) => norm(textOf(o)) === norm(w)));
+    const grid = b.querySelector('.Select-menu-outer .VirtualSelectGrid');
+    const seen = new Map();
+    const read = () => { for (const o of rows()) seen.set(o.offsetTop + (o.parentElement ? o.parentElement.offsetTop : 0), textOf(o)); };
+    let hit = find();
+    if (grid && !hit) {
+      grid.scrollTop = 0;
+      for (let i = 0; i < 400; i++) {
+        await new Promise((r) => setTimeout(r, 60));
+        read();
+        if ((hit = find())) break;
+        if (grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 1) break;
+        grid.scrollTop += Math.max(1, grid.clientHeight);
+      }
+      if (!hit) { grid.scrollTop = 0; await new Promise((r) => setTimeout(r, 60)); }
+    } else read();
+    if (w != null) { if (hit) hit.setAttribute('data-hunt-rs-row', '1'); return !!hit; }
+    return [...seen.entries()].sort((x, y) => x[0] - y[0]).map(([, t]) => t);
+  }, [RS_ROWS, want]).catch(() => (want == null ? [] : false));
+}
+
+// Search q and wait until the menu settles: the same rows, or the same "No results" line, on two looks in a row,
+// never while it loads, and not in the first 750 ms (a debounced list can still show the last search's result). No
+// menu for 2.5 s is no match (a virtualized list with nothing to say draws none). The rows' texts, [] when none.
+async function rsSearch(loc, q, { timeoutMs = 8000 } = {}) {
+  await typeText(loc, q, { direct: true });
+  const start = Date.now();
+  let last = null;
+  for (const end = start + timeoutMs; Date.now() < end;) {
+    await rsWait(250);
+    const st = await rsBox(loc).evaluate((b, sel) => {
+      const menu = b.querySelector('.Select-menu-outer');
+      const rows = [...b.querySelectorAll(sel)].map((o) => (o.innerText || o.textContent || '').replace(/\s+/g, ' ').trim());
+      const none = menu ? (menu.querySelector('.Select-noresults')?.textContent || '').trim() : '';
+      return { menu: !!menu, loading: !!b.querySelector('.Select-loading') || /^(loading|searching)\b/i.test(none), rows, none };
+    }, RS_ROWS).catch(() => null);
+    if (!st || st.loading) { last = null; continue; }
+    if (!st.menu) { if (Date.now() - start >= 2500) return []; last = null; continue; }
+    if (!st.rows.length && !st.none) { last = null; continue; }
+    const key = JSON.stringify(st.rows.length ? st.rows : { none: st.none });
+    if (key === last && Date.now() - start >= 750) return st.rows.length ? rsRows(loc) : [];
+    last = key;
+  }
+  return last && Array.isArray(JSON.parse(last)) ? rsRows(loc) : [];
+}
+
+// Drop the search text and close the menu, with nothing chosen.
+async function rsClear(loc) {
+  await typeText(loc, '', { direct: true });
+  await loc.evaluate((el) => el.blur(), null, { timeout: 3000 }).catch(() => {});
+  await rsWait(200);
+}
+
+// Press the open menu's row whose text is `text`: scrolled into the grid, then a dispatched mousedown (plain v1), then
+// a dispatched click (react-virtualized-select), then a real click as the last resort. Confirmed by the shown choice.
+// The row is found again before each press: a virtualized grid re-renders its rows when it scrolls. No scrolling before
+// a dispatched event (it needs no view), and short timeouts, so a row that left the page costs no 30 s wait.
+async function rsChoose(loc, text) {
+  const took = async (looks) => { for (let t = 0; t < looks; t++) { if ((await rsShown(loc)).map(rsNorm).includes(rsNorm(text))) return true; await rsWait(200); } return false; };
+  const row = () => rsBox(loc).locator('[data-hunt-rs-row="1"]').first();
+  const presses = [
+    [(r) => r.dispatchEvent('mousedown', { button: 0 }, { timeout: 2000 }), 3],
+    [(r) => r.dispatchEvent('click', { button: 0 }, { timeout: 2000 }), 10],
+    [async (r) => { await r.scrollIntoViewIfNeeded({ timeout: 2000 }); await r.click({ timeout: 3000 }); }, 10],
+  ];
+  for (const [press, looks] of presses) {
+    if (!(await row().count().catch(() => 0)) && !(await rsRows(loc, text))) return false;
+    await press(row()).catch(() => {});
+    if (await took(looks)) return true;
+  }
+  return false;
+}
+
+// Pick the option of a react-select v1 list that is the answer (listChoice: exact, else one loose or name-segment
+// match), searched by listSearches (the whole answer, then its first and last words). `choose(texts)` names the option
+// instead, after a search for `query` (the list's Other entry). Confirmed by the shown choice. An answer the list lacks
+// is no pick: the search text is cleared and false comes back. `seen` collects every search's options (for the log).
+export async function rsPick(loc, value, { choose = null, query = null, seen = null, timeoutMs = 8000 } = {}) {
+  const answer = String(value || '').trim();
+  if (!choose && answer && listChoice(await rsShown(loc), answer)) return true;
+  await loc.evaluate((el) => el.scrollIntoView({ block: 'center' }), null, { timeout: 3000 }).catch(() => {});
+  const find = choose || ((texts) => listChoice(texts, answer));
+  for (const q of query != null ? [String(query)] : listSearches(answer)) {
+    const texts = await rsSearch(loc, q, { timeoutMs });
+    if (seen) seen.push({ search: q, options: texts.slice(0, 25) });
+    const pick = find(texts);
+    if (!pick || !(await rsRows(loc, pick))) continue;
+    if (await rsChoose(loc, pick)) return true;
+  }
+  await rsClear(loc);
+  return false;
+}
+
+// An answer the list lacks (as a list's help puts it: "If none of the options apply to you, please select "Other" and
+// fill in the blank that appears."): pick the list's Other entry (otherOption), then type the answer into the free-text
+// box that appears, the first text box after the list that was not shown before the pick. The box is tagged
+// data-hunt-other-for (the list carries the same tag as data-hunt-rs), so later looks read it as this list's text and
+// a re-run types into it again. True when the box holds the answer; false when the list has no Other entry or no
+// box appeared.
+export async function rsPickOther(loc, value) {
+  const page = scopeOf(loc);
+  const want = String(value || '');
+  const tag = await rsBox(loc).evaluate((b) => {
+    if (!b.getAttribute('data-hunt-rs')) b.setAttribute('data-hunt-rs', `rs${Math.random().toString(36).slice(2, 8)}`);
+    return b.getAttribute('data-hunt-rs');
+  }).catch(() => null);
+  if (!tag) return false;
+  const box = page.locator(`[data-hunt-other-for="${tag}"]`);
+  const shownOther = !!otherOption(await rsShown(loc));
+  if (!(shownOther && (await box.isVisible().catch(() => false)))) {
+    await page.evaluate(() => { for (const i of document.querySelectorAll('input, textarea')) if (i.getBoundingClientRect().width > 0) i.setAttribute('data-hunt-pre', '1'); }).catch(() => {});
+    const picked = await rsPick(loc, 'Other', { choose: otherOption, query: 'Other' });
+    let found = false;
+    for (let t = 0; picked && t < 12 && !found; t++) {
+      await rsWait(250);
+      found = await rsBox(loc).evaluate((b, tg) => {
+        const after = (n) => !!(b.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING);
+        const textual = (i) => i.tagName === 'TEXTAREA' || ['', 'text'].includes((i.getAttribute('type') || '').toLowerCase());
+        const nb = [...document.querySelectorAll('input, textarea')].find((i) => !i.hasAttribute('data-hunt-pre') && !i.closest('.Select') && textual(i) && !i.disabled && i.getBoundingClientRect().width > 0 && after(i));
+        if (nb) nb.setAttribute('data-hunt-other-for', tg);
+        return !!nb;
+      }, tag).catch(() => false);
+    }
+    await page.evaluate(() => { for (const i of document.querySelectorAll('[data-hunt-pre]')) i.removeAttribute('data-hunt-pre'); }).catch(() => {});
+    if (!found) {
+      // An Other entry with no box (a Field of Study list's) cannot hold the answer: the choice is cleared again
+      // (the list's clear zone, on mousedown as v1 takes it), so the form does not keep a bare "Other".
+      if (picked) await rsBox(loc).locator('.Select-clear-zone').first().dispatchEvent('mousedown', { button: 0 }).catch(() => {});
+      return false;
+    }
+  }
+  await typeText(box.first(), want, { direct: true });
+  await box.first().evaluate((el) => el.blur(), null, { timeout: 3000 }).catch(() => {});
+  return (await box.first().inputValue({ timeout: 3000 }).catch(() => null)) === want;
+}
+
+// Row i of a list drawn as one react-select per value, every row named by the same label (aria-labelledby; a
+// "Field of Study (Max 2)" list). A missing row is added with the field's "Add ..."
+// button (a div[role=button] in the label's .form-field, React onClick: a dispatched click, then a real one) and waited
+// for up to 3 s. The row's search input, or null when there is no such row and no button to add it (the list is full).
+export async function rsRow(loc, i) {
+  const page = scopeOf(loc);
+  const lab = ((await loc.getAttribute('aria-labelledby').catch(() => null)) || '').trim();
+  if (!lab) return i === 0 ? loc : null;
+  const rows = page.locator(`.Select-control input[aria-labelledby="${lab}"]`);
+  for (let attempt = 0; attempt < 2 && (await rows.count()) <= i; attempt++) {
+    const before = await rows.count();
+    const tagged = await page.evaluate((id) => {
+      for (const b of document.querySelectorAll('[data-hunt-add-row]')) b.removeAttribute('data-hunt-add-row');
+      const g = document.getElementById(id)?.closest('.form-field');
+      const b = g && [...g.querySelectorAll('[role="button"], button')].find((x) => /^\W*add\b/i.test((x.innerText || x.textContent || '').trim()));
+      if (b) b.setAttribute('data-hunt-add-row', '1');
+      return !!b;
+    }, lab).catch(() => false);
+    if (!tagged) break;
+    const add = page.locator('[data-hunt-add-row="1"]').first();
+    await add.dispatchEvent('click', {}, { timeout: 2000 }).catch(() => {});
+    for (let t = 0; t < 6 && (await rows.count()) <= before; t++) await rsWait(250);
+    if ((await rows.count()) <= before) {
+      await add.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {});
+      await add.click({ timeout: 3000 }).catch(() => {});
+      for (let t = 0; t < 6 && (await rows.count()) <= before; t++) await rsWait(250);
+    }
+  }
+  await page.evaluate(() => { for (const b of document.querySelectorAll('[data-hunt-add-row]')) b.removeAttribute('data-hunt-add-row'); }).catch(() => {});
+  return (await rows.count()) > i ? rows.nth(i) : null;
 }

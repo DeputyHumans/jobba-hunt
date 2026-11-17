@@ -11,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PINNED_BINARY } from '../scripts/cloak-core.mjs';
 import { markRoot, collectForm, passInterstitial, stuckReport, invalidReport, workdayPage, safeHtml, workdayFields, walmartPage, WALMART_SEL, icimsPage, ICIMS_SEL } from '../scripts/lib/apply-dom.mjs';
 import { planFill, resumeChoice, followBoxesChecked, normLabel, eeoPick, submitLabel, workdayStage, workdayStartChoice, workdayPlan, workdayAdds, walmartStage, walmartNav, icimsStage, icimsNav, blockerIn, challengeIn, icimsPlan } from '../scripts/lib/apply-forms.mjs';
-import { checkLabelRadio, pickWidget, setBox, pressToggle, tickGroupOption, tickGroupOptions, menuOptions, wdListOptions, wdPickList, wdPickPrompt, wdTypeDate, wdAddEntry, wdCheckOption, framed, icimsPick, icimsPickOther } from '../scripts/lib/apply-click.mjs';
+import { checkLabelRadio, pickWidget, setBox, pressToggle, tickGroupOption, tickGroupOptions, menuOptions, wdListOptions, wdPickList, wdPickPrompt, wdTypeDate, wdAddEntry, wdCheckOption, framed, icimsPick, icimsPickOther, rsPick, rsPickOther, rsShown, rsRow } from '../scripts/lib/apply-click.mjs';
 
 async function chromiumPath() {
   if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
@@ -1513,4 +1513,217 @@ test('icimsPick: a list that searches only on a real keyup (a live School list) 
   assert.equal(r.found, true);
   assert.equal(r.other, true);
   assert.deepEqual(r.values, ['*Other', 'Unlisted Institute of Technology']);
+});
+
+// ---------- react-select v1 lists (tests/fixtures/rs1-application.html) ----------
+// A single-page company-site form whose education lists are react-select v1: typed text is dropped on blur, so a
+// run that only typed into University, Degree and Field of Study left all three empty.
+const RS_WIDGET = readFileSync(join(FIX, 'react-select-v1.js'), 'utf8');
+const RS_LISTS = {
+  'university-autocomplete-input-0': ['Example Institute of Technology', 'Example State University', 'Example State University of Science, Technology and Arts', 'Example Polytechnic University', 'Other'],
+  'degree-autocomplete-field-0': ["Associate's Degree", "Bachelor's Degree", 'Master of Arts (MA)', 'Master of Business Administration (MBA)', 'Master of Science (MS)', "Master's Degree", 'Doctor of Philosophy (PhD)', 'Other'],
+  'field-of-study-label-0': ['Applied Mathematics', 'Computer Science', 'Economics', 'Information Systems', 'Other'],
+  'honors-label-0': ['Cum Laude', 'Magna Cum Laude', 'Summa Cum Laude'],
+  'candidate-award-label': ['Example Merit Scholarship', 'Other'],
+};
+// The virtualized widget (mode 'virtualized', react-virtualized-select over v1) with lists shaped like a site's
+// reference data: schools written "<name> - <abbreviation> - <country>", or plain v1 (mode 'v1') with the lists above.
+const MATH = ['Actuarial Mathematics', 'Business Mathematics', 'Combinatorial Mathematics', 'Computational Mathematics', 'Discrete Mathematics', 'Educational Mathematics', 'Engineering Mathematics', 'Experimental Mathematics', 'Financial Mathematics', 'Industrial Mathematics', 'Mathematics & Philosophy', 'Mathematics & Physics', 'Mathematics Education', 'Mathematics and Computing', 'Mathematics and Statistics', 'Numerical Mathematics', 'Pure Mathematics', 'Recreational Mathematics', 'Theoretical Mathematics', 'Biomathematics', 'Mathematics for Finance', 'Geomathematics', 'Mathematics & Economics', 'Mathematics', 'Quantitative Mathematics', 'Topological Mathematics', 'Statistical Mathematics', 'Systems Mathematics', 'Mathematics Teaching', 'Logic & Mathematics'];
+const DS_LISTS = {
+  'university-autocomplete-input-0': ['Brotherhood College - BC - Freedonia', 'Example Aviation Institute - EAI - Freedonia', 'Example Institute of Electronics and Mathematics - EIEM - Freedonia', 'Example Institute of Physics and Technology - EIPT - Freedonia', 'Example Medical Academy - EMA - Freedonia', 'Example Mining University - Freedonia', 'Example Power Engineering Institute - EPEI - Freedonia', 'Example State Linguistic University - ESLU - Freedonia', 'Example State University - ESU - Freedonia', 'Example State University of Civil Engineering - ESUCE - Freedonia', 'Example State University of Railway Engineering - ESURE - Freedonia', 'Example Technical University - ETU - Freedonia', 'Example Technical University of Communications - ETUC - Freedonia', 'International University of Example - IUE - Freedonia', 'National Example University of Science - NEUS - Freedonia', 'Northern Example University - NEU - Freedonia', 'Example Polytechnic University - US', 'University of Example Business - UEB - Freedonia', 'Example State University of Science Technology and Arts - ESUSTA - Freedonia', 'Other'],
+  'degree-autocomplete-field-0': ["Bachelor's Degree", 'Doctor of Philosophy (PhD)', 'Master of Arts', 'Master of Business Administration', 'Master of Computing', 'Master of Science (Bachelor’s degree)', 'Master of Science (MS)', 'Master of Science (MSc)', 'Master of Veterinary Physiotherapy', "Master's Degree", 'Other'],
+  // "Mathematics" is the 24th of the 30 "Mathematics" matches, past the rows rendered at first.
+  'field-of-study-label-0': [...MATH, 'Applied Chemistry', 'Applied Mathematics', 'Applied Physics', 'Computational Linguistics', 'Computer Science', 'Computer Science and Statistics', 'Information Systems', 'Linguistics', 'Other', 'Psycholinguistics', 'Psychotherapy', 'Sociolinguistics'],
+  'honors-label-0': ["Dean's List", 'Summa Cum Laude', 'Magna Cum Laude', 'Cum Laude', 'Other'],
+  'candidate-award-label': ['Example Merit Scholarship', 'Other'],
+};
+const DS_LINKS = { 'university-autocomplete-input-0': 'university', 'degree-autocomplete-field-0': 'degree' };
+const DS_OTHER_BOXES = {
+  'university-autocomplete-input-0': { id: 'otherUniversityName-0', label: 'Please specify your University name' },
+  'degree-autocomplete-field-0': { id: 'other-degree-name-0', label: 'Please specify your Degree' },
+  'honors-label-0': { id: 'other-honor-name-0', label: 'Please specify your Honor' },
+};
+async function rs1(fn, { mode = 'virtualized', lists = mode === 'v1' ? RS_LISTS : DS_LISTS, delay = null } = {}) {
+  const page = await browser.newPage();
+  try {
+    await page.route(/^https?:/, (r) => r.abort());
+    const setup = `<script>window.RS_MODE = ${JSON.stringify(mode)}; window.RS_LISTS = ${JSON.stringify(lists)}; window.RS_LINKS = ${JSON.stringify(DS_LINKS)}; window.RS_OTHER_BOXES = ${JSON.stringify(DS_OTHER_BOXES)};${delay == null ? '' : ` window.RS_DELAY = ${delay};`}</script><script>${RS_WIDGET}</script>`;
+    await show(page, readFileSync(join(FIX, 'rs1-application.html'), 'utf8').replace('<!-- react-select-v1 -->', setup), { waitUntil: 'domcontentloaded' });
+    return await fn(page);
+  } finally {
+    await page.close();
+  }
+}
+const RS_SCHOOL = 'Example State University of Science, Technology and Arts';
+// The job's answers for these fields (a job's answers.json; keys are normLabel).
+const RS1_ANSWERS = {
+  'do you have any formal education experience': 'Yes',
+  university: RS_SCHOOL,
+  'degree status': 'Graduated',
+  'field of study (max 2)': 'Applied Linguistics',
+  'honors: (max 2)': '',
+  'gpa/grade (cumulative) achieved': '4.0',
+  'gpa/grade (cumulative) total': '4.0',
+  other: '',
+};
+const rs1DomBank = { ...bank, learned: [{ label: 'degree', answer: "Master's Degree", source: 'test' }] };
+const rsAt = (page, which) => page.locator({ university: '#university-autocomplete-input-0', degree: '#degree-autocomplete-field-0', field: '[aria-labelledby="field-of-study-label-0"]', honors: '[aria-labelledby="honors-label-0"]', award: '[aria-labelledby="candidate-award-label"]' }[which]);
+
+test('react-select v1 application: the lists are select fields (widget react-select, required by the * before the tooltip "?", no options until searched); the plan picks University, Degree and Field of Study and leaves the blank Honors and the unanswered award alone', { skip }, async () => {
+  const snap = await rs1(async (page) => { await page.evaluate(markRoot, 'form'); return page.evaluate(collectForm); });
+  const rs = snap.fields.filter((f) => f.widget === 'react-select');
+  assert.deepEqual(rs.map((f) => [f.label, f.kind, f.required, f.value, f.options]), [
+    ['University* ?', 'select', true, '', []],
+    ['Degree* ?', 'select', true, '', []],
+    ['Field of Study (Max 2)* ?', 'select', true, '', []],
+    ['Honors: (Max 2) ?', 'select', false, '', []],
+    ['Name of award/accomplishment', 'select', false, '', []],
+  ]);
+  assert.ok(!snap.fields.some((f) => f.kind === 'text' && f.combobox), 'no list is collected as a text box');
+  const plan = planFill(snap.fields, rs1DomBank, { cv: '/tmp/cv.pdf', jobAnswers: RS1_ANSWERS });
+  const keys = new Set(rs.map((f) => f.key));
+  const label = (k) => snap.fields.find((f) => f.key === k).label;
+  assert.deepEqual(plan.actions.filter((a) => keys.has(a.key)).map((a) => [label(a.key), a.action, a.value]), [
+    ['University* ?', 'pick', RS_SCHOOL],
+    ['Degree* ?', 'pick', "Master's Degree"],
+    ['Field of Study (Max 2)* ?', 'pick', 'Applied Linguistics'],
+  ]);
+  assert.ok(!plan.missing.some((m) => keys.has(m.key)));
+});
+
+test('stuckReport on the react-select v1 application: the lists\' help tooltips ("If none of the options apply to you, please select \\"Other\\" ...") are not validation messages', { skip }, async () => {
+  const open = await rs1(async (page) => { await page.evaluate(markRoot, 'form'); return page.evaluate(stuckReport); });
+  assert.deepEqual(open, []);
+});
+
+test('rsPick (plain v1): searches a react-select v1 list and picks the answer on mousedown, confirmed by the shown choice; among several Master options "Master\'s Degree" takes its exact wording; an unlisted answer is no pick, its search text cleared and the menu closed; a list already showing the answer is left alone', { skip }, async () => {
+  const r = await rs1(async (page) => {
+    const out = {};
+    out.uni = await rsPick(rsAt(page, 'university'), RS_SCHOOL);
+    out.deg = await rsPick(rsAt(page, 'degree'), "Master's Degree");
+    out.fos = await rsPick(rsAt(page, 'field'), 'Applied Linguistics');
+    out.shown = [await rsShown(rsAt(page, 'university')), await rsShown(rsAt(page, 'degree')), await rsShown(rsAt(page, 'field'))];
+    out.typed = await rsAt(page, 'field').inputValue();
+    out.menus = await page.locator('.Select-menu-outer').count();
+    out.again = await rsPick(rsAt(page, 'university'), RS_SCHOOL);
+    out.hidden = await page.evaluate(() => [...document.querySelectorAll('.Select input[type="hidden"]')].map((i) => i.value).filter(Boolean));
+    return out;
+  }, { mode: 'v1' });
+  assert.deepEqual([r.uni, r.deg, r.fos], [true, true, false]);
+  assert.deepEqual(r.shown, [[RS_SCHOOL], ["Master's Degree"], []]);
+  assert.equal(r.typed, '');
+  assert.equal(r.menus, 0);
+  assert.equal(r.again, true);
+  assert.deepEqual(r.hidden, [RS_SCHOOL, "Master's Degree"]);
+});
+
+test('rsPick (plain v1): a slow list (2 s of "Loading...") is waited for; a degree list wording it "Masters" takes that one option; a list of only "Master of Science" and "Master of Arts" is no pick (never a near degree)', { skip }, async () => {
+  const lists = { ...RS_LISTS, 'degree-autocomplete-field-0': ['Bachelors', 'Masters', 'Doctorate', 'Other'], 'field-of-study-label-0': ['Master of Science (MS)', 'Master of Arts (MA)'] };
+  const r = await rs1(async (page) => ({
+    uni: await rsPick(rsAt(page, 'university'), RS_SCHOOL),
+    deg: await rsPick(rsAt(page, 'degree'), "Master's Degree"),
+    shown: await rsShown(rsAt(page, 'degree')),
+    near: await rsPick(rsAt(page, 'field'), "Master's Degree"),
+  }), { mode: 'v1', lists, delay: 2000 });
+  assert.deepEqual([r.uni, r.deg, r.shown, r.near], [true, true, ['Masters'], false]);
+});
+
+test('rsPickOther (plain v1): an answer the list lacks picks the list\'s Other entry and is typed into the free-text box that appears; the form then reads Other with that text, and the plan neither picks it again nor asks the box (its label "Other" has a blank job answer); a list with no Other entry is no pick', { skip }, async () => {
+  const r = await rs1(async (page) => {
+    const ok = await rsPickOther(rsAt(page, 'field'), 'Applied Linguistics');
+    const box = await page.locator('.other-input input').inputValue();
+    const shown = await rsShown(rsAt(page, 'field'));
+    const none = await rsPickOther(rsAt(page, 'honors'), 'Summa Cum Laude Plus');
+    const honors = await rsShown(rsAt(page, 'honors'));
+    await page.evaluate(markRoot, 'form');
+    return { ok, box, shown, none, honors, snap: await page.evaluate(collectForm) };
+  }, { mode: 'v1' });
+  assert.deepEqual([r.ok, r.box, r.shown], [true, 'Applied Linguistics', ['Other']]);
+  assert.deepEqual([r.none, r.honors], [false, []]);
+  const f = r.snap.fields.find((x) => x.label === 'Field of Study (Max 2)* ?');
+  assert.deepEqual([f.value, f.other_text], ['Other', 'Applied Linguistics']);
+  const ob = r.snap.fields.find((x) => x.other_for);
+  assert.deepEqual([ob.label, ob.value, ob.required], ['Other', 'Applied Linguistics', true]);
+  const plan = planFill(r.snap.fields, rs1DomBank, { cv: '/tmp/cv.pdf', jobAnswers: RS1_ANSWERS });
+  assert.ok(!plan.actions.some((a) => a.key === f.key || a.key === ob.key));
+  assert.ok(!plan.missing.some((m) => m.key === f.key || m.key === ob.key));
+});
+
+// react-virtualized-select over v1: rows are div.VirtualizedSelectOption (chosen on click, only the rows in view
+// rendered), not .Select-option, so a runner that read .Select-option only found nothing in any list. Its University
+// list names a school "<name> - <abbreviation> - <country>".
+test('rsPick (react-virtualized-select): University takes its listed "<name> - ESUSTA - Freedonia" entry, Degree "Master\'s Degree", both on click; Field of Study "Applied Linguistics" is no pick, its searches logged, with no menu left open', { skip }, async () => {
+  const r = await rs1(async (page) => {
+    const out = {};
+    out.uni = await rsPick(rsAt(page, 'university'), RS_SCHOOL);
+    out.deg = await rsPick(rsAt(page, 'degree'), "Master's Degree");
+    out.shown = [await rsShown(rsAt(page, 'university')), await rsShown(rsAt(page, 'degree'))];
+    const seen = [];
+    out.fos = await rsPick(rsAt(page, 'field'), 'Applied Linguistics', { seen });
+    out.seen = seen;
+    out.fosShown = await rsShown(rsAt(page, 'field'));
+    out.menus = await page.locator('.Select-menu-outer').count();
+    return out;
+  });
+  assert.deepEqual([r.uni, r.deg], [true, true]);
+  assert.deepEqual(r.shown, [['Example State University of Science Technology and Arts - ESUSTA - Freedonia'], ["Master's Degree"]]);
+  assert.equal(r.fos, false);
+  assert.deepEqual(r.fosShown, []);
+  assert.equal(r.menus, 0);
+  assert.deepEqual(r.seen.map((x) => x.search), ['Applied Linguistics', 'Applied', 'Linguistics']);
+  assert.deepEqual(r.seen.at(-1).options, ['Computational Linguistics', 'Linguistics', 'Psycholinguistics', 'Sociolinguistics']);
+});
+
+test('rsPick (react-virtualized-select): an option beyond the rendered rows of a long result is scrolled into the grid and taken', { skip }, async () => {
+  const r = await rs1(async (page) => {
+    const uni = rsAt(page, 'university');
+    // 31 rows match "Example State University": the answer's row is the 31st, past the 16 rendered at first.
+    return { ok: await rsPick(uni, 'Example State University'), shown: await rsShown(uni) };
+  }, { lists: { ...DS_LISTS, 'university-autocomplete-input-0': [...Array.from({ length: 30 }, (_, i) => `Example State University Branch ${i + 1} - Freedonia`), 'Example State University - Freedonia', 'Other'] } });
+  assert.deepEqual([r.ok, r.shown], [true, ['Example State University - Freedonia']]);
+});
+
+test('rsPickOther (react-virtualized-select): a university the list lacks takes its Other entry (never "Brotherhood College") and goes into "Please specify your University name"; Field of Study\'s Other entry brings no box, so it is no pick and the list is cleared again', { skip }, async () => {
+  const r = await rs1(async (page) => {
+    const uni = rsAt(page, 'university');
+    const miss = await rsPick(uni, 'Unlisted Institute of Technology');
+    const ok = await rsPickOther(uni, 'Unlisted Institute of Technology');
+    const box = await page.locator('#otherUniversityName-0').inputValue();
+    const fos = await rsPickOther(rsAt(page, 'field'), 'Applied Linguistics');
+    await page.evaluate(markRoot, 'form');
+    return { miss, ok, box, shown: await rsShown(uni), fos, fosShown: await rsShown(rsAt(page, 'field')), snap: await page.evaluate(collectForm) };
+  });
+  assert.deepEqual([r.miss, r.ok, r.box, r.shown], [false, true, 'Unlisted Institute of Technology', ['Other']]);
+  assert.deepEqual([r.fos, r.fosShown], [false, []]);
+  const f = r.snap.fields.find((x) => x.label === 'University* ?');
+  assert.deepEqual([f.value, f.other_text], ['Other', 'Unlisted Institute of Technology']);
+  const ob = r.snap.fields.find((x) => x.other_for);
+  assert.deepEqual([ob.label, ob.value], ['Please specify your University name*', 'Unlisted Institute of Technology']);
+});
+
+// A "(Max 2)" list drawn as one react-select per value: the second row comes from the field's "Add Field of Study"
+// button, which is gone once two rows exist.
+test('rsRow: the second row of a "(Max 2)" list is added through its "Add Field of Study" button and both values are picked; the form then reads both, the plan takes no action and asks nothing; there is no third row', { skip }, async () => {
+  const r = await rs1(async (page) => {
+    const first = rsAt(page, 'field');
+    const out = {};
+    out.row0 = await rsRow(first, 0).then((l) => l && l.evaluate((el) => el.getAttribute('aria-describedby').trim()));
+    out.cs = await rsPick(first, 'Computer Science');
+    const second = await rsRow(first, 1);
+    out.row1 = second && (await second.evaluate((el) => el.getAttribute('aria-describedby').trim()));
+    out.math = second ? await rsPick(second, 'Mathematics') : false;
+    out.third = await rsRow(first, 2);
+    out.addLeft = await page.locator('#add-field-of-study-autocompletes-add-btn').count();
+    out.honorsRows = await page.locator('[aria-labelledby="honors-label-0"]').count();
+    await page.evaluate(markRoot, 'form');
+    out.snap = await page.evaluate(collectForm);
+    return out;
+  });
+  assert.deepEqual([r.row0, r.cs, r.row1, r.math, r.third, r.addLeft, r.honorsRows], ['field-of-study-label-0-0', true, 'field-of-study-label-0-1', true, null, 0, 1]);
+  const rows = r.snap.fields.filter((f) => f.label === 'Field of Study (Max 2)* ?');
+  assert.deepEqual(rows.map((f) => [f.value, f.rs_group]), [['Computer Science', 'field-of-study-label-0'], ['Mathematics', 'field-of-study-label-0']]);
+  const plan = planFill(r.snap.fields, rs1DomBank, { cv: '/tmp/cv.pdf', jobAnswers: { ...RS1_ANSWERS, 'field of study (max 2)': 'Computer Science | Mathematics' } });
+  const keys = new Set(rows.map((f) => f.key));
+  assert.ok(!plan.actions.some((a) => keys.has(a.key)));
+  assert.ok(!plan.missing.some((m) => keys.has(m.key)));
 });

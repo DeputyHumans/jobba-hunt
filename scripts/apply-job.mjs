@@ -48,7 +48,7 @@ import { collectDiceView, settle as diceSettle, signedInAtHome, DICE_SEL, DICE_P
 import { diceApplyTypeOf, diceAlreadyApplied, classifyDicePage, isDiceId, diceGuid, diceJobUrl } from './lib/dice-extract.mjs';
 import { invalidReport, markRoot, collectForm, passInterstitial, stuckReport, diceSlot, workdayPage, safeHtml, workdayFields, walmartPage, WALMART_SEL, icimsPage, ICIMS_SEL } from './lib/apply-dom.mjs';
 import { normLabel, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, optInBoxesChecked, challengeIn, REDIRECT_HOST, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, ashbyFromJid, eeoPick, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, afterSubmit, afterStuck, settledAfterChallenge, typeaheadIndex, stuckReason, comboOutcome, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayPlan, workdayAdds, workdayHistory, variantForCv, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan, COOKIE_DECLINE } from './lib/apply-forms.mjs';
-import { checkLabelRadio, typeText, pickWidget, setBox, pressToggle, clickSubmit, tickGroupOption, tickGroupOptions, enterCode, selectResumeRow, menuOptions, wdListOptions, wdPickList, wdPickPrompt, wdTypeDate, wdAddEntry, wdCheckOption, framed, icimsPick, icimsPickOther, awaitReload, RELOAD_TAG } from './lib/apply-click.mjs';
+import { checkLabelRadio, typeText, pickWidget, setBox, pressToggle, clickSubmit, tickGroupOption, tickGroupOptions, enterCode, selectResumeRow, menuOptions, wdListOptions, wdPickList, wdPickPrompt, wdTypeDate, wdAddEntry, wdCheckOption, framed, icimsPick, icimsPickOther, rsPick, rsPickOther, rsShown, rsRow, awaitReload, RELOAD_TAG } from './lib/apply-click.mjs';
 import { CV_SRC, COLLATERAL_DIR, DATA_DIR, display, resolveArgPath } from './lib/paths.mjs';
 import { configFile, loadConfig, loadOwnConfig, readJsonFile, requireWorkspace, saveConfig, writeJsonAtomic } from './lib/config.mjs';
 import { ANSWERS_PATH, answers, applicationEmail, preferences, schedule, tz } from './lib/profile.mjs';
@@ -258,7 +258,7 @@ async function fill(page, actions) {
   const skipped = [];
   for (const a of actions) {
     if (!(await page.locator(`[data-hunt-key="${a.key}"]`).count())) { skipped.push(a); continue; }
-    try { await fillOne(page, a); } catch (err) { throw new Error(`${a.key} (${a.source}, ${a.action}): ${err.message}`); }
+    try { await fillOne(page, a); } catch (err) { throw Object.assign(new Error(`${a.key} (${a.source}, ${a.action}): ${err.message}`), err.needs ? { needs: err.needs } : {}); }
   }
   return skipped;
 }
@@ -272,6 +272,34 @@ async function fillOne(page, a) {
     // A react-widgets dropdown (Paylocity SMS consent): open, pick, confirm.
     // An EEO menu (Rippling: "Veteran Status" lists "I am not a protected veteran") is
     // chosen by eeoPick from the options it shows when opened.
+    else if (a.action === 'pick' && (await loc.evaluate((el) => !!el.closest('.Select-control')).catch(() => false))) {
+      // A react-select v1 list: searched and picked; typed text alone is dropped on blur. An answer the
+      // list lacks takes its Other entry with the answer typed in the box that appears. An optional list
+      // neither can answer is left blank. Several values (a.values, "Computer Science | Mathematics" for
+      // a "Field of Study (Max 2)" list) go one per row, the rows after the first added with the field's
+      // Add button.
+      const values = a.values?.length ? a.values : [a.value];
+      for (const [i, v] of values.entries()) {
+        const row = i === 0 ? loc : await rsRow(loc, i);
+        const seen = [];
+        let took = !!row && (await rsPick(row, v, a.eeo ? { choose: (texts) => eeoPick(texts, a.eeo, bank.eeo), seen } : { seen }));
+        const lists = seen.map((x) => `"${x.search}": ${x.options.join(' | ') || 'nothing'}`).join('; ');
+        if (row && !took && !a.eeo && (took = await rsPickOther(row, v))) log(`react-select ${a.key}: "${v}" is not in the list (${lists}); picked its Other entry and typed it in the box that appeared`);
+        if (took) { log(`react-select ${a.key}${values.length > 1 ? ` row ${i + 1}` : ''}: shows "${(await rsShown(row)).join('; ')}"`); continue; }
+        if (a.optional) { log(`react-select ${a.key}: "${v}" not in the list and no Other entry${row ? '' : ' (no row for it)'}; optional, left blank (${lists})`); continue; }
+        // A required list that neither lists the answer nor takes it through an Other box (a Field of
+        // Study list without the major, whose Other entry brings no box) is the operator's call: asked,
+        // with the nearest options.
+        const label = await loc.evaluate((el) => ((el.labels && el.labels[0] && el.labels[0].innerText) || (el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean).map((id) => document.getElementById(id)?.innerText || '').join(' ')).replace(/\s+/g, ' ').trim()).catch(() => a.key);
+        // The last word's search first: its options are the nearest ("Linguistics" before a dozen
+        // "Applied ..." fields).
+        const near = [...new Set(seen.slice(1).reverse().flatMap((x) => x.options))].slice(0, 12);
+        const why = row ? `"${v}" is not in the list and its Other entry has no box` : `no row ${i + 1} for "${v}" (the list holds no more values)`;
+        const err = new Error(`list "${v}": ${why} (${lists || 'not searched'})`);
+        err.needs = [{ key: a.key, label, kind: 'select', options: near, reason: `no-matching-option: ${why}` }];
+        throw err;
+      }
+    }
     else if (a.action === 'pick') {
       // iCIMS dropdowns: their own widget, searched when the list does not show the answer.
       const icims = await loc.evaluate((el) => el.matches('a.dropdown-select[id$="_icimsDropdown"]')).catch(() => false);
@@ -1329,7 +1357,7 @@ async function atsApply(site) {
     if (plan.actions.some((a) => a.action === 'file')) await site.waitForTimeout(4000);
     const after = await site.evaluate(collectForm);
     // The fields as the fill left them (a picked list shows its choice here, not in step<N>-fields.json).
-    writeFileSync(join(outDir, `step${step}-fields-filled.json`), JSON.stringify(after.fields.map((f) => ({ key: f.key, id: f.id, label: f.label, kind: f.kind, required: f.required, value: /phone|mobile|birth|street|address line/i.test(f.label) ? (f.value ? '[masked]' : '') : f.value })), null, 1));
+    writeFileSync(join(outDir, `step${step}-fields-filled.json`), JSON.stringify(after.fields.map((f) => ({ key: f.key, id: f.id, label: f.label, kind: f.kind, required: f.required, value: /phone|mobile|birth|street|address line/i.test(f.label) ? (f.value ? '[masked]' : '') : f.value, ...(f.other_text != null ? { other_text: f.other_text } : {}) })), null, 1));
     await screenshot(site, `step${step}-filled`);
     // Walmart: Next on a questionnaire page, Submit only on the review page (walmartNav). A review whose
     // cart holds other jobs too is never sent: one Submit applies to all of them.
@@ -2203,6 +2231,9 @@ try {
   await screenshot(page, 'error').catch(() => {});
   [code, result] = submitClicked
     ? [6, { outcome: 'submit-unverified', detail: `error after Submit was clicked: ${err.message.slice(0, 250)}. Check ${dice ? 'Dice > Applied Jobs' : 'LinkedIn > My jobs > Applied'} by hand; never retry` }]
+    // A fill that needs the operator's answer (a list without the answer, fillOne): asked like any open
+    // question, nothing sent.
+    : err.needs ? [4, { outcome: 'needs_answers', detail: err.needs, ...(reachedAts ? { ats_url: reachedAts } : {}) }]
     : [1, { outcome: 'error', detail: err.message.slice(0, 300), ...(reachedAts ? { ats_url: reachedAts } : {}) }];
 } finally {
   await context.close().catch(() => {});

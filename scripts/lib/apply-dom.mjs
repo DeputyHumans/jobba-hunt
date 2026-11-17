@@ -277,6 +277,26 @@ export function collectForm() {
     // react-select's validation shadow (Greenhouse 2026): an aria-hidden input no one
     // can focus, next to the real combobox. It is not a question.
     if (el.getAttribute('aria-hidden') === 'true' && el.tabIndex < 0 && !['radio', 'checkbox', 'file'].includes(type)) continue;
+    // react-select v1: the search input in div.Select > div.Select-control is a list, not a text box. It
+    // drops typed text on blur (a run that typed University, Degree and Field of Study left all three
+    // empty), so only a picked option counts: the runner searches and picks (widget 'react-select').
+    // Options render only when searched, so none are read here. The choice is the .Select-value-label
+    // text; an Other entry's free text is in the box the runner tagged for this list (other_text).
+    // Required by the * left before the label's tooltip "?" ("University* ?"), or a required field wrapper.
+    const rs = el.closest('.Select-control') ? el.closest('.Select') : null;
+    if (rs) {
+      const raw = rawLabel(el);
+      const key = `f${n++}`;
+      el.setAttribute('data-hunt-key', key);
+      const value = [...rs.querySelectorAll('.Select-value-label')].map((v) => text(v).replace(/\s+/g, ' ').trim()).filter(Boolean).join('; ');
+      const tag = rs.getAttribute('data-hunt-rs');
+      const box = tag ? document.querySelector(`[data-hunt-other-for="${CSS.escape(tag)}"]`) : null;
+      const required = isRequired(el, raw) || /\*\s*\??\s*$/.test(clean(raw)) || !!el.closest('.form-field')?.classList.contains('required');
+      // rs_group: a list drawn as one row per value names every row by the same label ("Field of Study (Max 2)").
+      const group = (el.getAttribute('aria-labelledby') || '').trim();
+      fields.push({ key, kind: 'select', label: clean(raw), required, options: [], value, error: errorNear(el), combobox: true, widget: 'react-select', id: el.id || '', ...(rs.classList.contains('Select--multi') ? { multi: true } : {}), ...(box ? { other_text: box.value || '' } : {}), ...(group ? { rs_group: group } : {}) });
+      continue;
+    }
     // A Yes/No toggle's hidden checkbox (Ashby): the buttons beside it are the question, collected below.
     if (type === 'checkbox' && el.parentElement && el.parentElement.querySelectorAll(':scope > button[aria-pressed]').length >= 2) continue;
     if (type === 'radio') {
@@ -371,7 +391,8 @@ export function collectForm() {
     // each required=""): each box carries the name and the group's label, and planFill asks the
     // group once instead of every unticked box.
     const peers = kind === 'checkbox' && el.name ? root.querySelectorAll(`input[type="checkbox"][name="${CSS.escape(el.name)}"]`).length : 0;
-    fields.push({ key, kind, label: clean(raw), required: isRequired(el, raw), options, value, error: errorNear(el), combobox: el.getAttribute('role') === 'combobox', id: el.id || '', ...(kind === 'file' ? { accept: el.getAttribute('accept') || '' } : {}), ...(peers > 1 ? { group: el.name, group_label: clean(groupLabel(el)) } : {}) });
+    // other_for: the free-text box a react-select list's Other entry brought, tagged by the runner's pick.
+    fields.push({ key, kind, label: clean(raw), required: isRequired(el, raw), options, value, error: errorNear(el), combobox: el.getAttribute('role') === 'combobox', id: el.id || '', ...(kind === 'file' ? { accept: el.getAttribute('accept') || '' } : {}), ...(peers > 1 ? { group: el.name, group_label: clean(groupLabel(el)) } : {}), ...(el.hasAttribute('data-hunt-other-for') ? { other_for: true } : {}) });
   }
   // Yes/No toggles (Ashby): button[aria-pressed] pairs over a hidden checkbox
   // that has a name and no id; the question is the <label for> that name. One radio-style field,

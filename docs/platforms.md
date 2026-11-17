@@ -173,6 +173,15 @@ A new selector starts as unseen. It becomes verified only after a `--headed` run
 | Security code | After Submit the page may ask for an 8-character code mailed from `greenhouse-mail.io` ("Security code for your application"). The prompt can sit after a long EEO block. The code is typed box by box and read back; one retry; a code that never reads back right is never submitted. Codes are never recorded, only the shape of a mismatch | verified 2026-11-05 |
 | Invisible reCAPTCHA | Loaded on most forms. Not a blocker | verified 2026-11-04 |
 
+### Company-site forms (`site:<host>`)
+
+| Surface | Behaviour | Status |
+|---|---|---|
+| react-select v1 lists | `div.Select > div.Select-control` holds the search input (`role=combobox`, named by its id or `aria-labelledby`) and the choice in `.Select-value-label`. The widget drops typed text on blur, so each list is a select field (widget `react-select`, no options until searched, required by the `*` before a help tooltip "?"). Plain v1 rows are `.Select-option`, taken on mousedown; react-virtualized-select drawn over v1 renders `div.VirtualizedSelectOption` rows, taken on click, and only the rows in view of `div.VirtualSelectGrid` exist. `rsPick` sets the search text in the page (the whole answer, then its first and last words, `listSearches`), reads every row (scrolling the grid), takes the option `listChoice` names (the same text, else one loose match such as "Masters" for "Master's Degree", else the one option whose name before " - " says the same words, never "Master of Science"), presses it with dispatched mousedown and click events, and confirms the shown choice. A list with no match can show no menu at all | offline replay; collection seen live in a headed dry run |
+| react-select Other entry | An answer the list lacks takes the list's Other entry and is typed into the free-text box that appears (`rsPickOther`; the box is tagged `data-hunt-other-for` and read back as the list's `other_text`, its own "Other" label never asked). An Other entry that brings no box is cleared again; a required list then stops the run as `needs_answers` with the nearest options; an optional one is left blank. A help tooltip ("please select Other and fill in the blank") is help text, not validation | offline replay |
+| react-select rows per value | A "(Max 2)" list is one react-select per value, every row named by the same `aria-labelledby` (`rs_group`). An answer split on "\|" (`listValues`) is one pick on the first row; each next row is added with the field's "Add ..." button (`rsRow`) and the other rows are covered, not asked | offline replay |
+| Optional "Other" upload | A slot labelled just "Other" beside Resume and Cover Letter is optional and left empty | offline replay |
+
 ### Lever
 
 | Surface | Behaviour | Status |

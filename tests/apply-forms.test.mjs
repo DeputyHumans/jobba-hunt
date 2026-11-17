@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normLabel, classifyLabel, pickOption, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, challengeIn, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, eeoPick, eeoProbe, eeoAnswer, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, pickChoice, eeoCategory, afterSubmit, typeaheadIndex, stuckReason, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayHistory, variantForCv, previousWorkerAnswer, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan, otherOption, afterStuck, settledAfterChallenge, listValues, COOKIE_DECLINE } from '../scripts/lib/apply-forms.mjs';
+  normLabel, classifyLabel, pickOption, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, challengeIn, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, eeoPick, eeoProbe, eeoAnswer, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, pickChoice, eeoCategory, afterSubmit, typeaheadIndex, stuckReason, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayHistory, variantForCv, previousWorkerAnswer, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan, otherOption, afterStuck, settledAfterChallenge, listValues, listChoice, listSearches, COOKIE_DECLINE } from '../scripts/lib/apply-forms.mjs';
 
 // The synthetic persona (tests/fixtures/workspace/profile/answers.json), with the facts these tests
 // depend on spelled out here.
@@ -1507,6 +1507,122 @@ test('listValues: an answer naming several values, split on "|"; one value stays
   assert.deepEqual(listValues(' A |  | B '), ['A', 'B']);
   assert.deepEqual(listValues('Computer Science'), ['Computer Science']);
   assert.deepEqual(listValues(''), []);
+});
+
+// Beside the resume and cover-letter uploads a form can offer an optional slot labelled just "Other". It is
+// left empty, like an optional "Additional Attachments" slot, never asked.
+test('planFill: an optional upload labelled just "Other" is left empty and not asked', () => {
+  const fields = [
+    { key: 'r', kind: 'file', label: 'Resume', required: true },
+    { key: 'c', kind: 'file', label: 'Cover Letter', required: false },
+    { key: 'o', kind: 'file', label: 'Other', required: false },
+  ];
+  const plan = planFill(fields, { profile: {}, facts: {}, learned: [] }, { cv: '/tmp/cv.pdf', coverPdf: '/tmp/letter.pdf' });
+  assert.deepEqual(plan.actions.map((a) => [a.key, a.source]), [['r', 'cv'], ['c', 'cover']]);
+  assert.deepEqual(plan.missing, []);
+});
+
+// Searched education lists (react-select v1): typed text is no value, so the runner searches the list and clicks
+// the option that is the answer. listChoice names it: the same text, else the one option that says the same words
+// without punctuation, "degree" or a plural s. Never a near guess: "Master of Science" is not "Master's Degree",
+// and two loose matches are no choice.
+const RS_SCHOOL = 'Example State University of Science, Technology and Arts';
+test('listChoice: the option that is the answer, exact or loosely the same words, never a near guess', () => {
+  const degrees = ["Bachelor's Degree", 'Master of Arts (MA)', 'Master of Science (MS)', "Master's Degree", 'Other'];
+  assert.equal(listChoice(degrees, "Master's Degree"), "Master's Degree");
+  assert.equal(listChoice(degrees, 'master\u2019s degree'), "Master's Degree");
+  assert.equal(listChoice(['Bachelors', 'Masters', 'Doctorate'], "Master's Degree"), 'Masters');
+  assert.equal(listChoice(["Master's", 'Masters Degree'], "Master's Degree"), null, 'two loose matches: ambiguous');
+  assert.equal(listChoice(['Master of Science (MS)', 'Master of Arts (MA)'], "Master's Degree"), null);
+  assert.equal(listChoice(['Example State University', RS_SCHOOL], RS_SCHOOL), RS_SCHOOL);
+  assert.equal(listChoice(['Example State University'], RS_SCHOOL), null);
+  assert.equal(listChoice(['Applied Mathematics', 'Computer Science'], 'Applied Linguistics'), null);
+  assert.equal(listChoice([], 'Applied Linguistics'), null);
+  assert.equal(listChoice(['Other'], ''), null);
+});
+
+// A University list can write a school as "<name> - <abbreviation> - <country>": the answer is the one option
+// whose name segment says the same words.
+test('listChoice: a "<name> - <abbreviation> - <country>" option is the answer when its name segment is, and only one is', () => {
+  const unis = ['Northern Example State University - NESU - Freedonia', 'Example State University of Science Technology and Arts - ESUSTA - Freedonia', 'Example State University of Railway Engineering - ESURE - Freedonia'];
+  assert.equal(listChoice(unis, RS_SCHOOL), 'Example State University of Science Technology and Arts - ESUSTA - Freedonia');
+  assert.equal(listChoice(unis, 'Example State University'), null, 'Northern Example State University is another school');
+  assert.equal(listChoice(['Example Polytechnic University - US', 'Example Polytechnic University - Online - US'], 'Example Polytechnic University'), null, 'two name matches: ambiguous');
+  assert.equal(listChoice(['Example State University - Freedonia', 'Example State University Branch 1 - Freedonia'], 'Example State University'), 'Example State University - Freedonia');
+});
+
+// The searches typed into such a list: the whole answer first, then its first and last words (a possessive
+// dropped), so a list that words the option a little differently still shows its near options.
+test('listSearches: the whole answer, then short searches from its first and last words (3+ letters), so a miss shows the nearest options', () => {
+  assert.deepEqual(listSearches(RS_SCHOOL), [RS_SCHOOL, 'Example', 'Arts']);
+  assert.deepEqual(listSearches("Master's Degree"), ["Master's Degree", 'Master', 'Degree']);
+  assert.deepEqual(listSearches('Applied Linguistics'), ['Applied Linguistics', 'Applied', 'Linguistics']);
+  assert.deepEqual(listSearches('Other'), ['Other']);
+  assert.deepEqual(listSearches('MS in CS'), ['MS in CS'], 'a first word under 3 letters is no search');
+});
+
+// The fields as collectForm reads a react-select v1 education block, and the job's answers (keys are normLabel).
+const RS_JOB = { university: RS_SCHOOL, 'degree status': 'Graduated', 'field of study (max 2)': 'Applied Linguistics', 'honors: (max 2)': '', other: '' };
+const rsBank = { profile: {}, facts: {}, eeo: 'decline', learned: [{ label: 'degree', answer: "Master's Degree", source: 'test' }] };
+const rsField = (key, label, required, extra = {}) => ({ key, kind: 'select', label, required, options: [], value: '', combobox: true, widget: 'react-select', ...extra });
+test('planFill: react-select lists take a pick of the answer; a blank optional list (Honors) and an unanswered one (award) are not touched', () => {
+  const fields = [
+    rsField('u', 'University* ?', true, { id: 'university-autocomplete-input-0' }),
+    { key: 's', kind: 'select', label: 'Degree Status* ?', required: true, options: ['Select', 'Graduated', 'Incomplete'], value: '' },
+    rsField('d', 'Degree* ?', true, { id: 'degree-autocomplete-field-0' }),
+    rsField('f', 'Field of Study (Max 2)* ?', true),
+    rsField('h', 'Honors: (Max 2) ?', false),
+    rsField('a', 'Name of award/accomplishment', false),
+  ];
+  const plan = planFill(fields, rsBank, { jobAnswers: RS_JOB });
+  assert.deepEqual(plan.actions.map((x) => [x.key, x.action, x.value, x.source]), [
+    ['u', 'pick', RS_SCHOOL, 'job'],
+    ['s', 'select', 'Graduated', 'job'],
+    ['d', 'pick', "Master's Degree", 'learned'],
+    ['f', 'pick', 'Applied Linguistics', 'job'],
+  ]);
+  assert.deepEqual(plan.missing, []);
+  // An optional list the bank answers is picked as optional: a miss there leaves it blank.
+  const opt = planFill([rsField('h', 'Honors: (Max 2) ?', false)], rsBank, { jobAnswers: { 'honors: (max 2)': 'Cum Laude' } });
+  assert.deepEqual(opt.actions.map((x) => [x.key, x.action, x.optional]), [['h', 'pick', true]]);
+});
+
+test('planFill: a react-select list already showing the answer (or a loose match of it, or Other with the answer in its box) is not picked again; the Other box the pick typed into is not asked', () => {
+  const fields = [
+    rsField('u', 'University* ?', true, { value: 'Other', other_text: RS_SCHOOL }),
+    { key: 'ub', kind: 'text', label: 'Other', required: true, options: [], value: RS_SCHOOL, other_for: true },
+    rsField('d', 'Degree* ?', true, { value: 'Masters' }),
+    rsField('f', 'Field of Study (Max 2)* ?', true, { value: 'Other', other_text: 'Applied Linguistics' }),
+    { key: 'fb', kind: 'text', label: 'Other', required: true, options: [], value: 'Applied Linguistics', other_for: true },
+  ];
+  const plan = planFill(fields, rsBank, { jobAnswers: RS_JOB });
+  assert.deepEqual(plan.actions, []);
+  assert.deepEqual(plan.missing, []);
+  // Other with an empty box is not the answer yet: picked again.
+  const again = planFill([rsField('f', 'Field of Study (Max 2)* ?', true, { value: 'Other', other_text: '' })], rsBank, { jobAnswers: RS_JOB });
+  assert.deepEqual(again.actions.map((x) => [x.key, x.action]), [['f', 'pick']]);
+});
+
+// A "Field of Study (Max 2)" list can take two values, stored in the job answers as "Computer Science |
+// Mathematics". Such a list is one react-select per value, every row named by the same label (rs_group); a second
+// row comes from the field's "Add Field of Study" button.
+test('planFill: a two-value answer for a "(Max 2)" list is one pick on its first row with both values; its other rows are covered, not asked; rows already holding both values take no action', () => {
+  const job = { ...RS_JOB, 'field of study (max 2)': 'Computer Science | Mathematics' };
+  const row = (key, value = '') => rsField(key, 'Field of Study (Max 2)* ?', true, { rs_group: 'field-of-study-label-0', value });
+  const one = planFill([row('f1')], rsBank, { jobAnswers: job });
+  assert.deepEqual(one.actions.map((x) => [x.key, x.action, x.value, x.values]), [['f1', 'pick', 'Computer Science | Mathematics', ['Computer Science', 'Mathematics']]]);
+  assert.deepEqual(one.missing, []);
+  const two = planFill([row('f1'), row('f2')], rsBank, { jobAnswers: job });
+  assert.deepEqual(two.actions.map((x) => [x.key, x.values]), [['f1', ['Computer Science', 'Mathematics']]]);
+  assert.deepEqual(two.missing, []);
+  assert.deepEqual(two.covered, ['f2']);
+  const partly = planFill([row('f1', 'Computer Science')], rsBank, { jobAnswers: job });
+  assert.deepEqual(partly.actions.map((x) => x.key), ['f1'], 'one of two values held: picked again');
+  const done = planFill([row('f1', 'Computer Science'), row('f2', 'Mathematics')], rsBank, { jobAnswers: job });
+  assert.deepEqual([done.actions, done.missing], [[], []]);
+  // One value keeps the one-row path: no values list.
+  const single = planFill([row('f1')], rsBank, { jobAnswers: RS_JOB });
+  assert.deepEqual(single.actions.map((x) => [x.key, x.value, x.values]), [['f1', 'Applied Linguistics', undefined]]);
 });
 
 test('planFill: a checkbox group answered with several values is one action that ticks each of them; a value the group lacks asks it; a group already holding them is left alone', () => {
