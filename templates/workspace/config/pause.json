@@ -1,0 +1,7 @@
+{
+  "_comment": "The hunt-wide pause. paused true: live ticks view nothing (exit 4, next try in an hour), auto-apply stops and the runner refuses real submits; dry runs still run. Set by the user only (reason, since as YYYY-MM-DD, by), and lifted only by the user.",
+  "paused": false,
+  "reason": null,
+  "since": null,
+  "by": null
+}

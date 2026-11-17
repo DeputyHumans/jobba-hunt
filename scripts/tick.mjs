@@ -12,7 +12,7 @@
 //
 // Exit codes: 0 done (incl. budget exhausted), 1 aborted by a guard (state halted until
 // the next reset_hour, or 7 days on a checkpoint), 2 refused (a cap, or the query set is not
-// verified yet), 3 profile busy (skip, never retry in a loop), 4 outside the tick window,
+// verified yet), 3 profile busy (skip, never retry in a loop), 4 outside the tick window or paused (config/pause.json),
 // 5 halted by an earlier abort. The last stdout line is JSON with next_delay_seconds for
 // ScheduleWakeup.
 
@@ -31,6 +31,7 @@ import { loadConfig, loadSearchConfig } from './lib/config.mjs';
 import { display } from './lib/paths.mjs';
 import { schedule } from './lib/profile.mjs';
 import { logAction } from './lib/actions-log.mjs';
+import { readPause } from './lib/pause.mjs';
 
 const log = (s) => process.stderr.write(`${s}\n`);
 
@@ -49,6 +50,14 @@ if (isHalted(state, nowMs)) {
   log(`HALTED until ${state.halt_until} (an earlier abort). No override exists, by design.`);
   finish(5, { success: false, halted: true, halt_until: state.halt_until });
 }
+// The hunt-wide pause (config/pause.json): a live tick views nothing, reads like closed hours and
+// comes back in an hour (the loop then runs only the inbox and the tracker). A dry run still plans.
+const paused = readPause();
+if (paused?.paused && !flags['dry-run']) {
+  log(`PAUSED: ${paused.reason || 'no reason given'} (config/pause.json, since ${paused.since || '?'}). Nothing viewed.`);
+  out({ success: true, closed: true, paused: true, reason: paused.reason || null, next_delay_seconds: 3600 });
+  process.exit(4);
+}
 // A halt that has run out is cleared by the first live tick that ends without a new abort.
 const expiredHalt = state.halt_until || null;
 if (!isOpen(nowMs, T)) {
@@ -65,7 +74,7 @@ log(`tick | ${pick.kind} ${pick.id} | f_TPR=r${pick.tprSeconds} (${(pick.tprSeco
 
 if (flags['dry-run']) {
   log(`  ${pick.keywords}\n  ${url}\nDRY RUN. No browser launched, no state written.${cfg.verified ? '' : '\nNOTE: config/searches.json is not verified (probe pending): a live tick refuses.'}`);
-  finish(0, { success: true, dry_run: true, verified: !!cfg.verified, now: new Date(nowMs).toISOString(), pick: { kind: pick.kind, id: pick.id, tpr_seconds: pick.tprSeconds, url }, view_budget: viewBudget });
+  finish(0, { success: true, dry_run: true, paused: !!paused?.paused, verified: !!cfg.verified, now: new Date(nowMs).toISOString(), pick: { kind: pick.kind, id: pick.id, tpr_seconds: pick.tprSeconds, url }, view_budget: viewBudget });
 }
 
 // The query set comes from a query probe (/hunt-probe). Until a probe marks it verified, a live

@@ -299,3 +299,15 @@ test('approveDocs: records the approval and the user\'s words, needs a note, and
   recordAttempt(s, id, { mode: 'submit', outcome: 'submitted' }, T);
   assert.throws(() => approveDocs(s, id, { note: 'approve' }, T), /already submitted/);
 });
+
+test('pause: no real submit and no auto-apply while paused; dry runs still allowed', () => {
+  const s = pursued();
+  applyDecision(s, '9000000050', 'pursue', '', T);
+  approveApplication(s, '9000000050', { cv: 'x.pdf', note: 'Apply' }, T);
+  const pause = { paused: true, reason: 'CV refresh' };
+  assert.equal(applyGate(s.jobs['9000000050'], { dryRun: false, pause }), 'paused: CV refresh');
+  assert.equal(applyGate(s.jobs['9000000050'], { dryRun: true, pause }), null);
+  assert.equal(applyGate(s.jobs['9000000050'], { dryRun: false, pause: { paused: false } }), null);
+  assert.deepEqual(autoApplyBlockers(autoJob(), RULE, ok), []);
+  assert.deepEqual(autoApplyBlockers(autoJob(), RULE, { ...ok, pause }), ['submissions paused: CV refresh']);
+});

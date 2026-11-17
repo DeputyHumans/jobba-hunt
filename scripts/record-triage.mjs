@@ -28,6 +28,7 @@ import { CODE_ROOT, CV_OUT, CV_SRC, DATA_DIR, SCRIPTS_DIR, display, resolveArgPa
 import { loadConfig } from './lib/config.mjs';
 import { cvFileBase, preferences } from './lib/profile.mjs';
 import { logAction } from './lib/actions-log.mjs';
+import { readPause } from './lib/pause.mjs';
 import { pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, recordAttempt, autoApplyBlockers, markNotSent } from './lib/triage.mjs';
 
 const { positional, flags } = parseArgs(process.argv.slice(2));
@@ -155,7 +156,7 @@ if (cmd === 'pending') {
   // A company-site role ("external") is resolved to its ATS only at submit time; the runner
   // submits only on a verified ATS (config/apply.json verified) and hands anything else to the user.
   const type = j.detail?.apply?.type;
-  const blockers = autoApplyBlockers(j, rule, { coverage, cvExists: !!cvAbs && existsSync(cvAbs), verified: type === 'external' ? true : !!cfg.verified?.[type] });
+  const blockers = autoApplyBlockers(j, rule, { coverage, cvExists: !!cvAbs && existsSync(cvAbs), verified: type === 'external' ? true : !!cfg.verified?.[type], pause: readPause() });
   blockers.push(...extra);
   if (rule && rule.enabled !== true && !blockers.some((b) => b.startsWith('auto-apply is off'))) blockers.unshift('auto-apply is off (config/apply.json auto_apply.enabled)');
   // A channel whose rule says "generated" goes out only with a claims-only cover letter PDF

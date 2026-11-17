@@ -115,8 +115,10 @@ export function approveDocs(state, id, { note }, now) {
 // role that meets every condition is pursued and approved without a question; any blocker
 // sends it back to the user. The caller measures CV coverage and checks the file and the
 // channel flag.
-export function autoApplyBlockers(j, rule, { coverage = null, cvExists = false, verified = false } = {}) {
+export function autoApplyBlockers(j, rule, { coverage = null, cvExists = false, verified = false, pause = null } = {}) {
   if (!rule) return ['no auto_apply rule in config/apply.json'];
+  // The hunt-wide pause (config/pause.json) stops auto-apply before anything else.
+  if (pause?.paused) return [`submissions paused: ${pause.reason || 'no reason given'}`];
   const b = [];
   if (rule.enabled === false) b.push('auto-apply is off (config/apply.json auto_apply.enabled)');
   const t = j?.triage;
@@ -144,8 +146,10 @@ export function autoApplyBlockers(j, rule, { coverage = null, cvExists = false, 
   return b;
 }
 
-export function applyGate(j, { dryRun }) {
+export function applyGate(j, { dryRun, pause = null }) {
   if (j?.triage?.decision !== 'pursue') return 'not-pursued';
+  // While paused (config/pause.json) nothing is sent; a dry run still runs.
+  if (!dryRun && pause?.paused) return `paused: ${pause.reason || 'no reason given'}`;
   if (FINAL.has(j.application?.status)) return 'already-applied';
   if (!dryRun && !j.application?.approved_at) return 'not-approved';
   return null;

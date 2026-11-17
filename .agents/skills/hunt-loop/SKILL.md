@@ -24,6 +24,13 @@ With `publisher: bikeshed` and `watch.enabled` true, keep a Monitor on `npm run 
 - `error: "auth"`: tell the operator once to run `npm run bikeshed -- login`. `error: "failed"`: note it once in the digest.
 - With `publisher: local` or `watch.enabled` false, `npm run watch` exits at once: there are no comments to watch.
 
+## Paused (`workspace/config/pause.json`)
+While `pause.json` says `"paused": true` (set only on the operator's word, with `reason`, `since` and `by`):
+- The ticks return `{closed: true, paused: true}` with exit 4 and view nothing. Run step 4c (inbox) and step 5 (tracker) only, then schedule the next firing in an hour.
+- `record-triage auto` blocks every role ("submissions paused") and `npm run apply` refuses real submits. Dry runs still work; run one only when the operator asks.
+- Ask nothing about roles. Keep the comment watch running.
+- Only the operator lifts the pause: set `"paused": false` on their word and add a `profile/decisions.md` row.
+
 ## Each firing
 
 ### 1. LinkedIn tick (once per firing, never retried)
@@ -35,7 +42,7 @@ Run `npm run -s tick` (Bash timeout 600000). The last stdout line is JSON with `
 | 1 | Aborted by a guard; LinkedIn is halted (`halt_until`) | PushNotification: "LinkedIn halted: `<aborted>` until `<halt_until>`". Follow `docs/runbook.md` section 5. On `checkpoint` or `login-lost`, ask the operator to run `npm run jobs -- login` in their own terminal. Then step 1b |
 | 2 | Refused: a cap, or `cap: not-verified` (no probe has verified the query set) | Step 1b |
 | 3 | `profileBusy`: another process holds the browser profile | Step 1b |
-| 4 | Outside the tick window | Steps 5 and 6, noop (Dice keeps the same hours) |
+| 4 | Outside the tick window, or `paused: true` in the JSON | Steps 5 and 6, noop (Dice keeps the same hours). Paused: the Paused section above |
 | 5 | Halted by an earlier abort | Step 1b |
 
 ### 1b. Dice tick (once per firing, after step 1, never retried)

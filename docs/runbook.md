@@ -112,6 +112,7 @@ Never wrap the apply runner in a shell `timeout`: a kill after Submit is clicked
 - **Duration:** until the next `schedule.reset_hour` in `schedule.tz`, or 7 days after a checkpoint. Every script honours it.
 - **Early clearing:** only on the operator's explicit instruction in the session, never an agent's judgment. Each clearing gets a digest line, a `profile/decisions.md` row and an action-log entry.
 - **Loop stop:** both platforms halted for more than a day.
+- **Pause (the user's switch, not a halt):** `config/pause.json` `"paused": true` with `reason`, `since` and `by`. Live ticks view nothing (exit 4, next try in an hour), auto-apply stops, and the runner refuses real submits; dry runs still run. Set and lifted only on the user's word, each time with a `profile/decisions.md` row.
 - **Cap override:** only on the operator's explicit instruction, only for the run the operator names. Point `JOBBA_LIMITS_LOG` at a copy of the real limiter log with only that cap's entries for today removed (every other cap stays in force), run, then merge the new entries into the real log tagged `cap_override`. Never a force flag, a same-day re-run after an abort, parallel searches or a retry loop.
 - **After a checkpoint:** re-login by hand, halve the caps, one headed watched tick, then the loop.
 
