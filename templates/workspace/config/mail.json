@@ -61,7 +61,8 @@
     "principal",
     "senior",
     "director",
-    "manager"
+    "manager",
+    "cto"
   ],
   "security": {
     "senders": [

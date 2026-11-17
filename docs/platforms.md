@@ -35,14 +35,14 @@ A new selector starts as unseen. It becomes verified only after a `--headed` run
 | Param | Meaning | Status |
 |---|---|---|
 | `f_TPR=r<seconds>` | Posted window | verified 2026-10-26 |
-| `f_WT=2` | Remote (classic only) | verified 2026-10-26 |
-| `f_JT=C,P` | Contract, Part-time | verified 2026-10-26 |
+| `f_WT=2` | Remote (classic only; dropped by the classic redirect below) | verified 2026-10-26 |
+| `f_JT=C,P` | Contract, Part-time (dropped by the classic redirect below) | verified 2026-10-26 |
 | `geoId=103644278` | United States. Metro geoIds come from the UI's location field | verified 2026-10-26 |
-| `sortBy=DD` | Most recent (classic only) | verified 2026-10-26 |
+| `sortBy=DD` | Most recent (classic only; dropped by the classic redirect below) | verified 2026-10-26 |
 | `f_E=5,6` | Director, Executive | verified 2026-10-26 |
 | `/jobs/search-results/` (AI search) | Keeps `keywords`, `geoId`, `f_TPR`. Strips `f_WT` and `sortBy`. Ignores quotes | verified 2026-10-26 |
 | AI search remote and employment-type codes | Unknown. One manual click in the UI each; automation never clicks filters | unseen |
-| `/jobs/search/` (classic) | Works. LinkedIn shows a banner retiring classic search: watch weekly (`docs/runbook.md`) | verified 2026-10-26 |
+| `/jobs/search/` (classic) | **Redirects to `/jobs/search-results/`** (the AI search) in probes since 2026-11-05. The final URL keeps `keywords`, `geoId` and `f_TPR` and drops `f_JT`, `f_WT` and `sortBy`, so a classic query's filters no longer apply: the prefilter's G2 is the only remote check. Treat it as the classic-search watch event (`docs/runbook.md`): a probe moves the classic queries to the AI search. Check the final URL of a probe, not the one requested | redirect seen 2026-11-17 |
 
 ### Selectors (`JOBS_SEL` in `scripts/linkedin-jobs.mjs`)
 
