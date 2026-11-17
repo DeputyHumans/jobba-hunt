@@ -206,6 +206,21 @@ export function holdApplication(state, id, { note }, now) {
   return j;
 }
 
+// Withdraw an approved, unsent application: it leaves the runner's reach for good and the role
+// is skipped. A sent application is never touched.
+export function withdrawApplication(state, id, { note }, now) {
+  const j = state.jobs[id];
+  if (!j) throw new Error(`unknown job ${id}`);
+  if (FINAL.has(j.application?.status)) throw new Error(`job ${id} is already ${j.application.status}`);
+  if (typeof note !== 'string' || !note.trim()) throw new Error('pass --note with the reason for the withdrawal');
+  j.application = { ...(j.application || {}), attempts: j.application?.attempts || [], status: 'withdrawn', withdrawn_at: now };
+  delete j.application.approved_at;
+  j.application.attempts = [...j.application.attempts, { at: now, mode: 'withdraw', outcome: 'withdrawn', channel: null, detail: note.trim(), dir: null }];
+  if (j.triage) { j.triage.decision = 'skip'; j.triage.decided_at = now; j.triage.note = note.trim(); }
+  j.status = 'skipped';
+  return j;
+}
+
 export function recordAttempt(state, id, { mode, outcome, detail = null, dir = null, channel = null }, now) {
   const j = state.jobs[id];
   j.application = j.application || { status: 'open', attempts: [] };

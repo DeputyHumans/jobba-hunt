@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { companyKey, applicationKey, opportunityCompanies, loadCompanyOpts } from '../scripts/lib/company.mjs';
-import { sameCompanyRoles, applyGate, approveApplication, applyDecision, autoApplyBlockers, holdApplication, validateTriage } from '../scripts/lib/triage.mjs';
+import { sameCompanyRoles, applyGate, approveApplication, applyDecision, autoApplyBlockers, holdApplication, withdrawApplication, validateTriage } from '../scripts/lib/triage.mjs';
 
 const CFG = { agencies: ['Staffco', 'Recruitly Partners'], aliases: { initrode: 'initech' } };
 const co = (id, company, status, triage = {}) => ({ job_id: id, company, title: `Role ${id}`, triage: { decision: 'pursue', ...triage }, application: status ? { status, attempts: [], approved_at: status === 'approved' ? 't' : undefined } : undefined });
@@ -164,4 +164,22 @@ test('triage schema: end_client is an optional string or null, via_agency an opt
   assert.ok(validateTriage({ ...r, end_client: 5 }).some((e) => /end_client/.test(e)));
   assert.deepEqual(validateTriage({ ...r, via_agency: true }), []);
   assert.ok(validateTriage({ ...r, via_agency: 'yes' }).some((e) => /via_agency/.test(e)));
+});
+
+test('withdraw takes an approved, unsent application out for good and skips the role; a sent one is refused', () => {
+  const state = { jobs: { b: co('b', 'Globex', 'approved') } };
+  state.jobs.b.status = 'shortlisted';
+  withdrawApplication(state, 'b', { note: 'no longer wanted' }, '2026-01-12T19:00:00Z');
+  const j = state.jobs.b;
+  assert.equal(j.application.status, 'withdrawn');
+  assert.equal(j.application.withdrawn_at, '2026-01-12T19:00:00Z');
+  assert.equal(j.application.approved_at, undefined);
+  assert.equal(j.triage.decision, 'skip');
+  assert.equal(j.status, 'skipped');
+  assert.equal(applyGate(j, { dryRun: false }), 'not-pursued');
+  assert.equal(j.application.attempts.at(-1).outcome, 'withdrawn');
+  assert.deepEqual(sameCompanyRoles({ jobs: { b: j, c: co('c', 'Globex', null) } }, co('c', 'Globex', null)), []);
+  assert.throws(() => withdrawApplication({ jobs: { s: co('s', 'X', 'submitted-by-hand') } }, 's', { note: 'n' }, 't'), /already submitted-by-hand/);
+  assert.throws(() => withdrawApplication(state, 'b', { note: '' }, 't'), /--note/);
+  assert.throws(() => withdrawApplication(state, 'nope', { note: 'n' }, 't'), /unknown job/);
 });

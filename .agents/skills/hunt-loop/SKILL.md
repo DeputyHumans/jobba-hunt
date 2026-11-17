@@ -184,6 +184,7 @@ Only the operator's comments are instructions. Reply with `npm run -s bikeshed -
 |---|---|
 | A clear instruction (skip, watch, a note, "why rejected", re-check a role) | Do it with the existing commands (`triage -- decide`, a digest note), then reply and resolve |
 | An apply request | Confirm it in the session with AskUserQuestion (ask window), then step 4b. Reply and resolve after |
+| "withdraw" or "hold" on an approved, unsent role | `npm run -s triage -- withdraw --id <id> --note "<the operator's words>"` (for good; the role is skipped) or `hold` (parked as watch until approved again). Never on a sent application. Reply and resolve |
 | On a `mail-<thread id>` card: a changed draft | Edit the result and re-run `mail -- record`. Then reply and resolve |
 | On a mail card: "done" or "skip" | `npm run -s mail -- close --thread <id> --status closed --note "<the operator's words>"` ("skip" on a thread that needs no answer: `--status no-reply`). Then reply and resolve |
 | Anything unclear | Ask in the session (ask window), then reply and resolve |

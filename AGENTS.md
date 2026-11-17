@@ -11,7 +11,7 @@ Entry point for any coding agent (Codex, OpenCode, Cursor, Pi, Antigravity, Clau
 | Skill | Commands it runs | Harness features it needs |
 |---|---|---|
 | `hunt-onboard` | `npm run setup`, `npm run doctor`, `npm run onboard -- init / status / mark / ingest / validate / git-init / mail-guard`, `npm run jobs -- login`, `npm run dice -- login`, `npm run cv -- --all`, `npm run cv-publish`, `npm run tracker -- --publish`, `npm run probe` | asks the operator questions (any chat works) |
-| `hunt-loop` | `npm run tick`, `npm run dice-tick`, `npm run triage -- auto / decide / approve / approve-docs / hold`, `npm run tailor -- <step> --job <id>`, `npm run cover`, `npm run apply`, `npm run mail -- pending / record / close`, `npm run tracker -- --publish`, `npm run watch` | **Claude Code**: ScheduleWakeup (self-scheduling), PushNotification, Monitor (comment watch). Elsewhere: run one firing by hand or from your own scheduler |
+| `hunt-loop` | `npm run tick`, `npm run dice-tick`, `npm run triage -- auto / decide / approve / approve-docs / hold / withdraw`, `npm run tailor -- <step> --job <id>`, `npm run cover`, `npm run apply`, `npm run mail -- pending / record / close`, `npm run tracker -- --publish`, `npm run watch` | **Claude Code**: ScheduleWakeup (self-scheduling), PushNotification, Monitor (comment watch). Elsewhere: run one firing by hand or from your own scheduler |
 | `hunt-triage` | `npm run triage -- pending / record / list`, `node scripts/check-calibration.mjs` | none |
 | `hunt-tailor` | `npm run tailor -- prepare / freeze / measure / build / review / status --job <id>`, `npm run cover -- --job <id>`, `npm run triage -- approve-docs --id <id>` | none |
 | `hunt-kit` | `npm run cv -- --match <id>` | web search and fetch |

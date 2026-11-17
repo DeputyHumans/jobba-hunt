@@ -11,6 +11,7 @@
 //       the user approved the tailored CV and letter (review doc comment, or "Apply")
 //   node scripts/record-triage.mjs applied --id <jobId> [--note "..."]      # the user submitted by hand
 //   node scripts/record-triage.mjs hold --id <jobId> --note "..."   # an approved or pursued role leaves the runner (watch)
+//   node scripts/record-triage.mjs withdraw --id <jobId> --note "..."   # an approved, unsent application leaves for good (skip)
 //   node scripts/record-triage.mjs confirm --id <jobId> --evidence <png> [--note "..."]
 //   node scripts/record-triage.mjs not-sent --id <jobId> --evidence <png> --note "<the user's words>"
 //   node scripts/record-triage.mjs auto --id <jobId> [--cover-pdf <pdf>] [--dry-run]
@@ -30,7 +31,7 @@ import { loadConfig } from './lib/config.mjs';
 import { cvFileBase, preferences } from './lib/profile.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { readPause } from './lib/pause.mjs';
-import { pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, recordAttempt, autoApplyBlockers, markNotSent, sameCompanyRoles, holdApplication } from './lib/triage.mjs';
+import { pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, recordAttempt, autoApplyBlockers, markNotSent, sameCompanyRoles, holdApplication, withdrawApplication } from './lib/triage.mjs';
 import { loadCompanyOpts } from './lib/company.mjs';
 
 const { positional, flags } = parseArgs(process.argv.slice(2));
@@ -128,6 +129,16 @@ if (cmd === 'pending') {
     log('triage.held', id, short(j.triage?.note || null), 'user');
     out({ success: true, job_id: id, company: j.company, application: { status: j.application.status } });
   } catch (err) { fail(err.message); }
+} else if (cmd === 'withdraw') {
+  // An approved, unsent application leaves the runner for good and the role is skipped, on the
+  // user's word. A sent application is never touched.
+  const id = String(flags.id || '');
+  try {
+    const j = withdrawApplication(state, id, { note: str(flags.note) || '' }, now);
+    saveStateAtomic(STATE_PATH, state);
+    log('triage.withdrawn', id, short(j.triage?.note || null), 'user');
+    out({ success: true, job_id: id, company: j.company, application: { status: j.application.status } });
+  } catch (err) { fail(err.message); }
 } else if (cmd === 'not-sent') {
   // A submit-unverified run whose screenshot proves nothing was sent, re-opened with the user's
   // OK. Only after this may the runner try once more.
@@ -201,5 +212,5 @@ if (cmd === 'pending') {
   }
   out({ success: true, eligible: true, dry_run: !!flags['dry-run'], ...base });
 } else {
-  fail('usage: record-triage.mjs pending | record --file <f> | decide --id <id> --decision pursue|watch|skip | list [--tier] [--status] | approve --id <id> --cv <pdf> | approve-docs --id <id> --note "..." | applied --id <id> | hold --id <id> --note "..." | confirm --id <id> --evidence <png> | not-sent --id <id> --evidence <png> --note "..." | auto --id <id> [--cover-pdf <pdf>] [--dry-run]');
+  fail('usage: record-triage.mjs pending | record --file <f> | decide --id <id> --decision pursue|watch|skip | list [--tier] [--status] | approve --id <id> --cv <pdf> | approve-docs --id <id> --note "..." | applied --id <id> | hold --id <id> --note "..." | withdraw --id <id> --note "..." | confirm --id <id> --evidence <png> | not-sent --id <id> --evidence <png> --note "..." | auto --id <id> [--cover-pdf <pdf>] [--dry-run]');
 }
