@@ -1,5 +1,6 @@
 // Playwright click helpers for the apply runner, kept apart so real-Chrome tests can drive them.
 import { otherOption, listChoice, listSearches } from './apply-forms.mjs';
+import { phenomPage } from './apply-dom.mjs';
 
 // A styled radio hides its input inside a <label> (appcast, Paylocity). Click the label first;
 // when the label swallows the click, check the input itself, then click it from the page.
@@ -33,6 +34,20 @@ export async function checkLabelRadio(loc, { waitMs = 400 } = {}) {
   return isOn();
 }
 
+// Every alert, confirm, prompt and beforeunload dialog the page raises: recorded ({type, message, at}) and dismissed,
+// never accepted (a confirm is answered Cancel). Playwright dismisses dialogs no one listens for, so a site that
+// refuses Next with alert() (Phenom: "Resume Import is mandatory, ...") left the runner a page that did not move and
+// no message. `since(t)`: the dialogs raised at or after time t (ms).
+export function watchDialogs(page, { onDialog = null } = {}) {
+  const seen = [];
+  page.on('dialog', async (d) => {
+    const entry = { type: d.type(), message: String(d.message() || '').replace(/\s+/g, ' ').trim().slice(0, 500), at: Date.now() };
+    seen.push(entry);
+    await d.dismiss().catch(() => {});
+    if (onDialog) try { onDialog(entry); } catch { /* logging only */ }
+  });
+  return { seen, since: (t) => seen.filter((x) => x.at >= t) };
+}
 
 // Clear a text field and type into it. Playwright's fill timed out on Paylocity's fields after the
 // resume parse ("element is outside of the viewport", 30 s, the run lost). Then
@@ -569,6 +584,41 @@ export async function awaitReload(scope, { tag = RELOAD_TAG, timeoutMs = 20000, 
     await new Promise((r) => setTimeout(r, stepMs));
   }
   return 'same';
+}
+
+// A native <select> set in the page, with no key (Phenom). The humanized selectOption ends every pick with Enter, and
+// Enter inside a form is an implicit submission that clicks the form's first default button: on Phenom's My experience
+// that is the second work entry's untyped "Remove experience", and runs lost that entry. The option goes in through the
+// native value setter, then input and change events (React listens to change). Returns the option's text as the
+// select then shows it, or null when there is no such option.
+export async function selectDirect(loc, index) {
+  return loc.evaluate((el, i) => {
+    const opt = el.options[i];
+    if (!opt) return null;
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, opt.value);
+    if (el.selectedIndex !== i) el.selectedIndex = i;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return (el.options[el.selectedIndex]?.textContent || '').trim();
+  }, index, { timeout: 5000 });
+}
+
+// A Phenom résumé upload: wait until Phenom has the file on record (the form data's resumeRelativePath, rendered into
+// its hidden input) and its loader is gone, then hold still for `quietMs`, past the form's 200 ms debounced update: a
+// field change made while the upload was in flight can write the form data back without the résumé, and Next then
+// refuses with "Resume Import is mandatory, ..." (an alert). Nothing may be typed before this returns. True when the
+// résumé is still on record after the quiet time.
+export async function phenomAwaitResume(scope, { timeoutMs = 60000, stepMs = 500, quietMs = 1200 } = {}) {
+  const read = () => scope.evaluate(phenomPage).catch(() => null);
+  for (const end = Date.now() + timeoutMs; Date.now() < end;) {
+    const p = await read();
+    if (p?.resume?.path && !p.loading) {
+      await new Promise((r) => setTimeout(r, quietMs));
+      return !!(await read())?.resume?.path;
+    }
+    await new Promise((r) => setTimeout(r, stepMs));
+  }
+  return false;
 }
 
 // A searchable iCIMS list that lacks the answer, with an "Other <field>" box beside it

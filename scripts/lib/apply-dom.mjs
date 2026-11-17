@@ -81,6 +81,16 @@ export function collectForm() {
           .filter((n) => n && text(n).trim() && !/^total \d+ files? selected$/i.test(text(n).trim()));
         if (parts.length) return parts.map((n) => text(n).trim()).join(' ') + (parts.some((n) => /\*\s*$/.test(text(n.parentElement).trim())) ? '*' : '');
       }
+      // Phenom's attachment widget: the input sits in a "Select file" label; the slot is named by the section
+      // heading block before the widget ("Additional attachments (Cover Letter, References, etc.) :").
+      const att = el.closest('[class*="additional-attachment"], .attachment-wrapper');
+      if (att) {
+        for (let up = att, i = 0; up && up !== root && i < 6; up = up.parentElement, i++) {
+          const pv = up.previousElementSibling;
+          const t = pv && !pv.querySelector('input, select, textarea, button') ? text(pv).trim() : '';
+          if (t && t.length <= 160) return t;
+        }
+      }
       // Paylocity: a hidden input with no label, named only by the button
       // after it ("Select Resume to Upload").
       const btn = el.nextElementSibling;
@@ -148,6 +158,17 @@ export function collectForm() {
   }
   const groupLabel = (el) => {
     const fs = el.closest('fieldset');
+    // A radio group labelled on its own inside a larger fieldset (Phenom draws the whole step as one rjsf
+    // fieldset whose legend is "You are applying for -", and each question as a div[role=radiogroup] named by
+    // aria-labelledby): its own name is the question, never the outer legend. The aria-labelledby name first (it
+    // carries the required *), then aria-label.
+    if (el.type === 'radio' && fs) {
+      const named = (g) => (g.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean).map((id) => text(document.getElementById(id))).join(' ').trim();
+      const inner = [];
+      for (let g = el.closest('[role="radiogroup"]'); g && g !== fs && fs.contains(g); g = g.parentElement?.closest('[role="radiogroup"]')) inner.push(g);
+      const own = inner.map(named).find(Boolean) || inner.map((g) => (g.getAttribute('aria-label') || '').trim()).find(Boolean);
+      if (own) return own;
+    }
     const lg = fs && fs.querySelector('legend');
     if (lg && text(lg).trim()) return text(lg);
     // Ashby titles a radio group with a <label> that is the fieldset's own child, not a
@@ -309,7 +330,8 @@ export function collectForm() {
         const box = el.closest('fieldset, [role="radiogroup"], [class*="radio-group"]:not([class*="option"])');
         const titled = box && [...box.querySelectorAll('label, legend, [class*="title"], [class*="heading"]')]
           .some((t) => !t.closest('[class*="option"]') && /(^|[\s_-])required/i.test(t.className || ''));
-        g = { key: `f${n++}`, kind: 'radio', label: clean(raw), required: isRequired(el, raw) || !!titled, options: [], value: '', error: errorNear(el) };
+        // Phenom marks the question's radiogroup aria-required, not the radios.
+        g = { key: `f${n++}`, kind: 'radio', label: clean(raw), required: isRequired(el, raw) || !!titled || !!el.closest('[role="radiogroup"][aria-required="true"]'), options: [], value: '', error: errorNear(el) };
         groups.set(name, g);
         fields.push(g);
       }
@@ -903,5 +925,39 @@ export function icimsPage() {
       .map((b) => (b.getAttribute('aria-label') || text(b) || b.value || '').trim()).filter(Boolean),
     errors: [...document.querySelectorAll('[role="alert"], .iCIMS_Error, .iCIMS_ErrorMessage')].filter(shown).map(text).filter(Boolean),
     text: (document.body.innerText || '').slice(0, 6000),
+  };
+}
+
+// Phenom's apply flow: what the page shows, for phenomStage (apply-forms.mjs). The stepper (li[atm-id][atm-value], the
+// current one aria-current="step"; the root says current-step-<id> too), Phenom's loader (.overlaybg / .widget-loader
+// without .hidden), the résumé slot (react-dropzone's hidden file input) and whether a résumé is on record (the form
+// data's resumeRelativePath, rendered into a hidden input: what Phenom's Next checks before it saves, "Resume Import is
+// mandatory, ..."), the error list, the cookie banner and the root's text. Self-contained (runs in page.evaluate).
+export function phenomPage() {
+  const text = (el) => (el ? (el.innerText || el.textContent || '') : '').replace(/\s+/g, ' ').trim();
+  const shown = (el) => { if (!el) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden'; };
+  const form = document.querySelector('form.rjsf');
+  const root = document.querySelector('.external-job') || (form && form.closest('.ph-apply-box')) || null;
+  const steps = [];
+  for (const li of document.querySelectorAll('li[atm-id][atm-value]')) {
+    if (li.closest('.slick-cloned')) continue;
+    const id = li.getAttribute('atm-id');
+    if (steps.some((s) => s.id === id)) continue;
+    steps.push({ id, label: li.getAttribute('atm-value'), current: li.getAttribute('aria-current') === 'step' });
+  }
+  const rootStep = (/(?:^|\s)current-step-(\S+)/.exec(root ? root.className : '') || [])[1] || null;
+  const val = (id) => (document.getElementById(id) || {}).value || '';
+  const banner = [...document.querySelectorAll('button')].some((b) => shown(b) && /\b(reject|accept) all cookies\b/i.test(text(b)));
+  return {
+    phenom: !!form && steps.length > 0,
+    url: location.href,
+    step: rootStep || (steps.find((s) => s.current) || {}).id || null,
+    steps,
+    loading: [...document.querySelectorAll('.overlaybg, .widget-loader')].some((e) => !e.classList.contains('hidden') && shown(e)),
+    upload: !!document.querySelector('.resume-upload-wrapper input[type="file"], .resume-section input[type="file"]'),
+    resume: { path: !!val('resumeRelativePath'), name: val('resumeName') },
+    errors: [...document.querySelectorAll('.error-list, .errors, [class*="error-list"]')].map(text).filter(Boolean).slice(0, 10),
+    cookie: banner,
+    text: text(root || document.body).slice(0, 3000),
   };
 }

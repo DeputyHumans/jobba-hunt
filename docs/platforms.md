@@ -182,6 +182,22 @@ A new selector starts as unseen. It becomes verified only after a `--headed` run
 | react-select rows per value | A "(Max 2)" list is one react-select per value, every row named by the same `aria-labelledby` (`rs_group`). An answer split on "\|" (`listValues`) is one pick on the first row; each next row is added with the field's "Add ..." button (`rsRow`) and the other rows are covered, not asked | offline replay |
 | Optional "Other" upload | A slot labelled just "Other" beside Resume and Cover Letter is optional and left empty | offline replay |
 
+### Phenom apply flows
+
+Found on a `site:<host>` channel by the page itself, never by host.
+
+| Surface | Behaviour | Status |
+|---|---|---|
+| Step bar | `form.rjsf` plus a step bar `li[atm-id][atm-value]` (current `aria-current="step"`, root `.external-job.current-step-<id>`); a `jobSeqNo` URL gets 20 s to draw it (`phenomPage`, `phenomStage`). Step ids `personalInformation`, `workAndEducation`, `jobSpecificQuestions`, `applicationQuestionnaire`, `voluntaryInformation`, `applicationReview`; anything else stops the run. The loader (`.overlaybg`, `.widget-loader` without `.hidden`) is waited out, and the cookie banner is declined on each step | seen live in headed dry runs; offline replay |
+| Questions | Each step is one rjsf `fieldset` whose legend is "You are applying for -": a radio question is its own `div[role=radiogroup][aria-labelledby]`, named by that and required by `aria-required` on the group. The hidden "How did you hear about us?" and "Source" selects are not fields | seen live in headed dry runs; offline replay |
+| Navigation | `phenomNav`: Next before Review, Submit only on Review; a Submit on any other step is held (`manual`). Upload Resume, Apply With LinkedIn, cloud drives, the step tabs, Previous and Save and Exit are never pressed | Next seen live through three steps; Review unseen |
+| CV first | The CV goes up first and alone, and nothing is typed until the hidden `input#resumeRelativePath` holds a value, the loader is gone and the form has held still 1.2 s (`phenomAwaitResume`): a field change made during the upload can write the form data back without the résumé through its 200 ms debounced update. Next on My information is never pressed without a résumé on record. Other uploads go first too, one at a time (`phenomIdle`) | seen live in headed dry runs; offline replay |
+| Page alerts | Phenom answers a refused Next with `window.alert()` ("Resume Import is mandatory, ..."). Every dialog is recorded, logged and dismissed, never accepted (`watchDialogs`); an alert after Next is the reason the page did not move (`alertDetail`, `needs_answers`), never read as a bot check | upload alerts seen live; the refusal offline replay |
+| Native selects | Set in the page with no key (`selectDirect`): Enter inside the form is an implicit submission that clicks its first untyped button, the second work entry's "Remove experience" | seen live in headed dry runs; offline replay |
+| My experience | The CV parse writes the work entries (`experienceData[n]`) and the education entry (`educationData[n]`). Parsed entries are left as parsed; an entry's location or dates never take the applicant's own (the section guard covers `experience` ids). A fill that makes a parsed entry disappear stops the run (`entriesLost`). "Additional attachments (Cover Letter, References, etc.)" is named by its heading block and takes the cover letter PDF | seen live in headed dry runs; offline replay |
+| Upload names | A file name over 50 characters is refused with an alert (the schema's file-name size limit): a copy named by `uploadName` (whole words dropped from the end, the extension kept) goes up instead | seen live in headed dry runs |
+| Confirmation | `/applythankyou`, or "Your application is processing" | unseen |
+
 ### Lever
 
 | Surface | Behaviour | Status |

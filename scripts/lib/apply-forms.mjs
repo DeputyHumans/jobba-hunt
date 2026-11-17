@@ -303,8 +303,9 @@ export function planFill(fields, bank, ctx) {
     // A repeated section about someone else's place (an employer, a school) never takes the
     // applicant's own address, city, zip or country (Paylocity work history). The same holds for
     // the applicant's availability: a job's Start Date is not "when can you start" (every
-    // work-history Start Date once became "Immediately").
-    if (['street_address', 'city', 'state', 'zip', 'country', 'start_date'].includes(source) && /work-?history|education|employer|school/i.test(f.id || '')) { if (f.required) miss(f, 'section-field'); continue; }
+    // work-history Start Date once became "Immediately"). Phenom names its entries experienceData[n] and
+    // educationData[n] (every employer's Location once got the applicant's city).
+    if (['street_address', 'city', 'state', 'zip', 'country', 'start_date'].includes(source) && /work-?history|education|employer|school|experience/i.test(f.id || '')) { if (f.required) miss(f, 'section-field'); continue; }
     // Consent in any form (SMS, texts, terms) is the operator's: only a job or learned answer fills
     // it (an SMS consent dropdown once took the phone number because its label says "phone").
     if (!['job', 'learned'].includes(source) && /\bconsent\b|permission to text|\bsms\b|text messages?\b/i.test(f.label)) { miss(f, 'consent'); continue; }
@@ -839,6 +840,21 @@ export function stuckReason({ clickErr = null, failed = [] } = {}) {
   return ['stuck', clickErr ? `Next click: ${clickErr}` : null, failed.length ? `failed requests: ${[...new Set(failed)].slice(0, 6).join(', ')}` : null].filter(Boolean).join('; ');
 }
 
+// Page alerts after Next (watchDialogs, apply-click.mjs) as needs_answers entries: Phenom answers a refused Next with
+// window.alert() ("Resume Import is mandatory, ..."), which Playwright would dismiss unseen. The message is the label,
+// so the run says why the page did not move. One entry per distinct message.
+export function alertDetail(alerts) {
+  const seen = new Set();
+  const out = [];
+  for (const a of alerts || []) {
+    const m = String(a?.message || '').replace(/\s+/g, ' ').trim();
+    if (!m || seen.has(m)) continue;
+    seen.add(m);
+    out.push({ key: null, label: m, kind: 'alert', options: [], reason: 'alert: the page answered Next with this message (dismissed)' });
+  }
+  return out;
+}
+
 // A combobox holds an option, not a sentence ("Yes, 25 years." typed into a Yes/No react-select
 // filtered the list to nothing and nothing was picked).
 // An answer that opens with "Yes," or "No." types only that word. Anything else is typed as
@@ -1300,3 +1316,87 @@ export function listValues(answer) {
 // never pressed. A banner can put an icon before the words and "cookies" after them ("× Reject all
 // cookies").
 export const COOKIE_DECLINE = /^\W*(decline all|reject all|decline|reject|only necessary|necessary only|use necessary cookies only)( cookies)?\W*$/i;
+
+// ---------- Phenom apply flows ----------
+// Phenom's apply flow is one page: a stepper (li[atm-id] per step, the current one aria-current="step"), a
+// react-jsonschema-form per step and Next, which saves the step. A typical flow: My information, My experience,
+// Application questions, Additional application questions, Voluntary Disclosures, Review. Which stage a page is on,
+// from phenomPage() (apply-dom.mjs): 'my-information', 'my-experience', 'questions', 'disclosures', 'self-identify',
+// 'review', 'step' (a step id not seen yet), 'submitted', 'already-applied', 'closed', or 'loading'.
+const PH_STAGE = {
+  personalInformation: 'my-information',
+  workAndEducation: 'my-experience',
+  jobSpecificQuestions: 'questions',
+  applicationQuestionnaire: 'questions',
+  supplementaryQuestions: 'questions',
+  voluntaryInformation: 'disclosures',
+  disabilityInformation: 'self-identify',
+  applicationReview: 'review',
+};
+export function phenomStage(p) {
+  if (!p) return 'loading';
+  const text = String(p.text || '');
+  let path = '';
+  try { path = new URL(p.url || '').pathname; } catch { /* keep empty */ }
+  if (/already applied|have applied (for|to) this (job|position)/i.test(text)) return 'already-applied';
+  if (/job has expired|either does not exist or is no longer open|no longer accepting applications/i.test(text)) return 'closed';
+  // The thank-you page (the schema's atsSpecificData.tankyouMessage): "Your application is processing. ..."; the flow
+  // routes to .../applythankyou (postSubmitUrl).
+  if (!p.step && (/\/applythankyou\b/i.test(path) || /your application is processing|successfully applied|thank you for applying/i.test(text))) return 'submitted';
+  if (p.loading || !p.step) return 'loading';
+  return PH_STAGE[p.step] || 'step';
+}
+
+// The button a Phenom step moves on with: Next before Review, Submit only on Review. A Submit on any other step is
+// held (the run stops and shows it). The résumé upload, Apply With LinkedIn, the cloud drives, the stepper's step tabs
+// ("Review" among them), Previous and Save and Exit are never taken.
+const PH_NEVER = /linkedin|indeed|dropbox|microsoft online|onedrive|google drive|upload resume|^previous$|^back$|save (and|&) exit|^edit$|^remove\b|^delete\b|^cancel$|^close$|^x$|cookie/i;
+export function phenomNav(buttons, stage) {
+  const usable = (buttons || []).map((b) => String(b || '').replace(/\s+/g, ' ').trim()).filter((b) => b && !PH_NEVER.test(b));
+  const review = stage === 'review';
+  const submit = review ? usable.find((b) => /^submit( (my |your )?application)?$/i.test(b)) || null : null;
+  const next = review ? null : usable.find((b) => /^(next|continue|save (and|&) continue)$/i.test(b)) || null;
+  const held = !review && !next ? usable.find((b) => /submit|finish/i.test(b)) || null : null;
+  return { review, submit, next, held };
+}
+
+// The repeated entries a Phenom step shows (experienceData[n], educationData[n]), named by what the CV parse wrote:
+// "title @ company" for work, the school for education. entriesLost: the ones a fill made disappear (a run once lost
+// the second parsed work entry while filling the step), so the run stops instead of moving on with a history the
+// user did not give.
+const ENTRY_KEYS = { experienceData: ['title', 'companyName'], educationData: ['schoolName'] };
+function entryNames(fields) {
+  const by = new Map();
+  for (const f of fields || []) {
+    const m = /^(experienceData|educationData)\[(\d+)\]\.(\w+)$/.exec(f.id || '');
+    if (!m || !ENTRY_KEYS[m[1]].includes(m[3])) continue;
+    const k = `${m[1]}[${m[2]}]`;
+    by.set(k, { ...(by.get(k) || {}), [m[3]]: String(f.value || '').replace(/\s+/g, ' ').trim() });
+  }
+  return [...by.entries()].map(([k, e]) => ENTRY_KEYS[k.split('[')[0]].map((p) => e[p] || '').join(' @ ')).filter((n) => n.replace(/[\s@]/g, ''));
+}
+export function entriesLost(before, after) {
+  const left = entryNames(after);
+  const lost = [];
+  for (const n of entryNames(before)) {
+    const i = left.indexOf(n);
+    if (i >= 0) left.splice(i, 1); else lost.push(n);
+  }
+  return lost;
+}
+
+// A file name that fits an upload slot's limit (Phenom: "The length of file name should be less than or equal to 50
+// characters", its schema's file-name size limit, refused a 55-character cover letter name). Whole words go from the
+// end, and a dangling "and", "of" or "the" with them, until the name fits; the extension stays. A name that fits is
+// kept as it is.
+export function uploadName(name, max = 50) {
+  const s = String(name || '');
+  if (s.length <= max) return s;
+  const dot = s.lastIndexOf('.');
+  const ext = dot > 0 ? s.slice(dot) : '';
+  const words = (dot > 0 ? s.slice(0, dot) : s).split(/[-_\s]+/).filter(Boolean);
+  const STOP = /^(and|of|the|for|at|in|a|an|to|&)$/i;
+  const fit = () => `${words.join('-')}${ext}`;
+  while (words.length > 1 && (fit().length > max || STOP.test(words.at(-1)))) words.pop();
+  return fit().length <= max ? fit() : `${words.join('-').slice(0, Math.max(1, max - ext.length))}${ext}`;
+}
