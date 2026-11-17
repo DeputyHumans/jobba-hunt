@@ -511,7 +511,7 @@ test('US-only helpers follow the bank country: a non-US applicant gets no state 
 test('the applicant\'s availability start date never fills a work-history or education date', () => {
   const bank = { profile: {}, facts: { start_date: 'Immediately' }, learned: [] };
   const wh = (id, value, required = false) => ({ key: id, kind: 'text', label: 'Start Date', id, required, options: [], value });
-  const p = planFill([wh('txt-workHistory-startDate-0', '08/2024'), wh('txt-workHistory-startDate-1', '', true)], bank, { cv: '/cv.pdf' });
+  const p = planFill([wh('txt-workHistory-startDate-0', '03/2023'), wh('txt-workHistory-startDate-1', '', true)], bank, { cv: '/cv.pdf' });
   assert.deepEqual(p.actions, []);
   assert.deepEqual(p.missing.map((m) => m.reason), ['section-field']);
   // The application's own "Available to Start" still fills.
@@ -1029,7 +1029,7 @@ test('workdayVerifyLink: a link in an HTML mail body (href with &amp;) is decode
 
 const MASTER = {
   roles: {
-    acme: { title: 'Head of Engineering', titles: { cto: { text: 'CTO' } }, company: 'Acme Corp', dates: 'Aug 2024 – Present', contexts: { default: { text: 'Ctx Acme' }, services: { text: 'Ctx Acme services' } } },
+    acme: { title: 'Head of Engineering', titles: { cto: { text: 'CTO' } }, company: 'Acme Corp', dates: 'Mar 2023 – Present', contexts: { default: { text: 'Ctx Acme' }, services: { text: 'Ctx Acme services' } } },
     globex: { title: 'VP Engineering', company: 'Globex', dates: 'Jan 2021 – Jul 2024', contexts: { default: { text: 'Ctx Globex' } } },
     initech: { title: 'Engineering Manager', company: 'Initech', dates: 'Nov 2016 – Dec 2020', contexts: { default: { text: 'Ctx Initech' } } },
     umbrella: { title: 'Senior Engineer', company: 'Umbrella Labs', dates: '2012 – 2016', contexts: {} },
@@ -1042,7 +1042,7 @@ test('workdayHistory: Workday work entries are the approved CV variant\'s roles 
   const variant = { experience: [{ role: 'acme', title: 'cto', context: 'services' }, { role: 'globex' }, { role: 'initech' }], earlier: ['umbrella'] };
   const h = workdayHistory(MASTER, variant);
   assert.deepEqual(h.work, [
-    { title: 'CTO', company: 'Acme Corp', from: '08/2024', to: null, current: true, description: 'Ctx Acme services' },
+    { title: 'CTO', company: 'Acme Corp', from: '03/2023', to: null, current: true, description: 'Ctx Acme services' },
     { title: 'VP Engineering', company: 'Globex', from: '01/2021', to: '07/2024', current: false, description: 'Ctx Globex' },
     { title: 'Engineering Manager', company: 'Initech', from: '11/2016', to: '12/2020', current: false, description: 'Ctx Initech' },
   ]);

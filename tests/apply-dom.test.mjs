@@ -943,7 +943,7 @@ const wdBank = {
 };
 const wdHistory = {
   work: [
-    { title: 'CTO', company: 'Globex', from: '08/2024', to: null, current: true, description: 'Ctx' },
+    { title: 'CTO', company: 'Globex', from: '03/2023', to: null, current: true, description: 'Ctx' },
     { title: 'VP Engineering', company: 'Initech', from: '01/2021', to: '07/2024', current: false, description: 'Ctx' },
   ],
   education: [{ school: 'Springfield University', degree: "Master's Degree", field: 'Applied Mathematics', from: null, to: '2010' }],
@@ -1041,7 +1041,7 @@ test('Workday My Experience: Add renders an entry with page-numbered ids; entrie
     assert.deepEqual(by['workExperience-7--jobTitle'], ['fill', 'CTO']);
     assert.deepEqual(by['workExperience-7--companyName'], ['fill', 'Globex']);
     assert.deepEqual(by['workExperience-7--currentlyWorkHere'], ['check', null]);
-    assert.deepEqual(by['workExperience-7--startDate'], ['wd-date', '08/2024']);
+    assert.deepEqual(by['workExperience-7--startDate'], ['wd-date', '03/2023']);
     assert.equal(by['workExperience-7--endDate'], undefined, 'a current role has no end date');
     assert.deepEqual(by['workExperience-8--companyName'], ['fill', 'Initech']);
     assert.equal(by['workExperience-8--currentlyWorkHere'], undefined, 'already unticked');
@@ -1056,9 +1056,9 @@ test('Workday My Experience: Add renders an entry with page-numbered ids; entrie
     assert.deepEqual(by['socialNetworkAccounts--linkedInAccount'], ['fill', 'https://www.linkedin.com/in/jordan-example']);
     assert.deepEqual(plan.missing, []);
     // Dates go in key by key, section by section.
-    assert.equal(await wdTypeDate(page, from.key, '08/2024'), true);
-    assert.equal(await page.inputValue('#workExperience-7--startDate-dateSectionMonth-input'), '08');
-    assert.equal(await page.inputValue('#workExperience-7--startDate-dateSectionYear-input'), '2024');
+    assert.equal(await wdTypeDate(page, from.key, '03/2023'), true);
+    assert.equal(await page.inputValue('#workExperience-7--startDate-dateSectionMonth-input'), '03');
+    assert.equal(await page.inputValue('#workExperience-7--startDate-dateSectionYear-input'), '2023');
     const year = snap.fields.find((f) => f.id === 'education-12--lastYearAttended');
     assert.equal(await wdTypeDate(page, year.key, '2010'), true);
     // The uploaded CV shows by name in the slot.
