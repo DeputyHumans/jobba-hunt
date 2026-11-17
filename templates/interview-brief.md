@@ -48,7 +48,7 @@ tags: [interview, brief, <company-slug>]
 3. 
 
 **Openers (pick one)**
-- 
+- <opener, claims only>
 
 ## 3. Company fact sheet
 
