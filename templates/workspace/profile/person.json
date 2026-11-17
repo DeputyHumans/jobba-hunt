@@ -1,5 +1,5 @@
 {
-  "_comment": "Who the documents and forms are for. Filled by /hunt-onboard. Never committed: this file lives in the gitignored workspace.",
+  "_comment": "Who the documents and forms are for. Filled by /hunt-onboard. Never committed: this file lives in the gitignored workspace. show_phone_on_cv: true prints phone on every CV; a CV variant's contact.phone (\"profile\" or null) overrides it for that CV.",
   "name": "",
   "display_name": "",
   "file_prefix": "",

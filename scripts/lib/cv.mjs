@@ -8,7 +8,11 @@
 //   source_ref_prefixes  citation prefixes that count as provenance where no claim row exists
 //                        (e.g. ["CV"] accepts "CV:12" or "CV:12-14", a line in a source CV)
 //   nobreak              phrases kept on one line with no-break spaces (e.g. "SOC 2")
-// Both default to empty.
+//   links                { "<company or product name>": "<url>" }: each name links on the CV
+//   employers            { "<key>": { name, dates, claims } }: a role with "via": "<key>" was a
+//                        client engagement through that employer ("Client (via Employer)")
+// All default to empty. A role may also list "clients": [{ name, claims }], which a variant's
+// practice section shows as "Featured clients".
 
 // A line reference into a source document ("CV:12", "CV:12-14"), or null when none is configured.
 export function sourceRefRe(prefixes = []) {
@@ -30,13 +34,23 @@ export function validateVariant(master, v, claimIds) {
     for (const c of claims) if (!claimIds.has(c) && !(sourceRef && sourceRef.test(c))) errs.push(`${where}: unknown claim ${c}`);
   };
   checkClaims('person', master.person.claims);
+  if (v.contact) {
+    for (const k of Object.keys(v.contact)) if (!CONTACT_KEYS.includes(k)) errs.push(`contact: unknown key ${k}`);
+    if ('phone' in v.contact && v.contact.phone !== 'profile' && v.contact.phone !== null) errs.push('contact.phone: only "profile" (the number in profile/person.json) or null is allowed');
+  }
   checkClaims('summary', v.summary?.claims);
   (v.highlights || []).forEach((h) => checkClaims(`highlight "${h.label}"`, h.claims));
   (v.skills || []).forEach((g) => checkClaims(`skills "${g.label}"`, g.claims));
-  for (const e of v.experience || []) {
+  // One experience-shaped entry: the experience list and the practice section share it.
+  const checkEntry = (e, where) => {
     const role = master.roles[e.role];
-    if (!role) { errs.push(`experience: unknown role ${e.role}`); continue; }
+    if (!role) { errs.push(`${where}: unknown role ${e.role}`); return; }
     checkClaims(`role ${e.role}`, role.claims);
+    if (role.via) {
+      const emp = master.employers?.[role.via];
+      if (!emp) errs.push(`role ${e.role}: unknown employer ${role.via}`);
+      else checkClaims(`employer ${role.via}`, emp.claims);
+    }
     if (e.title) {
       const t = role.titles?.[e.title];
       if (!t) errs.push(`role ${e.role}: unknown title ${e.title}`);
@@ -54,6 +68,16 @@ export function validateVariant(master, v, claimIds) {
       if (!b) errs.push(`role ${e.role}: unknown bullet ${it}`);
       else checkClaims(`bullet ${it}`, b.claims);
     }
+  };
+  for (const e of v.experience || []) checkEntry(e, 'experience');
+  if (v.practice) {
+    checkEntry(v.practice, 'practice');
+    const role = master.roles[v.practice.role];
+    if (v.practice.clients) {
+      if (!role?.clients?.length) errs.push(`practice: role ${v.practice.role} has no clients`);
+      else role.clients.forEach((c) => checkClaims(`client ${c.name}`, c.claims));
+    }
+    if ('heading' in v.practice && !String(v.practice.heading || '').trim()) errs.push('practice.heading: empty');
   }
   for (const id of v.earlier || []) {
     const r = master.roles[id];
@@ -66,21 +90,57 @@ export function validateVariant(master, v, claimIds) {
 }
 
 // ---------- model ----------
-export function assemble(master, v) {
-  const roles = (v.experience || []).map((e) => {
+// A variant may override the contact line for one target role: a new location, `workplace: null`
+// to drop a "Remote (US)" that would misread for an on-site role, and the phone. The variant file
+// never holds a number: `phone: "profile"` shows the one in profile/person.json, `phone: null`
+// hides it. Without either, person.json's show_phone_on_cv decides (wantsPhone).
+const CONTACT_KEYS = ['location', 'workplace', 'phone'];
+export const wantsPhone = (v, showByDefault = false) => {
+  const c = v?.contact;
+  if (c && 'phone' in c) return c.phone === 'profile';
+  return Boolean(showByDefault);
+};
+// The caller reads the number and passes it in only when wantsPhone says so.
+export function contactFor(person, contact, phone) {
+  if (!contact && !phone) return person;
+  const p = { ...person };
+  if (contact && 'location' in contact) p.location = contact.location;
+  if (contact && 'workplace' in contact) p.workplace = contact.workplace;
+  if (phone) p.phone = phone;
+  return p;
+}
+// Text with the one number this CV may carry taken out, for the never-claim lint (which fails on
+// any phone number) and the publish privacy check.
+export const withoutPhone = (text, phone) => (phone ? String(text).split(phone).join('') : String(text));
+
+export const PRACTICE_HEADING = 'Independent Practice';
+
+export function assemble(master, v, { phone } = {}) {
+  const entry = (e) => {
     const r = master.roles[e.role];
     const blocks = (e.items || []).map((it) => (typeof it === 'object'
       ? { type: 'sub', ...r.subheads[it.sub] }
       : { type: 'li', text: master.bullets[it].text }));
     const title = e.title ? r.titles[e.title].text : r.title;
-    return { id: e.role, title, company: r.company, dates: r.dates, context: r.contexts[e.context || 'default'].text, blocks };
-  });
+    const company = r.via ? `${r.company} (via ${master.employers[r.via].name})` : r.company;
+    return { id: e.role, title, company, dates: r.dates, context: r.contexts[e.context || 'default'].text, blocks };
+  };
+  const roles = (v.experience || []).map(entry);
+  // A practice (one's own consultancy or freelance work) sits below Experience in its own
+  // section, with its featured clients.
+  const practice = v.practice
+    ? {
+      ...entry(v.practice),
+      heading: String(v.practice.heading || PRACTICE_HEADING),
+      clients: v.practice.clients ? master.roles[v.practice.role].clients.map((c) => c.name) : [],
+    }
+    : null;
   const earlier = (v.earlier || []).map((id) => {
     const r = master.roles[id];
     return { id, title: r.title, company: r.company, dates: r.dates, line: r.line.text };
   });
   return {
-    person: master.person,
+    person: contactFor(master.person, v.contact, phone),
     title: v.title || `${master.person.name}, ${v.target_title}, CV`,
     description: v.description || v.headline,
     headline: v.headline,
@@ -90,8 +150,10 @@ export function assemble(master, v) {
     skills: v.skills.map((g) => ({ label: g.label, terms: g.terms })),
     roles,
     earlier,
+    practice,
     education: master.education,
     nobreak: master.nobreak || [],
+    links: master.links || {},
   };
 }
 
@@ -110,15 +172,20 @@ export function cvPerson(profile = {}, own = {}) {
   return { ...base, ...set, claims: own?.claims || [] };
 }
 
+export const eduText = (e) => (e.note ? `${e.degree} (${e.note})` : e.degree);
+const practiceLines = (p) => (p ? [`${p.title} · ${p.company}`, p.dates, p.context, ...p.blocks.map((b) => (b.type === 'sub' ? `${b.label} ${b.dates}` : b.text)),
+  ...(p.clients.length ? [`Featured clients: ${p.clients.join(', ')}`] : [])] : []);
+
 export function modelText(m) {
   return [
-    m.person.name, m.headline, m.person.location, m.person.workplace, m.person.email, m.person.linkedin,
+    ...[m.person.name, m.headline, m.person.location, m.person.workplace, m.person.phone, m.person.email, m.person.linkedin].filter((x) => x != null && x !== ''),
     m.summary,
     ...m.highlights.map((h) => `${h.label}: ${h.text}`),
     ...m.skills.map((g) => `${g.label}: ${g.terms.join(', ')}`),
     ...m.roles.flatMap((r) => [`${r.title} · ${r.company}`, r.dates, r.context, ...r.blocks.map((b) => (b.type === 'sub' ? `${b.label} ${b.dates}` : b.text))]),
     ...m.earlier.flatMap((r) => [`${r.title} · ${r.company}`, r.dates, r.line]),
-    ...m.education.flatMap((e) => [e.degree, e.school, e.year]),
+    ...practiceLines(m.practice),
+    ...m.education.flatMap((e) => [eduText(e), e.school, e.year]),
   ].join('\n');
 }
 
@@ -131,6 +198,7 @@ export function bodySegments(m) {
     ...m.skills.map((g) => [`skills "${g.label}"`, `${g.label}: ${g.terms.join(', ')}`]),
     ...m.roles.flatMap((r) => [[`${r.id} context`, r.context], ...r.blocks.filter((b) => b.type !== 'sub').map((b, i) => [`${r.id} bullet ${i + 1}`, b.text])]),
     ...m.earlier.map((r) => [`earlier ${r.id}`, r.line]),
+    ...(m.practice ? [[`${m.practice.id} context`, m.practice.context], ...m.practice.blocks.filter((b) => b.type !== 'sub').map((b, i) => [`${m.practice.id} bullet ${i + 1}`, b.text])] : []),
   ];
 }
 
@@ -178,6 +246,22 @@ const txWith = (typo) => (s) => esc(typo(s)).replace(/(\d+–\d+)/g, '<span clas
 // items instead of merging a whole list into one paragraph.
 const bul = (items) => `<ul class="bul">${items.map((h) => `<li><span class="b">• </span>${h}</li>`).join('')}</ul>`;
 
+// Company and product names in master.json links become links: a recruiter reading the HTML or
+// PDF can open each one. Only text between tags is touched, never inside a tag or an existing
+// anchor, so the text layer an ATS reads is unchanged. Longest names first, so "Acme Corp
+// Labs" wins over "Acme Corp". typo is the display-text transform the names went through.
+export function linkify(html, links, typo = (s) => String(s)) {
+  const names = Object.keys(links || {}).filter((n) => n.trim()).sort((a, b) => b.length - a.length);
+  let out = html;
+  for (const name of names) {
+    const shown = esc(typo(name)).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(?<![\\w.-])(${shown})(?![\\w-])`, 'gi');
+    out = out.split(/(<a\b[^>]*>[^]*?<\/a>)/).map((part) => (part.startsWith('<a') ? part
+      : part.split(/(<[^>]+>)/).map((t) => (t.startsWith('<') ? t : t.replace(re, `<a class="co" href="${esc(links[name])}">$1</a>`))).join(''))).join('');
+  }
+  return out;
+}
+
 function roleHead(tx, title, company, dates, cls = 'role-head') {
   return `<div class="${cls}"><span class="role-name"><span class="role-title">${tx(title)}</span>`
     + `${company ? `<span class="role-sep"> · </span><span class="role-company">${tx(company)}</span>` : ''}</span>`
@@ -185,7 +269,8 @@ function roleHead(tx, title, company, dates, cls = 'role-head') {
 }
 
 export function renderHtml(m, css) {
-  const tx = txWith(typoWith(nobreakPairs(m.nobreak)));
+  const typo = typoWith(nobreakPairs(m.nobreak));
+  const tx = txWith(typo);
   const p = m.person;
   const sep = '<span class="sep"> · </span>';
   // A sub-head and its bullets form one group that never breaks across pages, so a page
@@ -205,7 +290,11 @@ export function renderHtml(m, css) {
       }
     }
     flush();
-    return `<div class="role">${roleHead(tx, r.title, r.company, r.dates)}<p class="context">${tx(r.context)}</p>${body}</div>`;
+    // A short role (three bullets or fewer, no sub-heads) never breaks across pages: it cannot
+    // split 2 + 2 (checkPageSplit), so a split would leave a lone bullet on a page. A four-bullet
+    // role may still split 2 + 2; kept whole it would jump to the next page and leave a gap.
+    const short = !r.blocks.some((b) => b.type === 'sub') && r.blocks.length <= 3;
+    return `<div class="role${short ? ' keep' : ''}">${roleHead(tx, r.title, r.company, r.dates)}<p class="context">${tx(r.context)}</p>${body}</div>`;
   }).join('\n');
   // Earlier roles are one paragraph each, "Title · Company · Dates. Description.". Dates stay
   // inline: a right-hand dates column next to a wrapping paragraph comes out of a PDF text layer
@@ -215,6 +304,24 @@ export function renderHtml(m, css) {
       + `<span class="role-sep"> · </span><span class="role-company">${tx(r.company)}</span><span class="role-sep"> · </span>`
       + `<span class="early-dates">${esc(r.dates)}</span><span class="early-line">. ${tx(r.line)}</span></p>`).join('\n')}</div>`
     : '';
+  const pr = m.practice;
+  const practice = pr
+    ? `<section class="practice"><h2>${tx(pr.heading)}</h2><div class="role">${roleHead(tx, pr.title, pr.company, pr.dates)}`
+      + `<p class="context">${tx(pr.context)}</p>${pr.blocks.some((b) => b.type !== 'sub') ? bul(pr.blocks.filter((b) => b.type !== 'sub').map((b) => tx(b.text))) : ''}`
+      + `${pr.clients.length ? `<p class="clients">Featured clients: ${pr.clients.map(tx).join(', ')}</p>` : ''}</div></section>`
+    : '';
+  const contact = [p.location, p.workplace, p.phone].filter((x) => x != null && x !== '').map(esc)
+    .concat(`<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`, ...(p.linkedin ? [`<a href="https://www.${esc(p.linkedin)}/">${esc(p.linkedin)}</a>`] : []))
+    .join(sep);
+  const body = linkify(`<section class="summary"><h2>Summary</h2><p>${tx(m.summary)}</p></section>
+<section class="highlights"><h2>Career Highlights</h2>${bul(m.highlights.map((h) => `<strong>${tx(h.label)}:</strong> ${tx(h.text)}`))}</section>
+<section class="skills"><h2>Skills</h2>${bul(m.skills.map((g) => `<strong>${tx(g.label)}:</strong> ${tx(g.terms.join(', '))}`))}</section>
+<section class="experience"><h2>Experience</h2>
+${roles}
+${earlier}
+</section>
+${practice}
+<section class="education"><h2>Education</h2><ul class="bul">${m.education.map((e) => `<li class="edu"><span class="b">• </span>${roleHead(tx, eduText(e), e.school, e.year, 'role-head inline')}</li>`).join('')}</ul></section>`, m.links, typo);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <title>${esc(m.title)}</title>
@@ -225,16 +332,9 @@ export function renderHtml(m, css) {
 <header>
 <h1>${esc(p.name)}</h1>
 <p class="headline">${m.headline.split(' · ').map((part, i) => `<span class="${i ? 'hs' : 'ht'}">${tx(part)}</span>`).join('<span class="hsep"> · </span>')}</p>
-<p class="contact">${esc(p.location)}${sep}${esc(p.workplace)}${sep}<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>${sep}<a href="https://www.${esc(p.linkedin)}/">${esc(p.linkedin)}</a></p>
+<p class="contact">${contact}</p>
 </header>
-<section class="summary"><h2>Summary</h2><p>${tx(m.summary)}</p></section>
-<section class="highlights"><h2>Career Highlights</h2>${bul(m.highlights.map((h) => `<strong>${tx(h.label)}:</strong> ${tx(h.text)}`))}</section>
-<section class="skills"><h2>Skills</h2>${bul(m.skills.map((g) => `<strong>${tx(g.label)}:</strong> ${tx(g.terms.join(', '))}`))}</section>
-<section class="experience"><h2>Experience</h2>
-${roles}
-${earlier}
-</section>
-<section class="education"><h2>Education</h2><ul class="bul">${m.education.map((e) => `<li class="edu"><span class="b">• </span>${roleHead(tx, e.degree, e.school, e.year, 'role-head inline')}</li>`).join('')}</ul></section>
+${body}
 </main></body></html>
 `;
 }
@@ -339,6 +439,9 @@ export function variantPool(standard, extra = [], candidate = null) {
 // ---------- PDF text-layer checks (pdf.mjs pageTexts output) ----------
 const HEADINGS = ['SUMMARY', 'CAREER HIGHLIGHTS', 'SKILLS', 'EXPERIENCE', 'EDUCATION'];
 const dash = (s) => s.replace(/[‐-―]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim();
+// The section headings of one CV in reading order: a practice section sits before Education.
+export const headingsFor = (m) => (m.practice ? [...HEADINGS.slice(0, 4), dash(m.practice.heading).toUpperCase(), 'EDUCATION'] : HEADINGS);
+const headRoles = (m) => [...m.roles, ...m.earlier, ...(m.practice ? [m.practice] : [])];
 
 export function checkExtracted(text, m) {
   const errs = [];
@@ -348,14 +451,14 @@ export function checkExtracted(text, m) {
   if (lines[0] !== m.person.name) errs.push(`first line is "${lines[0]}", not the name`);
   if (!lines.some((l) => l.includes(m.person.email))) errs.push('email missing from the text layer');
   let last = -1;
-  for (const h of HEADINGS) {
+  for (const h of headingsFor(m)) {
     const i = lines.findIndex((l) => l.toUpperCase() === h);
     if (i < 0) errs.push(`heading ${h} missing`);
     else if (i < last) errs.push(`heading ${h} out of order`);
     else last = i;
   }
   const exp = lines.findIndex((l) => l.toUpperCase() === 'EXPERIENCE');
-  for (const r of [...m.roles, ...m.earlier]) {
+  for (const r of headRoles(m)) {
     const i = lines.findIndex((l, k) => k > exp && l.includes(dash(r.title)) && (l.includes(dash(r.company)) || (lines[k + 1] || '').includes(dash(r.company))));
     if (i < 0) { errs.push(`role "${r.title} · ${r.company}" not found`); continue; }
     if (!lines.slice(i, i + 4).some((l) => l.includes(dash(r.dates)))) errs.push(`role "${r.title}": dates ${r.dates} not right after the title`);
@@ -369,10 +472,10 @@ export function checkExtracted(text, m) {
 // as a layout accident. Input is the text of page 1 and page 2 (pdf.mjs pageTexts).
 export function checkPageSplit(p1, p2, m) {
   const items = (t) => t.split('\n').flatMap((l) => l.split(/\s(?=• )/)).map((l) => dash(l)).filter(Boolean);
-  const heads = [...m.roles, ...m.earlier].map((r) => ({ title: dash(r.title), company: dash(r.company), name: r.title }));
+  const heads = headRoles(m).map((r) => ({ title: dash(r.title), company: dash(r.company), name: r.title }));
   const subs = m.roles.flatMap((r) => r.blocks.filter((b) => b.type === 'sub').map((b) => dash(b.label)));
   const isHead = (l) => heads.find((h) => l.includes(h.title) && l.includes(h.company));
-  const isBoundary = (l) => isHead(l) || subs.some((s) => l.startsWith(s)) || HEADINGS.includes(l.toUpperCase());
+  const isBoundary = (l) => isHead(l) || subs.some((s) => l.startsWith(s)) || headingsFor(m).includes(l.toUpperCase());
   const a = items(p1);
   const b = items(p2);
   if (!b.length || !b[0].startsWith('• ')) return [];

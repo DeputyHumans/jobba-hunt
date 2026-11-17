@@ -5,7 +5,9 @@ import {
   claimIdsFromBank, validateVariant, assemble, renderHtml, modelText, lintText,
   coverage, checkExtracted, rankForJd, checkPageSplit, variantPool, bodySegments, repeatedPhrases,
   sourceRefRe, cvPerson, inlineFonts, paperOf, sheetCss, pageRuleCss, pdfFooterTemplate, displayText, PAPER,
+  contactFor, wantsPhone, withoutPhone, linkify, headingsFor,
 } from '../scripts/lib/cv.mjs';
+import { formatPhone, cvPhone } from '../scripts/lib/profile.mjs';
 
 const FIX = new URL('./fixtures/workspace/', import.meta.url);
 const master = {
@@ -287,4 +289,147 @@ test('the PDF footer template escapes its text and carries page counters', () =>
   assert.match(f, /^<style>@font-face\{\}<\/style>/);
   assert.match(f, /Jordan Example · &lt;Head&gt; · jordan@example\.com/);
   assert.match(f, /<span class="pageNumber"><\/span> \/ <span class="totalPages"><\/span>/);
+});
+
+// ---------- contact override and phone ----------
+test('contact override: new location, workplace dropped, phone only from the caller', () => {
+  const v = { ...variant, contact: { location: 'Shelbyville, IL', workplace: null, phone: 'profile' } };
+  assert.deepEqual(validateVariant(master, v, ids), []);
+  const phone = '+1 (555) 555-0100';
+  const html = renderHtml(assemble(master, v, { phone }), '');
+  assert.match(html, /<p class="contact">Shelbyville, IL<span class="sep"> · <\/span>\+1 \(555\) 555-0100<span class="sep"> · <\/span><a href="mailto:/);
+  assert.doesNotMatch(html, /Remote \(US\)|null/);
+  assert.doesNotMatch(renderHtml(assemble(master, v), ''), /555-0100/, 'no number unless the caller passes one');
+  assert.equal(contactFor(master.person, undefined, null), master.person, 'no override keeps the master contact line');
+  assert.match(renderHtml(assemble(master, variant), ''), /Remote \(US\)/);
+});
+
+test('contact override validation: unknown keys and a literal phone number are refused', () => {
+  const errs = validateVariant(master, { ...variant, contact: { phone: '(555) 555-0100', city: 'x' } }, ids);
+  assert.ok(errs.some((e) => e.includes('unknown key city')));
+  assert.ok(errs.some((e) => e.startsWith('contact.phone')));
+  assert.deepEqual(validateVariant(master, { ...variant, contact: { phone: null } }, ids), [], 'null hides the phone');
+});
+
+test('wantsPhone: the variant decides, else person.json show_phone_on_cv', () => {
+  assert.equal(wantsPhone(variant, false), false);
+  assert.equal(wantsPhone(variant, true), true);
+  assert.equal(wantsPhone({ contact: { phone: 'profile' } }, false), true);
+  assert.equal(wantsPhone({ contact: { phone: null } }, true), false);
+  assert.equal(wantsPhone({ contact: { location: 'x' } }, true), true, 'a contact block without phone leaves the default');
+});
+
+test('phone lint: only the shown number is exempt; any other number still fails', () => {
+  const rules = JSON.parse(readFileSync(new URL('collateral/cv/never-claim.json', FIX), 'utf8'));
+  const phone = formatPhone('(555) 555-0100', 'United States (+1)');
+  assert.equal(phone, '+1 (555) 555-0100');
+  assert.equal(formatPhone('(555) 555-0100', ''), '(555) 555-0100');
+  assert.equal(formatPhone('+44 20 7946 0958', 'United States (+1)'), '+44 20 7946 0958', 'a number with its own country code stays');
+  assert.equal(formatPhone('', 'United States (+1)'), null);
+  assert.equal(cvPhone({ phone: '' }, { profile: { phone: '(555) 555-0100', phone_country: 'United States (+1)' } }), '+1 (555) 555-0100', 'the answer bank is the fallback');
+  assert.equal(cvPhone({}, {}), null);
+  const text = modelText(assemble(master, { ...variant, contact: { phone: 'profile' } }, { phone }));
+  assert.ok(lintText(text, rules).some((h) => h.id === 'phone'), 'the lint itself still sees the number');
+  assert.deepEqual(lintText(withoutPhone(text, phone), rules).filter((h) => h.id === 'phone'), []);
+  assert.ok(lintText(withoutPhone(`${text}\nCall (555) 555-0199`, phone), rules).some((h) => h.id === 'phone'), 'a second number still fails');
+});
+
+// ---------- client roles, practice section, links, education note ----------
+const usMaster = {
+  ...master,
+  links: { 'Acme Corp': 'https://acme.example', 'Globex Consulting': 'https://globex.example', 'Initech': 'https://initech.example', 'Hooli': 'https://hooli.example', 'Example Studio': 'https://studio.example', 'Ledgerly': 'https://ledgerly.example' },
+  employers: { globex: { name: 'Globex Consulting', dates: '2016 – 2019', claims: ['C08'] } },
+  bullets: { ...master.bullets, prod: { text: 'Builds and runs Ledgerly, a bookkeeping tool for Hooli-style marketplaces.', claims: ['C06'] } },
+  roles: {
+    ...master.roles,
+    'globex-initech': { title: 'Engineering Lead', company: 'Initech', via: 'globex', dates: '2016 – 2019', claims: ['C08'], contexts: { default: { text: 'Payments platform rebuild.', claims: ['C09'] } } },
+    studio: { title: 'Founder and Fractional CTO', company: 'Example Studio', dates: 'Jan 2024 – Present', claims: ['C02'],
+      contexts: { default: { text: 'Fractional CTO practice for seed-stage teams.', claims: ['C02'] } },
+      clients: [{ name: 'Hooli', claims: ['C03'] }, { name: 'Initech', claims: ['C09'] }] },
+  },
+  education: [{ degree: 'B.S. Computer Science', note: 'with honors', school: 'Example State University', year: '2008', claims: ['C19'] }],
+};
+const usVariant = {
+  ...variant,
+  experience: [{ role: 'acme', context: 'default', items: ['acme-scale'] }, { role: 'globex-initech', items: ['globex-mig'] }],
+  practice: { role: 'studio', context: 'default', items: ['prod'], clients: true },
+};
+
+test('a "via" role shows the client with its employer, and an unknown employer fails validation', () => {
+  assert.deepEqual(validateVariant(usMaster, usVariant, ids), []);
+  const m = assemble(usMaster, usVariant);
+  assert.equal(m.roles[1].company, 'Initech (via Globex Consulting)');
+  const bad = { ...usMaster, roles: { ...usMaster.roles, 'globex-initech': { ...usMaster.roles['globex-initech'], via: 'nope' } } };
+  assert.ok(validateVariant(bad, usVariant, ids).some((e) => /unknown employer nope/.test(e)));
+});
+
+test('the practice section renders after Experience with its featured clients, and its clients need claims', () => {
+  const m = assemble(usMaster, usVariant);
+  assert.equal(m.practice.company, 'Example Studio');
+  assert.equal(m.practice.heading, 'Independent Practice');
+  assert.deepEqual(m.practice.clients, ['Hooli', 'Initech']);
+  const html = renderHtml(m, 'body{}');
+  const exp = html.indexOf('<h2>Experience</h2>');
+  const pr = html.indexOf('<h2>Independent Practice</h2>');
+  const edu = html.indexOf('<h2>Education</h2>');
+  assert.ok(exp > 0 && pr > exp && edu > pr, 'Experience, then Independent Practice, then Education');
+  assert.match(html, /Featured clients: <a class="co" href="https:\/\/hooli\.example">Hooli<\/a>, <a class="co" href="https:\/\/initech\.example">Initech<\/a>/);
+  assert.match(modelText(m), /Featured clients: Hooli, Initech/);
+  assert.ok(bodySegments(m).some(([w]) => w === 'studio context'));
+  const noClaim = { ...usMaster, roles: { ...usMaster.roles, studio: { ...usMaster.roles.studio, clients: [{ name: 'Hooli', claims: [] }] } } };
+  assert.ok(validateVariant(noClaim, usVariant, ids).some((e) => /client Hooli: no claim/.test(e)));
+  const noClients = { ...usMaster, roles: { ...usMaster.roles, studio: { ...usMaster.roles.studio, clients: [] } } };
+  assert.ok(validateVariant(noClients, usVariant, ids).some((e) => /practice: role studio has no clients/.test(e)));
+});
+
+test('the practice heading can be renamed, and the PDF checks follow it', () => {
+  const m = assemble(usMaster, { ...usVariant, practice: { ...usVariant.practice, heading: 'Consulting' } });
+  assert.match(renderHtml(m, ''), /<h2>Consulting<\/h2>/);
+  assert.deepEqual(headingsFor(m), ['SUMMARY', 'CAREER HIGHLIGHTS', 'SKILLS', 'EXPERIENCE', 'CONSULTING', 'EDUCATION']);
+  assert.deepEqual(headingsFor(assemble(master, variant)), ['SUMMARY', 'CAREER HIGHLIGHTS', 'SKILLS', 'EXPERIENCE', 'EDUCATION']);
+  assert.ok(validateVariant(usMaster, { ...usVariant, practice: { ...usVariant.practice, heading: ' ' } }, ids).some((e) => /practice.heading: empty/.test(e)));
+});
+
+test('the extracted-text check finds the practice heading and its role', () => {
+  const m = assemble(usMaster, usVariant);
+  const text = ['Jordan Example', 'jordan@example.com', 'SUMMARY', 'CAREER HIGHLIGHTS', 'SKILLS', 'Platform: AWS, PostgreSQL', 'Leadership: hiring plans', 'EXPERIENCE',
+    'Head of Engineering · Acme Corp', 'Mar 2023 - Present', 'Engineering Lead · Initech (via Globex Consulting)', '2016 - 2019',
+    'Software Engineer · Soylent Systems · 2008 - 2010. Supply chain web applications.',
+    'INDEPENDENT PRACTICE', 'Founder and Fractional CTO · Example Studio', 'Jan 2024 - Present', 'EDUCATION'].join('\n');
+  assert.deepEqual(checkExtracted(text, m), []);
+  const missing = text.replace('INDEPENDENT PRACTICE\n', '');
+  assert.ok(checkExtracted(missing, m).some((e) => /INDEPENDENT PRACTICE missing/.test(e)));
+});
+
+test('known names become links in heads, bullets and clients; the text itself is unchanged and anchors never nest', () => {
+  const m = assemble(usMaster, usVariant);
+  const html = renderHtml(m, 'body{}');
+  assert.match(html, /<a class="co" href="https:\/\/initech\.example">Initech<\/a> \(via <a class="co" href="https:\/\/globex\.example">Globex Consulting<\/a>\)/);
+  assert.match(html, /<a class="co" href="https:\/\/studio\.example">Example Studio<\/a>/);
+  assert.match(html, /runs <a class="co" href="https:\/\/ledgerly\.example">Ledgerly<\/a>/);
+  assert.match(html, /for Hooli-style marketplaces/, 'a name that is part of a hyphenated word stays plain text');
+  assert.doesNotMatch(html, /<a [^>]*>[^<]*<a /, 'no anchor inside an anchor');
+  assert.doesNotMatch(modelText(m), /<a /);
+  assert.match(html, /href="mailto:jordan@example\.com"/, 'the contact line keeps its own anchors');
+  assert.match(html, /<title>Jordan Example, Head of Engineering, CV<\/title>/, 'the head is never linked');
+});
+
+test('linkify: longest name first, attributes and existing anchors untouched', () => {
+  const links = { Acme: 'https://a.example', 'Acme Corp': 'https://ac.example' };
+  assert.equal(linkify('<p>Acme Corp and Acme</p>', links), '<p><a class="co" href="https://ac.example">Acme Corp</a> and <a class="co" href="https://a.example">Acme</a></p>');
+  assert.equal(linkify('<p title="Acme">x</p>', links), '<p title="Acme">x</p>');
+  assert.equal(linkify('<a href="mailto:x">Acme</a>', links), '<a href="mailto:x">Acme</a>');
+  assert.equal(linkify('<p>Acme</p>', {}), '<p>Acme</p>');
+});
+
+test('a short role is kept whole; a role with sub-heads or four bullets may split', () => {
+  const html = renderHtml(assemble(master, variant), '');
+  assert.match(html, /<div class="role keep"><div class="role-head"><span class="role-name"><span class="role-title">Head of Engineering/);
+  assert.match(html, /<div class="role"><div class="role-head"><span class="role-name"><span class="role-title">Director of Engineering/);
+});
+
+test('the education note shows after the degree', () => {
+  const m = assemble(usMaster, usVariant);
+  assert.match(renderHtml(m, 'body{}'), /B\.S\. Computer Science \(with honors\)/);
+  assert.match(modelText(m), /B\.S\. Computer Science \(with honors\)/);
 });

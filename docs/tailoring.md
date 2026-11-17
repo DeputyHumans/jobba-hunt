@@ -32,6 +32,16 @@ The terms are frozen first so the CV is never measured against a vocabulary it s
 
 **Exit codes:** 0 ok; 1 refused or a check failed (the JSON names which); 2 usage; 3 bikeshed refused the update (the document is open in the editor, a suggestion is pending, or there is a newer base); 4 bikeshed signed out (`npm run bikeshed -- login`).
 
+**Layout options a variant or tailored CV may use** (all optional, every unit still from `master.json` with claim IDs):
+
+| Field | Effect |
+|---|---|
+| `practice` `{role, context, items, clients: true, heading}` | A section after Experience for one's own consultancy or freelance work, default heading "Independent Practice"; `clients: true` prints the role's `clients` as "Featured clients" |
+| `contact` `{location, workplace: null, phone: "profile" \| null}` | The header line for one target role: a different location, no workplace (an on-site role), and the phone from `profile/person.json` shown or hidden (default `show_phone_on_cv`). Never a literal number |
+| `master.json` `links`, `employers` + role `via`, education `note` | Clickable company and product names, "Client (via Employer)" roles, "Degree (note)" |
+
+A role with three bullets or fewer and no sub-heads never breaks across pages; a longer one may split 2 + 2.
+
 **Archetype variants stay.** `/hunt-onboard` phase 8 builds them from `master.json`. They are the baseline every tailored draft is measured against, and the fallback. `tailoring.cv: "archetype"` turns per-job tailoring off.
 
 ## Review (`tailoring.review`)

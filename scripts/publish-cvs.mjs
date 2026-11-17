@@ -20,7 +20,8 @@ import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 
 import { basename, dirname, join } from 'node:path';
 import { CV_OUT, CV_SRC, DATA_DIR, display, resolveArgPath } from './lib/paths.mjs';
 import { loadConfig, saveConfig } from './lib/config.mjs';
-import { applicationEmail, cvFileBase, person } from './lib/profile.mjs';
+import { applicationEmail, cvFileBase, cvPhone, person } from './lib/profile.mjs';
+import { wantsPhone, withoutPhone } from './lib/cv.mjs';
 import { bikeshedRun } from './lib/adapters/bikeshed.mjs';
 import { logAction } from './lib/actions-log.mjs';
 
@@ -57,7 +58,7 @@ function latestHtml(slug) {
 }
 
 // The CV carries one address (the application email) and no phone; anything else means the
-// wrong data got in.
+// wrong data got in. A CV that shows the phone (wantsPhone) may carry that one number only.
 function privacyViolations(html, allow = applicationEmail()) {
   const bad = [];
   for (const e of new Set(html.match(/[\w.+-]+@[\w-]+\.[\w.-]+/g) || [])) if (e.toLowerCase() !== allow) bad.push(`email ${e}`);
@@ -79,7 +80,7 @@ for (const v of variants) {
   const file = latestHtml(v.slug);
   if (!file) { results.push({ slug: v.slug, status: 'no-render' }); worst = Math.max(worst, 1); continue; }
   const html = readFileSync(file, 'utf8');
-  const bad = privacyViolations(html);
+  const bad = privacyViolations(withoutPhone(html, wantsPhone(v, person().show_phone_on_cv) ? cvPhone() : null));
   if (bad.length) { results.push({ slug: v.slug, status: 'refused-privacy', bad }); worst = Math.max(worst, 1); continue; }
   const title = `${name} CV · ${v.share}`;
   const r = await publishTracker({ html, file, cfg: { folder_id: cfg.folder_id, ...(cfg.docs[v.slug] || {}) }, st: st[v.slug] || {}, run: bikeshedRun, title });

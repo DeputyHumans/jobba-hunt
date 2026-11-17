@@ -56,3 +56,17 @@ test('zipEntry finds an entry, returns null for a missing one, and refuses a non
   assert.equal(zipEntry(buf, 'nope.xml'), null);
   assert.throws(() => zipEntry(Buffer.from('not a zip at all, just some bytes that are long enough'), 'x'), /not a zip/);
 });
+
+test('the practice section, a shown phone and an education note reach the .docx', async () => {
+  const m2 = structuredClone(master);
+  m2.roles.studio = { title: 'Fractional CTO', company: 'Example Studio', dates: 'Jan 2024 – Present', claims: ['C02'],
+    contexts: { default: { text: 'Fractional CTO practice for seed-stage teams.', claims: ['C02'] } }, clients: [{ name: 'Hooli', claims: ['C17'] }] };
+  m2.education = [{ ...m2.education[0], note: 'with honors' }];
+  const v = { ...structuredClone(variant), practice: { role: 'studio', clients: true } };
+  const lines = docxText(await cvDocx(assemble(m2, v, { phone: '+1 (555) 555-0100' }))).split('\n');
+  assert.equal(lines[2], 'Springfield, IL · Remote (US) · +1 (555) 555-0100 · jordan@example.com · linkedin.com/in/jordan-example');
+  const pr = lines.indexOf('INDEPENDENT PRACTICE');
+  assert.ok(pr > lines.indexOf('EXPERIENCE') && pr < lines.indexOf('EDUCATION'), 'practice sits between Experience and Education');
+  assert.ok(lines.includes('Featured clients: Hooli'));
+  assert.ok(lines.some((l) => l.startsWith('B.S. Computer Science (with honors) · Example State University')));
+});

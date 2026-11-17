@@ -34,14 +34,14 @@ import { basename, dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   claimIdsFromBank, validateVariant, assemble, renderHtml, modelText, lintText, coverage, checkExtracted, rankForJd, checkPageSplit, variantPool, bodySegments, repeatedPhrases,
-  cvPerson, inlineFonts, paperOf, sheetCss, pageRuleCss, pdfFooterTemplate, CV_MARGINS,
+  cvPerson, inlineFonts, paperOf, sheetCss, pageRuleCss, pdfFooterTemplate, CV_MARGINS, wantsPhone, withoutPhone, headingsFor,
 } from './lib/cv.mjs';
 import { pageStarts, paginate } from './lib/cv-pages.mjs';
 import { pdfInfo, isPageSize, pdfFonts, fontProblems, pageLines, launchChromium } from './lib/pdf.mjs';
 import { cvDocx, docxText } from './lib/docx.mjs';
 import { CV_OUT, CV_SRC, COLLATERAL_DIR, DATA_DIR, brandFile, display, resolveArgPath } from './lib/paths.mjs';
 import { requireWorkspace } from './lib/config.mjs';
-import { cvFileBase, person, preferences, tz } from './lib/profile.mjs';
+import { cvFileBase, cvPhone, person, preferences, tz } from './lib/profile.mjs';
 import { logAction } from './lib/actions-log.mjs';
 
 const PREVIEW = join(DATA_DIR, 'cv-preview');
@@ -137,8 +137,12 @@ let failed = false;
 try {
   for (const v of pick) {
     const errs = validateVariant(master, v, claimIds);
-    const model = assemble(master, v);
-    const srcLint = lintText(modelText(model), rules);
+    // The phone shows when the variant opts in (contact.phone "profile") or person.json's
+    // show_phone_on_cv says so; it is then the one number the lint lets through.
+    const phone = wantsPhone(v, person().show_phone_on_cv) ? cvPhone() : null;
+    if (wantsPhone(v, person().show_phone_on_cv) && !phone) errs.push('contact.phone: no phone in profile/person.json');
+    const model = assemble(master, v, { phone });
+    const srcLint = lintText(withoutPhone(modelText(model), phone), rules);
     const base = join(datedDir, cvFileBase(v.slug));
     const sharePdf = join(shareDir, `${cvFileBase(v.share)}.pdf`);
     writeFileSync(`${base}.html`, renderHtml(model, css));
@@ -169,7 +173,7 @@ try {
     const text = pageText.join('\n');
     const textErrs = checkExtracted(text, model);
     const splitErrs = pageText.slice(1).flatMap((t, i) => checkPageSplit(pageText[i], t, model).map((e) => (pages > 2 ? `pages ${i + 1}/${i + 2}: ${e}` : e)));
-    const pdfLint = lintText(text, rules);
+    const pdfLint = lintText(withoutPhone(text, phone), rules);
     const cov = coverage(text, v.target_keywords);
     const unexplained = cov.missing.filter((k) => !(v.honest_gaps || []).includes(k));
     const bodyLines = lines.map((ls) => ls.filter((l) => !l.footer));
@@ -216,8 +220,8 @@ try {
       const buf = await cvDocx(model, { paper: paper.name });
       const dtext = docxText(buf);
       if (!dtext.startsWith(model.person.name)) docxErrs.push('docx: the name is not the first line');
-      for (const h of ['SUMMARY', 'CAREER HIGHLIGHTS', 'SKILLS', 'EXPERIENCE', 'EDUCATION']) if (!dtext.split('\n').includes(h)) docxErrs.push(`docx: heading ${h} missing`);
-      docxErrs.push(...lintText(dtext, rules).map((h) => `lint(docx) ${h.id}: "${h.match}"`));
+      for (const h of headingsFor(model)) if (!dtext.split('\n').includes(h)) docxErrs.push(`docx: heading ${h} missing`);
+      docxErrs.push(...lintText(withoutPhone(dtext, phone), rules).map((h) => `lint(docx) ${h.id}: "${h.match}"`));
       writeFileSync(`${base}.docx`, buf);
       shareDocx = join(shareDir, `${cvFileBase(v.share)}.docx`);
       writeFileSync(shareDocx, buf);

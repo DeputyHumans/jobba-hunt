@@ -58,7 +58,7 @@ Sign in only through the wrappers: `npm run bikeshed -- login` and `npm run gws 
 | `npm run check:pii` | `.githooks/pre-commit` (`npm run setup` sets `core.hooksPath`) with `--staged`, and on demand | Terms from the active workspace (`profile/person.json`, `profile/answers.json`, the employers in `collateral/cv/master.json`, one extra term per line in `profile/pii-extra.txt`) in any file the repo would commit. The synthetic test workspace is never a source of terms |
 | `npm run check:portable` | `npm test` and the pre-commit hook | Host-only paths in tracked files (absolute home-directory paths on macOS or Linux, the tilde shorthand, home-variable locations, drive letters), any parent-directory reference that resolves outside the repo, any symlink that leaves it |
 | Tracker privacy guard | Every `npm run tracker` before publishing | Any email address except the application email, the answer-bank phone, the standing annual rate, the street address. A hit publishes nothing and exits 1 |
-| CV and letter lint | Every build | The never-claim patterns, a phone number by default |
+| CV and letter lint | Every build | The never-claim patterns, a phone number by default. A CV that shows the phone (`profile/person.json` `show_phone_on_cv`, or a variant's `contact.phone: "profile"`) exempts that one number, in the lint and in `npm run cv-publish`; any other number still fails |
 | Recruiter pages | `npm run recruiter-pages` | Anyone named in `never_show`, and any script on a page |
 | Captures | By hand before reuse | `data/captures/` shows the signed-in page. Before a capture becomes a fixture: strip the nav, the operator's name and photo, `trackingId` and `refId` values, and every other job's text; replace employers and ids with synthetic ones |
 

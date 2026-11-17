@@ -36,6 +36,21 @@ export const coverFileBase = (slugPart, p) => `${filePrefix(p)}-cover-letter-${s
 export const CV_FILE_RE = /^(.+?)-cv-([a-z0-9-]+)\.(pdf|docx|html)$/;
 
 // The address applications use (forms, ATS accounts, privacy-guard allow-list).
+// "+1 (555) 555-0100" from "(555) 555-0100" and an answer-bank country like "United States (+1)".
+export function formatPhone(phone, country) {
+  if (!phone) return null;
+  const s = String(phone).trim();
+  if (s.startsWith('+')) return s;
+  const cc = String(country || '').match(/\(\+(\d+)\)/)?.[1];
+  return cc ? `+${cc} ${s}` : s;
+}
+// The number a CV may show (person.json phone, else the answer bank's), or null. Whether a CV
+// shows it is cv.mjs wantsPhone: the variant's contact.phone, else person.json show_phone_on_cv.
+export function cvPhone(p = person(), a = answers()) {
+  const country = a?.profile?.phone_country;
+  return formatPhone(p?.phone, country) || formatPhone(a?.profile?.phone, country);
+}
+
 export const applicationEmail = (p = person()) => String(p.application_email || p.email || '').trim().toLowerCase();
 
 // How skills and messages name the user: the display name, else "the operator".

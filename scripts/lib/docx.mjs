@@ -9,7 +9,7 @@
 
 import { inflateRawSync } from 'node:zlib';
 import { AlignmentType, Document, HeadingLevel, LevelFormat, Packer, Paragraph, Tab, TabStopType, TextRun } from 'docx';
-import { displayText, paperOf } from './cv.mjs';
+import { displayText, eduText, paperOf } from './cv.mjs';
 
 const TWIP = 1440; // per inch
 const FONT = 'Arial';
@@ -36,7 +36,7 @@ export async function cvDocx(m, { paper = 'letter' } = {}) {
   const body = [
     new Paragraph({ heading: HeadingLevel.TITLE, spacing: { after: 60 }, children: [run(p.name, { bold: true, size: 40 })] }),
     new Paragraph({ spacing: { after: 40 }, children: [run(t(m.headline), { size: 22, color: '23466B' })] }),
-    new Paragraph({ spacing: { after: 120 }, children: [run([p.location, p.workplace, p.email, p.linkedin].filter(Boolean).join(' · '), { size: 18 })] }),
+    new Paragraph({ spacing: { after: 120 }, children: [run([p.location, p.workplace, p.phone, p.email, p.linkedin].filter(Boolean).join(' · '), { size: 18 })] }),
     heading('Summary'),
     new Paragraph({ spacing: { after: 60 }, children: [run(t(m.summary), { size: 20 })] }),
     heading('Career Highlights'),
@@ -56,8 +56,16 @@ export async function cvDocx(m, { paper = 'letter' } = {}) {
   for (const r of m.earlier) {
     body.push(new Paragraph({ spacing: { before: 80, after: 40 }, children: [run(t(r.title), { bold: true, size: 19 }), run(` · ${t(r.company)} · ${r.dates}. ${t(r.line)}`, { size: 19 })] }));
   }
+  if (m.practice) {
+    const pr = m.practice;
+    body.push(heading(pr.heading));
+    body.push(roleLine(pr.title, pr.company, pr.dates));
+    body.push(new Paragraph({ spacing: { after: 40 }, keepNext: true, children: [run(t(pr.context), { italics: true, size: 19 })] }));
+    for (const b of pr.blocks) if (b.type !== 'sub') body.push(bullet([run(t(b.text), { size: 20 })]));
+    if (pr.clients.length) body.push(new Paragraph({ spacing: { before: 40, after: 40 }, children: [run(`Featured clients: ${pr.clients.map(t).join(', ')}`, { size: 19 })] }));
+  }
   body.push(heading('Education'));
-  for (const e of m.education) body.push(bullet([run(`${t(e.degree)} · ${t(e.school)}`, { size: 20 }), run(` · ${e.year}`, { size: 20 })]));
+  for (const e of m.education) body.push(bullet([run(`${t(eduText(e))} · ${t(e.school)}`, { size: 20 }), run(` · ${e.year}`, { size: 20 })]));
 
   const doc = new Document({
     creator: p.name,
