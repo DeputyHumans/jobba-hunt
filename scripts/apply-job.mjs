@@ -55,7 +55,8 @@ import { notify } from './lib/notify.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { openVault } from './lib/adapters/vault.mjs';
 import { STATE_PATH, loadState, saveStateAtomic, sourceState, carryRun } from './lib/state.mjs';
-import { applyGate, recordAttempt } from './lib/triage.mjs';
+import { applyGate, recordAttempt, sameCompanyRoles } from './lib/triage.mjs';
+import { loadCompanyOpts } from './lib/company.mjs';
 import { readPause } from './lib/pause.mjs';
 import { isHalted, haltUntil } from './lib/tick-plan.mjs';
 import { canPost, recordPost, getUsageSummary } from './rate-limiter.mjs';
@@ -143,7 +144,7 @@ if (!(/^\d{6,}$/.test(id) || isDiceId(id)) || !job) refuse('pass --job <id of a 
 const dice = job.source === 'dice';
 const loop = dice ? sourceState(state, 'dice') : state;
 const applyCap = dice ? 'dice_apply' : 'linkedin_apply';
-const gate = applyGate(job, { dryRun, pause: readPause() });
+const gate = applyGate(job, { dryRun, pause: readPause(), sameCompany: sameCompanyRoles(state, job, loadCompanyOpts()) });
 if (gate) refuse(gate, { status: job.application?.status ?? null });
 if (isHalted(loop, Date.now())) refuse(`${dice ? 'Dice ' : ''}halted until ${loop.halt_until}`);
 const bank = loadAnswers();

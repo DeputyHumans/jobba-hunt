@@ -102,7 +102,8 @@ None of these numbers appears on the tracker.
  "gates": {"G1": "pass", "G2": "pass", "G3": "pass", "G4": "pass"},
  "dims": {"mandate": 5, "domain": 4, "stage": 4, "stack": 4, "signal": 3},
  "why_fit": ["C03 ..."], "gaps": ["..."], "red_flags": ["..."],
- "comp_seen": null, "hours_seen": "10-15 hrs/week", "archetype": "<cv-map slug>"}
+ "comp_seen": null, "hours_seen": "10-15 hrs/week", "archetype": "<cv-map slug>",
+ "via_agency": false, "end_client": null}
 ```
 
 ```json
@@ -116,6 +117,7 @@ None of these numbers appears on the tracker.
 - **`lane`**: `hands-on` for Lane H; `leadership` or omitted otherwise.
 - **`why_fit`** names claim IDs where they apply.
 - **`archetype`** is one of the slugs in `collateral/cv-map.md`.
+- **`via_agency`** (optional): `true` when the poster is a recruiter, staffing firm or aggregator. **`end_client`** (optional): the employer the description names, or `null`. The per-company application limit counts an agency role against its end client only.
 - **No description fetched:** every gate `unclear`, red flag `no-description`, score at most 50.
 
 ## Calibration

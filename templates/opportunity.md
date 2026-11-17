@@ -4,6 +4,8 @@ created: YYYY-MM-DD
 updated: YYYY-MM-DD
 status: Draft
 tags: [opportunity, <archetype>]
+role: <Role>
+company: <Company>
 stage: shortlisted
 tier: A
 score: 0
@@ -23,6 +25,7 @@ offer_folder:  # pipeline/proposals/<client>/ once the stage reaches proposal
 # <Role> at <Company>
 
 <!-- Stages: inbound (a role found only in an email, job_id email-<thread id>) | shortlisted -> kit-ready -> applied -> screening -> nda -> proposal -> negotiating -> won | lost | withdrawn -->
+<!-- company: the employer. The per-company application limit (config/apply.json companies) counts this file once stage is applied or later, or applied_on is set; an agency role names its end client. -->
 <!-- cv_note: optional, one sentence. Set it when the CV that was sent no longer matches its current render; the tracker flags it on the application card. -->
 <!-- File name: pipeline/opportunities/YYYYMMDD-<company-slug>-<role-slug>.md. Material under NDA stays outside the workspace: link to it, never copy it in. -->
 

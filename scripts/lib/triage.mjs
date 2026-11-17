@@ -5,6 +5,7 @@
 import { isDiceId } from './dice-extract.mjs';
 import { belowIcFloor, belowFullTimeFloor, belowFullTimeTarget } from './rate.mjs';
 import { preferences, tiers } from './profile.mjs';
+import { applicationKey } from './company.mjs';
 
 const GATES = ['G1', 'G2', 'G3', 'G4'];
 const GATE_VALUES = ['pass', 'fail', 'unclear'];
@@ -29,6 +30,9 @@ export function validateTriage(r, { lanes = triageLanes() } = {}) {
   if (!Number.isInteger(r?.score) || r.score < 0 || r.score > 100) e.push('score must be an integer 0-100');
   for (const g of GATES) if (!GATE_VALUES.includes(r?.gates?.[g])) e.push(`gates.${g} must be pass|fail|unclear`);
   for (const k of ['why_fit', 'gaps', 'red_flags']) if (!Array.isArray(r?.[k])) e.push(`${k} must be an array`);
+  // An agency posting: the poster is a recruiter or staffing firm, and end_client is the employer it names.
+  if (r?.end_client != null && (typeof r.end_client !== 'string' || !r.end_client.trim())) e.push('end_client must be a non-empty string or null');
+  if (r?.via_agency != null && typeof r.via_agency !== 'boolean') e.push('via_agency must be true, false or omitted');
   return e;
 }
 
@@ -73,10 +77,14 @@ export function applyTriage(state, results, now, { tierCuts = tiers(), lanes = t
   return { applied, errors };
 }
 
-export function applyDecision(state, id, decision, note, now) {
+const siblingError = (sameCompany) => (sameCompany?.length ? `company limit: ${sameCompany.map((r) => `${r.id} ${r.status}`).join(', ')}` : null);
+
+export function applyDecision(state, id, decision, note, now, { sameCompany = [] } = {}) {
   if (!DECISIONS[decision]) throw new Error(`decision must be one of ${Object.keys(DECISIONS).join('|')}`);
   const j = state.jobs[id];
   if (!j?.triage) throw new Error(`job ${id} is not triaged yet`);
+  // The per-company limit (config/apply.json companies.limit): a pursue with live siblings is refused up front.
+  if (decision === 'pursue' && siblingError(sameCompany)) throw new Error(siblingError(sameCompany));
   j.triage.decision = decision;
   j.triage.decided_at = now;
   j.triage.note = note || null;
@@ -89,9 +97,10 @@ export function applyDecision(state, id, decision, note, now) {
 // submit per job, ever: an unverified submit blocks too, because a retry could send a duplicate.
 const FINAL = new Set(['submitted', 'submitted-by-hand', 'already-applied', 'submit-unverified']);
 
-export function approveApplication(state, id, { cv, note, cover = null, coverPdf = null }, now) {
+export function approveApplication(state, id, { cv, note, cover = null, coverPdf = null, sameCompany = [] }, now) {
   const j = state.jobs[id];
   if (j?.triage?.decision !== 'pursue') throw new Error(`job ${id} is not pursued; record the user's decision first`);
+  if (siblingError(sameCompany)) throw new Error(siblingError(sameCompany));
   if (!cv) throw new Error('approval needs the approved CV (--cv)');
   j.application = { ...(j.application || {}), attempts: j.application?.attempts || [], status: 'approved', approved_at: now, cv, note: note || null, cover_note: cover, cover_pdf: coverPdf };
   return j;
@@ -115,7 +124,7 @@ export function approveDocs(state, id, { note }, now) {
 // role that meets every condition is pursued and approved without a question; any blocker
 // sends it back to the user. The caller measures CV coverage and checks the file and the
 // channel flag.
-export function autoApplyBlockers(j, rule, { coverage = null, cvExists = false, verified = false, pause = null } = {}) {
+export function autoApplyBlockers(j, rule, { coverage = null, cvExists = false, verified = false, pause = null, sameCompany = [] } = {}) {
   if (!rule) return ['no auto_apply rule in config/apply.json'];
   // The hunt-wide pause (config/pause.json) stops auto-apply before anything else.
   if (pause?.paused) return [`submissions paused: ${pause.reason || 'no reason given'}`];
@@ -143,16 +152,58 @@ export function autoApplyBlockers(j, rule, { coverage = null, cvExists = false, 
   if (j?.detail?.already_applied) b.push('LinkedIn shows it as applied');
   if (!cvExists) b.push('no existing CV for the archetype');
   if (!(coverage >= rule.min_cv_coverage)) b.push(`CV coverage ${coverage ?? 'unknown'}% below ${rule.min_cv_coverage}%`);
+  if (siblingError(sameCompany)) b.push(siblingError(sameCompany));
   return b;
 }
 
-export function applyGate(j, { dryRun, pause = null }) {
+export function applyGate(j, { dryRun, pause = null, sameCompany = [] }) {
   if (j?.triage?.decision !== 'pursue') return 'not-pursued';
   // While paused (config/pause.json) nothing is sent; a dry run still runs.
   if (!dryRun && pause?.paused) return `paused: ${pause.reason || 'no reason given'}`;
   if (FINAL.has(j.application?.status)) return 'already-applied';
   if (!dryRun && !j.application?.approved_at) return 'not-approved';
+  // The per-company limit: never send past it. An already-applied sibling and an application known
+  // only from an opportunity file count too; an approved, unsent sibling does not block the submit.
+  const sent = !dryRun && sameCompany.find((r) => FINAL.has(r.status) || String(r.status).startsWith('opportunity:'));
+  if (sent) return `same-company: ${sent.id} ${sent.status}`;
   return null;
+}
+
+// Other roles at the same company that are live: sent or approved. Closed, skipped, held and
+// withdrawn roles do not count: a held role gave its place to the one kept over it. The company
+// key (agencies, aliases, normalization) lives in ./company.mjs. opts come from company.mjs
+// loadCompanyOpts: { limit, agencies, aliases, external }. The siblings come back only when they
+// reach the limit (config/apply.json companies.limit, default 1); a null limit turns the rule off.
+const LIVE = new Set([...FINAL, 'approved']);
+export function sameCompanyRoles(state, j, { limit = 1, agencies = [], aliases = {}, external = [] } = {}) {
+  if (limit == null) return [];
+  const k = applicationKey(j, { agencies, aliases });
+  if (!k.key && !k.agencyTitle) return [];
+  const same = (o) => {
+    const ok = applicationKey(o, { agencies, aliases });
+    return k.key ? ok.key === k.key : (!ok.key && ok.agencyTitle === k.agencyTitle);
+  };
+  const live = Object.entries(state.jobs || {})
+    .filter(([id, o]) => o !== j && id !== j.job_id && LIVE.has(o.application?.status) && same(o))
+    .map(([id, o]) => ({ id, title: o.title, status: o.application.status }));
+  // An opportunity file whose job is in state is already counted above, by its state record.
+  const files = k.key ? external.filter((e) => e.key === k.key && e.job_id !== j.job_id && !state.jobs?.[e.job_id] && !agencies.some((a) => applicationKey({ company: a }, { aliases }).key === e.key)) : [];
+  const all = [...live, ...files.map((e) => ({ id: e.id, title: e.title, status: e.status }))];
+  return all.length >= limit ? all : [];
+}
+
+// Hold an approved (or pursued) role: it leaves the runner's reach until the user approves it again.
+export function holdApplication(state, id, { note }, now) {
+  const j = state.jobs[id];
+  if (!j) throw new Error(`unknown job ${id}`);
+  if (FINAL.has(j.application?.status)) throw new Error(`job ${id} is already ${j.application.status}`);
+  if (typeof note !== 'string' || !note.trim()) throw new Error('pass --note with the reason for the hold');
+  j.application = { ...(j.application || {}), attempts: j.application?.attempts || [], status: 'held', held_at: now };
+  delete j.application.approved_at;
+  j.application.attempts = [...j.application.attempts, { at: now, mode: 'hold', outcome: 'held', channel: null, detail: note.trim(), dir: null }];
+  if (j.triage) { j.triage.decision = 'watch'; j.triage.decided_at = now; j.triage.note = note.trim(); }
+  j.status = 'watching';
+  return j;
 }
 
 export function recordAttempt(state, id, { mode, outcome, detail = null, dir = null, channel = null }, now) {

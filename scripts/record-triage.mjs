@@ -10,6 +10,7 @@
 //   node scripts/record-triage.mjs approve-docs --id <jobId> --note "<the user's words>"
 //       the user approved the tailored CV and letter (review doc comment, or "Apply")
 //   node scripts/record-triage.mjs applied --id <jobId> [--note "..."]      # the user submitted by hand
+//   node scripts/record-triage.mjs hold --id <jobId> --note "..."   # an approved or pursued role leaves the runner (watch)
 //   node scripts/record-triage.mjs confirm --id <jobId> --evidence <png> [--note "..."]
 //   node scripts/record-triage.mjs not-sent --id <jobId> --evidence <png> --note "<the user's words>"
 //   node scripts/record-triage.mjs auto --id <jobId> [--cover-pdf <pdf>] [--dry-run]
@@ -29,7 +30,8 @@ import { loadConfig } from './lib/config.mjs';
 import { cvFileBase, preferences } from './lib/profile.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { readPause } from './lib/pause.mjs';
-import { pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, recordAttempt, autoApplyBlockers, markNotSent } from './lib/triage.mjs';
+import { pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, recordAttempt, autoApplyBlockers, markNotSent, sameCompanyRoles, holdApplication } from './lib/triage.mjs';
+import { loadCompanyOpts } from './lib/company.mjs';
 
 const { positional, flags } = parseArgs(process.argv.slice(2));
 const cmd = positional[0];
@@ -43,6 +45,8 @@ const log = (action, job_id, detail, actor = 'agent') => logAction({ actor, acti
 // $JOBBA_DATA_DIR/...), the same one every other script prints; resolveArgPath reads it back.
 const storedPath = (p) => display(p);
 const fileExists = (p) => !!p && existsSync(resolveArgPath(p));
+// Live roles at the same company once they reach config/apply.json companies.limit (company.mjs).
+const siblingsOf = (id) => (state.jobs[id] ? sameCompanyRoles(state, state.jobs[id], loadCompanyOpts()) : []);
 
 if (cmd === 'pending') {
   const jobs = pendingForTriage(state);
@@ -62,7 +66,8 @@ if (cmd === 'pending') {
 } else if (cmd === 'decide') {
   if (!flags.id || !flags.decision) fail('Pass --id <jobId> --decision pursue|watch|skip');
   try {
-    const j = applyDecision(state, String(flags.id), flags.decision, str(flags.note) || '', now);
+    const id = String(flags.id);
+    const j = applyDecision(state, id, flags.decision, str(flags.note) || '', now, { sameCompany: siblingsOf(id) });
     saveStateAtomic(STATE_PATH, state);
     log('triage.decided', j.job_id, short(`${flags.decision}${str(flags.note) ? `: ${flags.note}` : ''}`), 'user');
     out({ success: true, job_id: j.job_id, status: j.status, title: j.title, company: j.company, url: j.url, tier: j.triage.tier, score: j.triage.score });
@@ -76,7 +81,8 @@ if (cmd === 'pending') {
 } else if (cmd === 'approve') {
   if (!flags.id || typeof flags.cv !== 'string') fail('Pass --id <jobId> --cv <the CV pdf the user approved>');
   try {
-    const j = approveApplication(state, String(flags.id), { cv: flags.cv, note: str(flags.note) || '', cover: str(flags.cover), coverPdf: str(flags['cover-pdf']) }, now);
+    const id = String(flags.id);
+    const j = approveApplication(state, id, { cv: flags.cv, note: str(flags.note) || '', cover: str(flags.cover), coverPdf: str(flags['cover-pdf']), sameCompany: siblingsOf(id) }, now);
     saveStateAtomic(STATE_PATH, state);
     log('triage.approved', j.job_id, `cv ${basename(flags.cv)}${str(flags['cover-pdf']) ? ', letter' : ''}`, 'user');
     out({ success: true, job_id: j.job_id, application: j.application });
@@ -91,10 +97,12 @@ if (cmd === 'pending') {
   } catch (err) { fail(err.message); }
 } else if (cmd === 'applied') {
   if (!flags.id || !state.jobs[String(flags.id)]) fail('Pass --id <jobId> of a known job');
+  // The user's own submit is a fact to record, never refused; live siblings are named so the digest can say so.
+  const siblings = siblingsOf(String(flags.id));
   const j = recordAttempt(state, String(flags.id), { mode: 'by-hand', outcome: 'submitted-by-hand', detail: str(flags.note) }, now);
   saveStateAtomic(STATE_PATH, state);
   log('apply.submitted_by_hand', j.job_id, short(str(flags.note)), 'user');
-  out({ success: true, job_id: j.job_id, application: j.application });
+  out({ success: true, job_id: j.job_id, application: j.application, ...(siblings.length ? { warning: `another application at this company: ${siblings.map((r) => `${r.id} ${r.status}`).join(', ')}` } : {}) });
 } else if (cmd === 'confirm') {
   // A submit-unverified run whose own after-submit screenshot shows the site's confirmation
   // (a confirmation phrase the runner did not know yet). Never re-runs anything: it only
@@ -110,6 +118,16 @@ if (cmd === 'pending') {
   saveStateAtomic(STATE_PATH, state);
   log('apply.confirmed', id, `${channel || 'unknown channel'}: confirmation seen on the after-submit screenshot`);
   out({ success: true, job_id: id, application: { status: j.application.status, submitted_at: j.application.submitted_at } });
+} else if (cmd === 'hold') {
+  // Takes an approved or pursued role out of the runner's reach (a sibling at the same company is
+  // kept instead, or the user wants it parked). A sent application is never touched.
+  const id = String(flags.id || '');
+  try {
+    const j = holdApplication(state, id, { note: str(flags.note) || '' }, now);
+    saveStateAtomic(STATE_PATH, state);
+    log('triage.held', id, short(j.triage?.note || null), 'user');
+    out({ success: true, job_id: id, company: j.company, application: { status: j.application.status } });
+  } catch (err) { fail(err.message); }
 } else if (cmd === 'not-sent') {
   // A submit-unverified run whose screenshot proves nothing was sent, re-opened with the user's
   // OK. Only after this may the runner try once more.
@@ -156,7 +174,7 @@ if (cmd === 'pending') {
   // A company-site role ("external") is resolved to its ATS only at submit time; the runner
   // submits only on a verified ATS (config/apply.json verified) and hands anything else to the user.
   const type = j.detail?.apply?.type;
-  const blockers = autoApplyBlockers(j, rule, { coverage, cvExists: !!cvAbs && existsSync(cvAbs), verified: type === 'external' ? true : !!cfg.verified?.[type], pause: readPause() });
+  const blockers = autoApplyBlockers(j, rule, { coverage, cvExists: !!cvAbs && existsSync(cvAbs), verified: type === 'external' ? true : !!cfg.verified?.[type], pause: readPause(), sameCompany: siblingsOf(id) });
   blockers.push(...extra);
   if (rule && rule.enabled !== true && !blockers.some((b) => b.startsWith('auto-apply is off'))) blockers.unshift('auto-apply is off (config/apply.json auto_apply.enabled)');
   // A channel whose rule says "generated" goes out only with a claims-only cover letter PDF
@@ -183,5 +201,5 @@ if (cmd === 'pending') {
   }
   out({ success: true, eligible: true, dry_run: !!flags['dry-run'], ...base });
 } else {
-  fail('usage: record-triage.mjs pending | record --file <f> | decide --id <id> --decision pursue|watch|skip | list [--tier] [--status] | approve --id <id> --cv <pdf> | approve-docs --id <id> --note "..." | applied --id <id> | confirm --id <id> --evidence <png> | not-sent --id <id> --evidence <png> --note "..." | auto --id <id> [--cover-pdf <pdf>] [--dry-run]');
+  fail('usage: record-triage.mjs pending | record --file <f> | decide --id <id> --decision pursue|watch|skip | list [--tier] [--status] | approve --id <id> --cv <pdf> | approve-docs --id <id> --note "..." | applied --id <id> | hold --id <id> --note "..." | confirm --id <id> --evidence <png> | not-sent --id <id> --evidence <png> --note "..." | auto --id <id> [--cover-pdf <pdf>] [--dry-run]');
 }

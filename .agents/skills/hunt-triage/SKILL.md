@@ -16,13 +16,14 @@ Run from the repo root. Read `CLAUDE.md` first. Paths starting `workspace/` are 
 ## Triage run
 1. **Export the pending roles.** `npm run -s triage -- pending` prints `{ count, file }`.
    - Count 0: report the last run instead and stop. The last run is the newest `workspace/data/raw/*-tick.json` or `*-sweep.json`: give its `summary`, `aborted` and `budget_exhausted`.
-2. **Score each role** per `fit-profile.md`: `lane`, `gates`, `dims`, `score`, `why_fit`, `gaps`, `red_flags`, `comp_seen`, `hours_seen`, `archetype`.
+2. **Score each role** per `fit-profile.md`: `lane`, `gates`, `dims`, `score`, `why_fit`, `gaps`, `red_flags`, `comp_seen`, `hours_seen`, `archetype`, plus `via_agency` and `end_client` for an agency posting.
    - **Score from the fetched `description_text` only.** Empty: every gate `unclear`, red flag `no-description`, score at most 50.
    - **G1 reads `preferences.engagement.accept`.** A board's employment-type tag is not evidence on its own: a "Full-time" tag on a description of a fractional or part-time engagement passes G1, and a Contract or Part-time tag passes G1 on a plain title. A full-time role passes when `accept` lists `full-time`; the salary floor and target are applied by `record-triage`, not the score.
    - **G2 reads `preferences.location`.** With `remote_required`, hybrid passes only when the description limits on-site time to occasional travel. On-site or hybrid passes inside `onsite_metros`, and fails elsewhere.
    - **Dice roles (`source: dice`).** A hands-on title (senior, lead, principal, staff or architect with an engineering noun, not leadership) scores on Lane H with `lane: "hands-on"` and its own dims. G1 reads `contract_types` against `engagement.accept`. G2 reads the job page `workplace` badge, never Dice's Remote filter. The digest shows the posted rate in the hours/comp column.
    - **LinkedIn hands-on roles.** A hands-on title scores on Lane H with `lane: "hands-on"`. G1 passes a Contract, Part-time or Temporary engagement that `engagement.accept` allows.
    - **A role whose work is rating or labeling model output** (an AI-training marketplace) fails G3.
+   - **Agencies.** Set `via_agency: true` when the poster is a recruiter, staffing firm or aggregator, and `end_client` to the employer the description names (`null` when none). The per-company limit (`config/apply.json` `companies`) counts the role against that client only.
    - **Quote, don't paraphrase,** the JD lines that drive a gate `fail`.
    - **Above 10 roles, use subagents.** Fan out to `general-purpose` subagents in batches of 8. Give each the input file paths plus its batch, and require a JSON array as its only output. Never pass a subagent an expected outcome.
 3. **Persist the scores.**
@@ -34,6 +35,7 @@ Run from the repo root. Read `CLAUDE.md` first. Paths starting `workspace/` are 
    - Sections in order: **Sweep** (one line per tick or sweep: time, source, query, new, viewed, guards), **Tier A** and **Tier B** tables (score, role @ company, lane, location, hours/comp seen, one-line why, top gap, link), **Tier C and reject** (counts, plus one line per reject naming the failing gate and its quoted line), **Decisions**, **Inbox**, **Overrides and halts**.
    - Comp and hours verbatim, never scored. No floor appears. No em dashes.
 5. **Get the operator's decision** on every A and B role with AskUserQuestion (pursue / watch / skip; up to 4 roles per call), inside `preferences.schedule` `ask_start`-`ask_end` only. Record each: `npm run -s triage -- decide --id <id> --decision <d> --note "<the operator's words>"`.
+   - A `pursue` past the per-company limit is refused with `company limit: <id> <status>`. Tell the operator which application already holds the company; on their word, `npm run -s triage -- hold --id <id> --note "<reason>"` parks the other one, then pursue again.
 6. **For each `pursue`,** create `workspace/pipeline/opportunities/YYYYMMDD-<company-slug>-<role-slug>.md` from `templates/opportunity.md`.
    - Fill the snapshot, the triage block and `fetched_at` from the job state.
    - `stage: shortlisted`, `next_action: Run /hunt-kit`, `next_action_due:` today for tier A, otherwise two days out.
