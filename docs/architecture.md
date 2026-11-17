@@ -55,6 +55,7 @@ data/         state/  raw/  browser/  captures/  applications/<id>/  triage/  ma
 | `TEMPLATES_DIR`, `CACHE_DIR`, `BIN_DIR`, `BRAND_DIR` | Under `CODE_ROOT` |
 
 - **`brandFile(...p)`**: the workspace's `brand/` copy of a file when it exists, else the repo's.
+- **Brand settings:** `preferences.brand` sets the page title, the accent colour and the wordmark text. An optional logo mark lives only in the workspace, as `brand/mark.json` (`scripts/lib/brand-mark.mjs`). It is a square frame plus a filled seal in the accent: `{ "viewBox", "frame": { x, y, size, strokeWidth }, "seal": { x, y, size } }`. When a mark exists, the tracker, recruiter pages and prep briefs draw it next to the wordmark. The wordmark then stacks one word per line, and a trailing full stop takes the accent colour. The shipped pack has no mark.
 - **`resolveArgPath(p)`**: a CLI path argument. `$JOBBA_HOME/...` and `$JOBBA_DATA_DIR/...` resolve to those roots; an absolute path is kept; a relative one resolves against `CODE_ROOT` first, then `HOME`.
 - **`display(p)`**: the spelling every script prints and stores: repo-relative inside the repo, `$JOBBA_HOME/...` inside the workspace, `$JOBBA_DATA_DIR/...` inside a separate data dir. Never an absolute path. `resolveArgPath(display(p))` gets the file back.
 - **`toolBin(name)`**: `node_modules/.bin/<name>`, unless `JOBBA_<NAME>_BIN` is set.

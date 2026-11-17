@@ -6,6 +6,7 @@
 // HTML: a published copy runs no scripts.
 
 import { applicationEmail, tiers as profileTiers, tz as profileTz } from './profile.mjs';
+import { markSvg } from './brand-mark.mjs';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -52,14 +53,6 @@ export function resolveLinks(roles, { docs = {}, share = null, now = Date.now() 
     analysisUrl: shared('analysis') || docs.analysis?.url || null,
     indexUrl: shared('index') || (shared('analysis') ? null : docs.index?.url || null),
   };
-}
-
-// An optional mark (brand/mark.json in the workspace brand folder): a square frame with a filled seal.
-function markSvg(mark) {
-  if (!mark?.frame || !mark?.seal) return '';
-  const f = mark.frame;
-  const s = mark.seal;
-  return `<svg viewBox="${esc(mark.viewBox)}" aria-hidden="true" focusable="false"><rect x="${f.x}" y="${f.y}" width="${f.size}" height="${f.size}" fill="none" stroke="currentColor" stroke-width="${f.strokeWidth}"/><rect x="${s.x}" y="${s.y}" width="${s.size}" height="${s.size}" fill="var(--blue)"/></svg>`;
 }
 
 // accent overrides the stylesheet's accent token (--blue) when it is a hex colour.

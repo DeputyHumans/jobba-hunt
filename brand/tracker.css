@@ -9,6 +9,9 @@ a:hover{border-bottom-color:var(--ink)}
 .mono,.num,.index,.label,.kicker,.readout,.eyebrow,.badge,time{font-family:var(--mono);font-feature-settings:'tnum' 1,'zero' 1}
 .masthead{display:flex;justify-content:space-between;align-items:center;gap:24px;padding:28px 0;border-bottom:1px solid var(--line)}
 .wordmark{display:flex;align-items:center;gap:4px;font-size:24px;font-weight:500;line-height:1.04;letter-spacing:-.02em;color:var(--ink)}
+.wordmark svg{width:54px;height:54px;flex:none}
+.wordmark-name{display:flex;flex-direction:column}
+.period{color:var(--blue)}
 .mast-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right}
 .kicker,.eyebrow,.label{font-size:.75rem;letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
 .mast-meta time{font-size:.8125rem;color:var(--muted)}
@@ -182,7 +185,7 @@ details.runs{margin-top:24px}
 @media (max-width:700px){
 .wrap{width:calc(100% - 40px)}
 .masthead{padding:20px 0}
-.wordmark{font-size:20px}
+.wordmark{font-size:20px}.wordmark svg{width:40px;height:40px}
 .section-head h2{font-size:1.5rem}
 .data-table,.data-table tbody,.data-table tr,.data-table th,.data-table td{display:block;width:100%}
 .data-table thead{display:none}

@@ -15,6 +15,7 @@ import { parseComp } from './rate.mjs';
 import { brandFile } from './paths.mjs';
 import { loadConfig } from './config.mjs';
 import { CV_FILE_RE, applicationEmail, operatorName, person, preferences, schedule, tz as profileTz } from './profile.mjs';
+import { loadMark, markSvg, wordmarkName } from './brand-mark.mjs';
 
 // Generic marketing clichés: never in generated prose (summary, headings, chart labels).
 // preferences.voice.banned extends the list (bannedWords).
@@ -224,7 +225,10 @@ function postedOf(j) {
 }
 const lastAttempt = (j) => (j.application?.attempts || []).at(-1) || null;
 const compOf = (j) => j.triage?.comp_seen || j.detail?.comp_text || null;
-const role = (j) => ({ id: j.job_id, title: j.title, company: j.company, url: j.url, tier: j.triage?.tier ?? null, score: j.triage?.score ?? null, source: srcOf(j), lane: j.triage?.lane || null });
+// A company field that is an email address (some boards list the recruiter's address there)
+// shows only its domain: the page never carries a third party's address.
+export const coName = (c) => String(c || '').replace(/[\w.+-]+@([\w-]+\.[\w.-]+)/g, '$1');
+const role = (j) => ({ id: j.job_id, title: j.title, company: coName(j.company), url: j.url, tier: j.triage?.tier ?? null, score: j.triage?.score ?? null, source: srcOf(j), lane: j.triage?.lane || null });
 const stats = (ranges) => {
   if (!ranges.length) return { n: 0 };
   const mids = ranges.map((r) => (r.min + r.max) / 2).sort((a, b) => a - b);
@@ -319,7 +323,7 @@ export function buildTracker({
     const a = appById[String(o.job_id)];
     const j = state.jobs[o.job_id];
     return parseInterviews(o.interviews).map((iv) => ({
-      ...iv, id: String(o.job_id), card: !!a, title: a?.title || j?.title || o.role || o.title || '', company: a?.company || j?.company || o.company || '',
+      ...iv, id: String(o.job_id), card: !!a, title: a?.title || j?.title || o.role || o.title || '', company: coName(a?.company || j?.company || o.company || ''),
       round: ivText(iv.round), with: ivText(iv.with), at_iso: localIso(iv.at), booked_iso: iv.booked_on ? localIso(iv.booked_on) : null,
     }));
   }).sort((a, b) => IV_RANK[a.status] - IV_RANK[b.status] || (a.status === 'booked' ? a.at.localeCompare(b.at) : b.at.localeCompare(a.at)) || a.id.localeCompare(b.id));
@@ -536,7 +540,7 @@ export function buildTracker({
     const j = a.job_id != null ? state.jobs[a.job_id] : null;
     return {
       at: a.at, actor: ACTOR_LABEL[a.actor] || cap(String(a.actor || 'script')), action: String(a.action).replace(/[._]+/g, ' '), job_id: a.job_id ?? null,
-      role: j ? scrub(`${j.title} @ ${j.company}`) : null, anchor: a.job_id != null && anchored.has(String(a.job_id)) ? `job-${a.job_id}` : null, detail: detailText(a.detail),
+      role: j ? scrub(`${j.title} @ ${coName(j.company)}`) : null, anchor: a.job_id != null && anchored.has(String(a.job_id)) ? `job-${a.job_id}` : null, detail: detailText(a.detail),
     };
   });
 
@@ -981,7 +985,8 @@ const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 // assets (all optional; defaults come from the brand pack and the workspace):
 //   css, sansWoff2, monoWoff2   brand/tracker.css and brand/fonts (a workspace brand/ file wins)
 //   title                       config/tracker.json title (the <title> and the bikeshed title)
-//   wordmark                    preferences.brand.wordmark, else person.display_name; text only
+//   wordmark                    preferences.brand.wordmark, else person.display_name
+//   mark                        brand/mark.json (workspace brand folder only), else none: text only
 //   kicker                      preferences.brand.title
 //   accent                      preferences.brand.accent, a hex colour
 //   tiers                       preferences.tiers, for the strip plot's bands
@@ -1008,12 +1013,13 @@ export function renderTrackerHtml(m, assets = {}) {
     metric(s.reviewed_today, 'Roles scored today'), metric(s.silent, `No reply in ${m.silent_days}+ business days`)].join('');
   const H = m.headings;
   const mark = wordmark || kicker;
+  const logo = assets.mark !== undefined ? assets.mark : loadMark();
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>${esc(title)}</title>
 <style>${fonts}${css}${accentCss}${pagerCss(m.applications.length)}</style></head>
 <body><div class="wrap">
-<header class="masthead"><span class="wordmark">${esc(mark)}</span>
+<header class="masthead"><span class="wordmark">${logo ? `${markSvg(logo)}${wordmarkName(mark)}` : esc(mark)}</span>
 <div class="mast-meta"><span class="kicker">${esc(kicker)}</span><time datetime="${esc(m.as_of)}">${esc(m.as_of_label)}</time></div></header>
 <section class="hero" id="status"><p class="eyebrow">Updated ${esc(m.as_of_label)} · ${plural(m.health.runs_today, 'check')} today</p><h1>Applications <em>tracker</em></h1>
 ${head(1, H[0])}<div class="metrics">${metrics}</div>${outcomeBarHtml(m)}</section>

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseComp, parseFrontmatter, parseInterviews, buildTracker, renderTrackerHtml, publishTracker, BANNED, bannedWords, runLabels, capRows, zoneLabel, watchEvents, HEADINGS } from '../scripts/lib/tracker.mjs';
+import { parseComp, parseFrontmatter, parseInterviews, buildTracker, renderTrackerHtml, publishTracker, BANNED, bannedWords, runLabels, capRows, zoneLabel, watchEvents, HEADINGS, coName } from '../scripts/lib/tracker.mjs';
+import { markSvg, wordmarkName, loadMark } from '../scripts/lib/brand-mark.mjs';
 
 // Every model here is built on the US Pacific clock with an 08:00-18:00 business day, injected,
 // so the time assertions do not depend on the fixture profile (America/Chicago, 07:00-18:00).
@@ -933,4 +934,26 @@ test('comment watch: new threads and new comments once each, a still-empty threa
   r = watchEvents([t1b, t2b], r.seen, meta);
   assert.deepEqual(r.events.map((e) => [e.thread_id, e.text]), [['t1', 'thanks'], ['t2', 'apply']]);
   assert.deepEqual(watchEvents([t1b, t2b], r.seen, meta).events, []);
+});
+
+test('a company field that is an email address shows only its domain', () => {
+  assert.equal(coName('recruiter@example-staffing.invalid'), 'example-staffing.invalid');
+  assert.equal(coName('Acme Corp'), 'Acme Corp');
+  assert.equal(coName(null), '');
+  const s = structuredClone(state);
+  s.jobs['9000000004'].company = 'recruiter@example-staffing.invalid';
+  const html = renderTrackerHtml(buildTracker({ state: s, opportunities, usage, runs, claims, variants, overrides, now: NOW }), assets);
+  assert.doesNotMatch(html, /recruiter@example-staffing/);
+  assert.match(html, /example-staffing\.invalid/);
+});
+
+test('logo mark: only when the brand folder holds one; the wordmark then stacks with an accent stop', () => {
+  const mark = { viewBox: '-5 -5 34 34', frame: { x: 3, y: 3, size: 18, strokeWidth: 2 }, seal: { x: 10, y: 10, size: 7 } };
+  const html = renderTrackerHtml(model(), { ...assets, mark, wordmark: 'Example Studio.' });
+  assert.equal((html.match(/<svg/g) || []).length, 1);
+  assert.match(html, /<header class="masthead"><span class="wordmark"><svg viewBox="-5 -5 34 34"[^>]*>.*?fill="var\(--blue\)"\/><\/svg><span class="wordmark-name"><span>Example<\/span><span>Studio<span class="period">\.<\/span><\/span><\/span><\/span>/);
+  assert.match(renderTrackerHtml(model(), { ...assets, mark: null }), /<span class="wordmark">Jordan Example<\/span>/);
+  assert.equal(markSvg({ viewBox: '0 0 1 1' }), '', 'an incomplete mark draws nothing');
+  assert.equal(wordmarkName('Jordan Example'), '<span class="wordmark-name"><span>Jordan</span><span>Example</span></span>');
+  assert.equal(loadMark('/nonexistent/mark.json'), null);
 });
