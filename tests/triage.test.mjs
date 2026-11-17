@@ -151,6 +151,12 @@ test('auto-apply: below 75, any gate not passing, or already decided goes back t
   assert.match(autoApplyBlockers(autoJob({ triage: null }), RULE, ok).join(), /not scored/);
 });
 
+test('auto-apply: a reject tier or a full-time salary under the floor goes back, even with passing gates and score', () => {
+  const t = autoJob().triage;
+  assert.match(autoApplyBlockers(autoJob({ triage: { ...t, tier: 'reject', salary_below_floor: { annual: 180000 } } }), RULE, ok).join(), /salary .*180,000.* under the full-time floor/);
+  assert.match(autoApplyBlockers(autoJob({ triage: { ...t, tier: 'reject' } }), RULE, ok).join(), /tier reject/);
+});
+
 test('auto-apply: a company-site role, an unverified channel, no CV or low coverage goes back to the user', () => {
   assert.match(autoApplyBlockers(autoJob({ detail: { ...autoJob().detail, apply: { type: 'external' } } }), RULE, ok).join(), /external/);
   assert.match(autoApplyBlockers(autoJob(), RULE, { ...ok, verified: false }).join(), /not verified/);

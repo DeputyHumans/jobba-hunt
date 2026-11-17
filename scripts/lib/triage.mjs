@@ -124,6 +124,10 @@ export function autoApplyBlockers(j, rule, { coverage = null, cvExists = false, 
   else {
     if (t.decision) b.push(`already decided: ${t.decision}`);
     if (t.rate_below_floor) b.push(`rate $${t.rate_below_floor.hourly}/hr under the $${t.rate_below_floor.floor}/hr IC floor`);
+    // A full-time salary under the floor, or any reject, goes back to the user even when the
+    // score and gates would pass: applyTriage rejects the tier without failing a gate.
+    if (t.salary_below_floor) b.push(`salary $${Number(t.salary_below_floor.annual).toLocaleString('en-US')} a year under the full-time floor`);
+    if (t.tier === 'reject') b.push('tier reject');
     if (!(t.score >= rule.min_score)) b.push(`score ${t.score} below ${rule.min_score}`);
     const gates = Object.entries(t.gates || {});
     const off = gates.filter(([, v]) => v !== 'pass').map(([k, v]) => `${k} ${v}`);
