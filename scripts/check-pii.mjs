@@ -20,13 +20,16 @@ const read = (p) => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch 
 
 export function termsFrom({ person = {}, answers = {}, master = {}, extra = [] }) {
   const t = new Set();
-  const add = (v, min = 4) => { const s = String(v ?? '').trim(); if (s.length >= min) t.add(s); };
+  // A template placeholder ("<employer>") in a workspace not yet onboarded is not a term.
+  const add = (v, min = 4) => { const s = String(v ?? '').trim(); if (s.length >= min && !/^<[^<>]*>$/.test(s)) t.add(s); };
   add(person.name); add(person.display_name); add(person.email); add(person.application_email); add(person.phone, 7);
   add(person.links?.linkedin?.replace(/^https?:\/\/(www\.)?/, '')); add(person.links?.website?.replace(/^https?:\/\//, ''));
   const p = answers.profile || {};
   for (const k of ['full_name', 'last_name', 'email', 'phone', 'street_address', 'address_full', 'linkedin', 'website']) add(p[k], k === 'phone' ? 7 : 4);
   add(answers.facts?.contracting_entity);
-  for (const r of Object.values(master.roles || {})) add(r.company);
+  for (const r of Object.values(master.roles || {})) { add(r.company); for (const c of r.clients || []) add(c.name); }
+  for (const e of Object.values(master.employers || {})) add(e.name);
+  for (const name of Object.keys(master.links || {})) add(name);
   for (const e of extra) add(e, 3);
   // A phone number also matches without punctuation.
   for (const v of [person.phone, p.phone]) { const d = String(v || '').replace(/\D/g, ''); if (d.length >= 7) t.add(d.slice(-7)); }

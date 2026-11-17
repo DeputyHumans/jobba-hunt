@@ -138,6 +138,15 @@ test('check-pii: terms come from the workspace and match case-insensitively, pho
   assert.deepEqual([...new Set(hits.map((h) => h.file))].sort(), ['a.md', 'b.js', 'd.md']);
 });
 
+test('check-pii: template placeholders are skipped; employers, clients and linked names are terms', () => {
+  const terms = termsFrom({ master: {
+    roles: { a: { company: '<employer>' }, b: { company: 'Initech', clients: [{ name: 'Hooli' }] } },
+    employers: { g: { name: 'Globex Consulting' } },
+    links: { Ledgerly: 'https://ledgerly.example' },
+  } });
+  assert.deepEqual(terms.sort(), ['Globex Consulting', 'Hooli', 'Initech', 'Ledgerly']);
+});
+
 test('package.json pins every dependency exactly', () => {
   const pkg = JSON.parse(readFileSync(join(CODE_ROOT, 'package.json'), 'utf8'));
   for (const [name, v] of Object.entries(pkg.dependencies)) assert.match(v, /^\d+\.\d+\.\d+$/, `${name} must be pinned`);
