@@ -57,7 +57,7 @@ Operator rules (each with its `profile/decisions.md` date):
 
 **Per-job tailoring is the default** (`preferences.tailoring.cv: "per-job"`). Every application gets its own CV and letter from the claim bank through `/hunt-tailor` (`npm run tailor -- prepare / freeze / measure / build / review --job <id>`; the workflow is in the repo's `docs/tailoring.md`). The tailored CV must cover at least as much of the frozen JD terms as the best archetype variant. Archetype variants are the baselines it is measured against, and the fallback when tailoring cannot beat them.
 
-**Archetype mode** (`preferences.tailoring.cv: "archetype"`) turns per-job tailoring off. The triage `archetype` then picks the CV, and `--match` only checks it, because raw coverage favours the most keyword-dense CV. A domain CV is attached only when the archetype is that domain.
+**Archetype mode** (`preferences.tailoring.cv: "archetype"`) turns per-job tailoring off. The triage `archetype` then picks the CV, and `--match` only checks it, because raw coverage favours the most keyword-dense CV. A domain CV is attached only when the archetype is that domain. With `config/apply.json` `auto_apply.cv_pool` set, `auto` instead takes the best-covering CV of the role's lane pool (the archetype's on a tie, a domain CV still only for its own domain).
 
 | Case | Action |
 |---|---|

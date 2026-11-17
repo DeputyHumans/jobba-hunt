@@ -22,7 +22,8 @@
     "channels": [],
     "min_cv_coverage": 70,
     "cover_letter": {},
-    "_why": "Off until the user opts in (onboarding or later, recorded in profile/decisions.md). When on, a role is approved without a question only if: score >= min_score, every gate passes, its channel is verified and listed, and the CV coverage is >= min_cv_coverage. Tailored documents still follow preferences.tailoring.review."
+    "cv_pool": {},
+    "_why": "Off until the user opts in (onboarding or later, recorded in profile/decisions.md). When on, a role is approved without a question only if: score >= min_score, every gate passes, its channel is verified and listed, and the CV coverage is >= min_cv_coverage. Tailored documents still follow preferences.tailoring.review. cv_pool (archetype mode only): {\"<lane>\": [variant slugs], \"domain\": [slugs]}; auto then takes the best-covering CV of the role's lane, the archetype's on a tie, and a domain CV only for a role of that domain. Empty: the archetype's CV."
   },
   "companies": {
     "limit": 1,

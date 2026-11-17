@@ -16,7 +16,8 @@
 //   node scripts/record-triage.mjs not-sent --id <jobId> --evidence <png> --note "<the user's words>"
 //   node scripts/record-triage.mjs auto --id <jobId> [--cover-pdf <pdf>] [--dry-run]
 //       the standing auto-apply rule (config/apply.json auto_apply, enabled: true): picks the
-//       archetype's CV, measures its coverage, and pursues + approves only when nothing blocks.
+//       archetype's CV (or the best of the role's lane with auto_apply.cv_pool), measures its coverage,
+//       and pursues + approves only when nothing blocks.
 //       Exit 2 with the blockers otherwise; the loop then asks the user as usual.
 //
 // Every state change is also written to the action log (npm run log).
@@ -31,7 +32,7 @@ import { loadConfig } from './lib/config.mjs';
 import { cvFileBase, preferences } from './lib/profile.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { readPause } from './lib/pause.mjs';
-import { pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, recordAttempt, autoApplyBlockers, markNotSent, sameCompanyRoles, holdApplication, withdrawApplication } from './lib/triage.mjs';
+import { pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, recordAttempt, autoApplyBlockers, markNotSent, sameCompanyRoles, holdApplication, withdrawApplication, pickCv } from './lib/triage.mjs';
 import { loadCompanyOpts } from './lib/company.mjs';
 
 const { positional, flags } = parseArgs(process.argv.slice(2));
@@ -159,10 +160,11 @@ if (cmd === 'pending') {
   // Per-job tailoring (preferences.tailoring.cv "per-job", the default): the CV is the job's tailored
   // build (scripts/tailor.mjs) and its coverage is the last measured round against the job's frozen
   // terms. With review "bikeshed" the tailored documents must be approved first (approve-docs).
-  // Archetype mode: the triage archetype picks the CV (cv-map rule) and the CV matcher measures it.
+  // Archetype mode: the triage archetype picks the CV (cv-map rule) and the CV matcher measures it;
+  // with auto_apply.cv_pool, the best-covering CV of the role's lane wins (triage.mjs pickCv).
   const tailoring = preferences().tailoring || {};
   const extra = [];
-  let share = null; let cvAbs = null; let coverage = null; let tailoredLetter = null;
+  let share = null; let cvAbs = null; let coverage = null; let tailoredLetter = null; let pick = null;
   if ((tailoring.cv || 'per-job') === 'per-job') {
     const rec = (() => { try { return JSON.parse(readFileSync(join(DATA_DIR, 'applications', id, 'tailor.json'), 'utf8')); } catch { return null; } })();
     if (!rec?.docs?.cv?.share_pdf) extra.push('no tailored CV for this job yet (/hunt-tailor)');
@@ -174,12 +176,13 @@ if (cmd === 'pending') {
       if ((tailoring.review || 'bikeshed') === 'bikeshed' && !j.application?.docs_approved_at) extra.push('tailored documents are waiting for review approval (approve-docs)');
     }
   } else {
-    const variantPath = join(CV_SRC, 'variants', `${j.triage?.archetype}.json`);
-    share = existsSync(variantPath) ? JSON.parse(readFileSync(variantPath, 'utf8')).share : null;
-    cvAbs = share ? join(CV_OUT, 'share', `${cvFileBase(share)}.pdf`) : null;
     const m = spawnSync(process.execPath, [join(SCRIPTS_DIR, 'build-cv.mjs'), '--match', id], { cwd: CODE_ROOT, encoding: 'utf8' });
     const ranked = (() => { try { return JSON.parse(m.stdout.trim().split('\n').at(-1)).ranked || []; } catch { return []; } })();
-    coverage = ranked.find((r) => r.slug === j.triage?.archetype)?.pct ?? null;
+    pick = pickCv(ranked, { lane: j.triage?.lane, archetype: j.triage?.archetype, pool: rule?.cv_pool });
+    const variantPath = pick ? join(CV_SRC, 'variants', `${pick.slug}.json`) : null;
+    share = variantPath && existsSync(variantPath) ? JSON.parse(readFileSync(variantPath, 'utf8')).share : null;
+    cvAbs = share ? join(CV_OUT, 'share', `${cvFileBase(share)}.pdf`) : null;
+    coverage = pick?.pct ?? null;
   }
   const cv = cvAbs ? storedPath(cvAbs) : null;
   // A company-site role ("external") is resolved to its ATS only at submit time; the runner
@@ -195,13 +198,13 @@ if (cmd === 'pending') {
     if (!coverPdf && !flags['dry-run']) blockers.push('needs a generated cover letter (--cover-pdf, scripts/build-cover.mjs)');
     else if (coverPdf && !fileExists(coverPdf)) blockers.push(`cover letter not found: ${coverPdf}`);
   }
-  const base = { job_id: id, title: j.title, company: j.company, url: j.url, score: j.triage?.score ?? null, archetype: j.triage?.archetype ?? null, cv, coverage };
+  const base = { job_id: id, title: j.title, company: j.company, url: j.url, score: j.triage?.score ?? null, archetype: j.triage?.archetype ?? null, ...(pick ? { cv_slug: pick.slug, archetype_coverage: pick.archetype_pct } : {}), cv, coverage };
   if (blockers.length) {
     out({ success: false, eligible: false, ...base, blockers });
     process.exit(2);
   }
   if (!flags['dry-run']) {
-    const note = `Auto-applied under the standing auto-apply rule (config/apply.json): score ${j.triage.score} (min ${rule.min_score}), every gate passing, channel ${type}, CV ${share} at ${coverage}% (min ${rule.min_cv_coverage}%)`;
+    const note = `Auto-applied under the standing auto-apply rule (config/apply.json): score ${j.triage.score} (min ${rule.min_score}), every gate passing, channel ${type}, CV ${share} at ${coverage}% (min ${rule.min_cv_coverage}%)${pick && pick.slug !== j.triage.archetype ? ` (best of the lane; the archetype's CV covered ${pick.archetype_pct ?? '?'}%)` : ''}`;
     applyDecision(state, id, 'pursue', note, now);
     // The letter's text twin (build-cover.mjs writes cover-letter.txt) fills cover-letter text boxes.
     const coverTxt = coverPdf ? join(dirname(coverPdf), 'cover-letter.txt') : null;

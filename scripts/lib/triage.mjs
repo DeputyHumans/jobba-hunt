@@ -150,10 +150,26 @@ export function autoApplyBlockers(j, rule, { coverage = null, cvExists = false, 
   else if (!verified) b.push(`channel ${type} not verified`);
   if (j?.application?.status) b.push(`application already ${j.application.status}`);
   if (j?.detail?.already_applied) b.push('LinkedIn shows it as applied');
-  if (!cvExists) b.push('no existing CV for the archetype');
+  if (!cvExists) b.push('no existing CV for the archetype (or the lane pool, auto_apply.cv_pool)');
   if (!(coverage >= rule.min_cv_coverage)) b.push(`CV coverage ${coverage ?? 'unknown'}% below ${rule.min_cv_coverage}%`);
   if (siblingError(sameCompany)) b.push(siblingError(sameCompany));
   return b;
+}
+
+// The CV for auto-apply in archetype mode. With a pool for the role's lane (config/apply.json
+// auto_apply.cv_pool: { <lane>: [slugs], domain: [slugs] }), the best-covering CV of that lane wins,
+// the archetype's on a tie, and a domain CV goes only to a role whose archetype is that CV. Without
+// a pool for the lane, the archetype's CV alone (the cv-map rule). An omitted lane is the first of
+// preferences.lanes. ranked comes from build-cv --match: [{ slug, pct }].
+export function pickCv(ranked = [], { lane, archetype, pool, lanes = triageLanes() } = {}) {
+  const pct = (slug) => ranked.find((r) => r.slug === slug)?.pct ?? null;
+  const lanePool = pool?.[lane || lanes[0]];
+  if (!Array.isArray(lanePool) || !lanePool.length) return archetype ? { slug: archetype, pct: pct(archetype), archetype_pct: pct(archetype) } : null;
+  const domain = Array.isArray(pool.domain) ? pool.domain : [];
+  const ok = ranked.filter((r) => lanePool.includes(r.slug) && (!domain.includes(r.slug) || r.slug === archetype));
+  if (!ok.length) return null;
+  const best = ok.reduce((b, r) => (r.pct > b.pct || (r.pct === b.pct && r.slug === archetype) ? r : b));
+  return { slug: best.slug, pct: best.pct, archetype_pct: pct(archetype) };
 }
 
 export function applyGate(j, { dryRun, pause = null, sameCompany = [] }) {
