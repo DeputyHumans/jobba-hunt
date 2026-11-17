@@ -907,20 +907,36 @@ const monthYear = (s) => {
   const m = /^([A-Za-z]{3})[a-z]*\.?\s+(\d{4})$/.exec(String(s || '').trim());
   return m && MONTHS[m[1].toLowerCase()] ? `${MONTHS[m[1].toLowerCase()]}/${m[2]}` : null;
 };
+// Client roles worked through an employer (a role with "via": "<key>" in master.employers, shown on
+// the CV as "Client (via Employer)") are one job on a form: the employer's name and its own dates,
+// the first client role's title, and each client's context line ("Client: context") as the
+// description. A variant's practice section is an entry too, after the experience.
 export function workdayHistory(master, variant, { roleKeys = null, count = 3 } = {}) {
   const roles = master?.roles || {};
   const main = roleKeys || Object.keys(roles).slice(0, count);
   const exp = variant?.experience?.length ? variant.experience : main.filter((k) => roles[k]).map((role) => ({ role }));
+  const entries = [...exp, ...(variant?.practice ? [variant.practice] : [])];
   const work = [];
-  for (const e of exp) {
+  const merged = new Map();
+  for (const e of entries) {
     const r = roles[e.role];
     if (!r) continue;
-    const [a, b] = String(r.dates || '').split(/\s*[–—-]\s*/);
+    const ctx = r.contexts?.[e.context || 'default']?.text || null;
+    const emp = r.via ? master?.employers?.[r.via] : null;
+    const clientLine = ctx ? `${r.company}: ${ctx}` : r.company;
+    if (emp && merged.has(r.via)) {
+      const seen = merged.get(r.via);
+      seen.description = [seen.description, clientLine].filter(Boolean).join(' ');
+      continue;
+    }
+    const [a, b] = String((emp || r).dates || '').split(/\s*[–—-]\s*/);
     const from = monthYear(a);
     const current = /^present$/i.test(String(b || '').trim());
     const to = current ? null : monthYear(b);
     if (!from || (!current && !to)) continue;
-    work.push({ title: (e.title && r.titles?.[e.title]?.text) || r.title, company: r.company, from, to, current, description: r.contexts?.[e.context || 'default']?.text || null });
+    const item = { title: (e.title && r.titles?.[e.title]?.text) || r.title, company: emp ? emp.name : r.company, from, to, current, description: emp ? clientLine : ctx };
+    if (emp) merged.set(r.via, item);
+    work.push(item);
   }
   const education = (master?.education || []).map((ed) => {
     const [degree, ...field] = String(ed.degree || '').split(/,\s*/);

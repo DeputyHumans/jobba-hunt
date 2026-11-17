@@ -1060,6 +1060,33 @@ test('workdayHistory: with no variant, the main roles are the first N role keys 
   assert.deepEqual(workdayHistory({}, null), { work: [], education: [] });
 });
 
+// Client engagements through one employer show on the CV as "Client (via Employer)", one role each with
+// year-only dates. On a Workday form they are one job: the employer, its own month dates, the first
+// client role's title and every client's context. A variant's practice section is a current job too.
+test('workdayHistory: client roles "via" one employer merge into that employer\'s single entry with its own dates; the practice section is an entry after the experience', () => {
+  const master = {
+    employers: { globex: { name: 'Globex Corporation', dates: 'Mar 2019 – Jun 2022', claims: ['C1'] } },
+    roles: {
+      acme: { title: 'Founder & Principal Consultant', company: 'Acme Consulting', dates: 'Jul 2022 – Present', contexts: { default: { text: 'Ctx Acme' } } },
+      'initech-advisor': { title: 'Technical Advisor', company: 'Initech', dates: 'Jan 2023 – Present', contexts: { default: { text: 'Ctx Initech' } } },
+      'globex-hooli': { title: 'Director, Software Engineering', company: 'Hooli', via: 'globex', dates: '2021 – 2022', contexts: { default: { text: 'Ctx Hooli' } } },
+      'globex-umbrella': { title: 'Engineering Manager', company: 'Umbrella', via: 'globex', dates: '2019 – 2021', contexts: { default: { text: 'Ctx Umbrella' } } },
+    },
+    education: [{ degree: 'Bachelor of Science, Computer Science', school: 'Example State University', year: '2012' }],
+  };
+  const variant = { experience: [{ role: 'initech-advisor' }, { role: 'globex-hooli' }, { role: 'globex-umbrella' }], practice: { role: 'acme' } };
+  const w = workdayHistory(master, variant).work;
+  assert.deepEqual(w.map((x) => [x.company, x.title, x.from, x.to, x.current]), [
+    ['Initech', 'Technical Advisor', '01/2023', null, true],
+    ['Globex Corporation', 'Director, Software Engineering', '03/2019', '06/2022', false],
+    ['Acme Consulting', 'Founder & Principal Consultant', '07/2022', null, true],
+  ]);
+  assert.equal(w[1].description, 'Hooli: Ctx Hooli Umbrella: Ctx Umbrella');
+  // The no-variant path (roleKeys, or the first `count` role keys) merges the same way.
+  assert.deepEqual(workdayHistory(master, null, { roleKeys: ['globex-hooli', 'globex-umbrella'] }).work.map((x) => [x.company, x.from, x.to]), [['Globex Corporation', '03/2019', '06/2022']]);
+  assert.deepEqual(workdayHistory(master, null).work.map((x) => x.company), ['Acme Consulting', 'Initech', 'Globex Corporation']);
+});
+
 test('previousWorkerAnswer: "Have you previously worked for <Company>?" is No only when no claim, employer or client names that company; otherwise it is asked', () => {
   const known = 'Acme Corp. Globex. Initech: clients included Hooli, Soylent Systems, Umbrella Labs.';
   assert.equal(previousWorkerAnswer('Wayne Enterprises', known), 'No');
