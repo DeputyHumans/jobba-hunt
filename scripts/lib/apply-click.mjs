@@ -9,12 +9,19 @@ import { otherOption } from './apply-forms.mjs';
 // Every step has a short timeout. Returns whether that option ends up checked.
 export async function checkLabelRadio(loc, { waitMs = 400 } = {}) {
   const page = scopeOf(loc);
-  const id = await loc.evaluate((el) => ({ name: el.name, value: el.value }), null, { timeout: 5000 }).catch(() => null);
+  const id = await loc.evaluate((el) => ({ name: el.name, value: el.value, elId: el.id }), null, { timeout: 5000 }).catch(() => null);
   if (!id) return false;
-  const isOn = () => page.evaluate(({ name, value }) => [...document.querySelectorAll('input[type="radio"]')]
-    .some((e) => e.name === name && e.value === value && (e.checked || e.getAttribute('aria-checked') === 'true')), id).catch(() => false);
+  // A radio without a name (Gem) is confirmed on itself, by its id: any other unnamed radio that is
+  // checked says nothing about this one (a second question's Yes was once never clicked).
+  const isOn = () => page.evaluate(({ name, value, elId }) => {
+    const on = (e) => !!e && (e.checked || e.getAttribute('aria-checked') === 'true');
+    if (!name) return elId ? on(document.getElementById(elId)) : false;
+    return [...document.querySelectorAll('input[type="radio"]')].some((e) => e.name === name && e.value === value && on(e));
+  }, id).catch(() => false);
   const tries = [
     () => loc.locator('xpath=ancestor::label[1]').first().click({ timeout: 3000 }),
+    // A label beside the input, tied by for= (Gem).
+    () => (id.elId ? page.locator(`label[for="${id.elId.replace(/"/g, '\\"')}"]`).first().click({ timeout: 3000 }) : Promise.reject(new Error('no id'))),
     () => loc.check({ force: true, timeout: 3000 }),
     () => loc.evaluate((el) => el.click(), null, { timeout: 3000 }),
   ];
@@ -137,6 +144,12 @@ export async function setBox(loc, want, { waitMs = 300 } = {}) {
   if (lab && (await lab.count())) await lab.first().click({ timeout: 3000 }).catch(() => {});
   await new Promise((r) => setTimeout(r, waitMs));
   if ((await state()) !== want) await loc.setChecked(want, { force: true, timeout: 3000 }).catch(() => {});
+  // Something covering the box and its label takes both clicks (a headed run reported "checkbox did
+  // not tick" twice on a page where a clean copy ticked): click it from the page.
+  if ((await state()) !== want) {
+    await loc.evaluate((el) => { el.scrollIntoView({ block: 'center' }); el.click(); }, null, { timeout: 3000 }).catch(() => {});
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
   return (await state()) === want;
 }
 
@@ -197,6 +210,35 @@ export async function tickGroupOption(page, key, opt, { waitMs = 400 } = {}) {
     if (await done()) return true;
     await t().catch(() => {});
     await new Promise((r) => setTimeout(r, waitMs));
+  }
+  return done();
+}
+
+// Several options of one checkbox group ("select all of the tools you have used"): tick each wanted
+// box, untick any other, and confirm the group then holds exactly those.
+export async function tickGroupOptions(page, key, opts, { waitMs = 400 } = {}) {
+  const sel = `[data-hunt-key="${key}"]`;
+  const want = [...opts].sort();
+  const checked = () => page.evaluate((s) => [...document.querySelectorAll(s)].filter((b) => b.checked).map((b) => b.getAttribute('data-hunt-opt')), sel);
+  const done = async () => { const t = (await checked()).sort(); return t.length === want.length && t.every((x, i) => x === want[i]); };
+  const toggle = async (opt) => {
+    const box = page.locator(`${sel}[data-hunt-opt="${opt.replace(/"/g, '\\"')}"]`).first();
+    const id = await box.getAttribute('id', { timeout: 2000 }).catch(() => null);
+    const tries = [
+      async () => { if (!id) throw new Error('no id'); await page.locator(`label[for="${id.replace(/"/g, '\\"')}"]`).first().click({ timeout: 5000 }); },
+      () => box.evaluate((el) => el.click()),
+    ];
+    const before = await box.isChecked().catch(() => null);
+    for (const t of tries) {
+      await t().catch(() => {});
+      await new Promise((r) => setTimeout(r, waitMs));
+      if ((await box.isChecked().catch(() => null)) !== before) return;
+    }
+  };
+  for (let round = 0; round < 2 && !(await done()); round++) {
+    const now = await checked();
+    for (const opt of now.filter((o) => !want.includes(o))) await toggle(opt);
+    for (const opt of want.filter((o) => !now.includes(o))) await toggle(opt);
   }
   return done();
 }

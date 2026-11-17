@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normLabel, classifyLabel, pickOption, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, challengeIn, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, eeoPick, eeoProbe, eeoAnswer, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, pickChoice, eeoCategory, afterSubmit, typeaheadIndex, stuckReason, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayHistory, variantForCv, previousWorkerAnswer, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan, otherOption } from '../scripts/lib/apply-forms.mjs';
+  normLabel, classifyLabel, pickOption, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, challengeIn, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, eeoPick, eeoProbe, eeoAnswer, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, pickChoice, eeoCategory, afterSubmit, typeaheadIndex, stuckReason, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayHistory, variantForCv, previousWorkerAnswer, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan, otherOption, afterStuck, settledAfterChallenge, listValues, COOKIE_DECLINE } from '../scripts/lib/apply-forms.mjs';
 
 // The synthetic persona (tests/fixtures/workspace/profile/answers.json), with the facts these tests
 // depend on spelled out here.
@@ -1402,4 +1402,102 @@ test('otherOption: the list\'s Other entry ("*Other", "Other (please specify)"),
   assert.equal(otherOption(['Other (please specify)', 'Otherland College']), 'Other (please specify)');
   assert.equal(otherOption(['Otherland College', 'Stanford University']), null);
   assert.equal(otherOption([]), null);
+});
+
+// Gem renders each radio option of one question as its own field ("Are you willing to work hybrid
+// ...?" came as one field with options ["Yes"] and one with ["No"]). The field that holds the answer
+// is picked; its sibling without that option is no error.
+test('planFill: a radio question split into one field per option picks the matching field and marks the sibling covered, not missing', () => {
+  const label = 'Are you willing to work hybrid (3 days a week) in our Springfield office? *';
+  const fields = [
+    { key: 'f10', kind: 'radio', label, required: true, options: ['Yes'], value: '' },
+    { key: 'f11', kind: 'radio', label, required: true, options: ['No'], value: '' },
+  ];
+  const plan = planFill(fields, { ...bank, learned: [{ label: normLabel(label), answer: 'Yes', source: 'test' }] }, ctx);
+  assert.deepEqual(plan.actions.map((a) => [a.key, a.value]), [['f10', 'Yes']]);
+  assert.deepEqual(plan.missing, []);
+  // The runner's last check flags any required field left empty: the sibling must be marked covered.
+  assert.deepEqual(plan.covered, ['f11']);
+  // An answer neither field lists is still asked on both.
+  const none = planFill(fields, { ...bank, learned: [{ label: normLabel(label), answer: 'Maybe', source: 'test' }] }, ctx);
+  assert.deepEqual(none.missing.map((m) => [m.key, m.reason]), [['f10', 'no-matching-option'], ['f11', 'no-matching-option']]);
+  assert.deepEqual(none.covered, []);
+});
+
+// A company-site form can end with "Finish": config/apply.json submit_labels names that button for its
+// channel. Elsewhere "Finish" is not trusted as a submit, and a Submit button still comes first.
+test('submitLabel: a submit_labels entry names a final button not called Submit, matched whole in any letter case, on its own channel only', () => {
+  const buttons = ['Add Education', 'Add Another Employer', 'Remove File', 'FINISH'];
+  const labels = { 'site:careers.example.com': ['Finish'] };
+  assert.equal(submitLabel(buttons, 'site:careers.example.com', labels), 'FINISH');
+  assert.equal(submitLabel(buttons), undefined);
+  assert.equal(submitLabel(buttons, 'greenhouse', labels), undefined);
+  assert.equal(submitLabel(buttons, 'site:careers.example.com', {}), undefined);
+  assert.equal(submitLabel(['Finish later', 'Back'], 'site:careers.example.com', labels), undefined, 'matched whole, never as a part');
+  assert.equal(submitLabel(['Finish', 'Submit application'], 'site:careers.example.com', labels), 'Submit application');
+});
+
+test('confirmationIn: "Application received." at the start of a line confirms a company form\'s own submit; the words inside a sentence do not', () => {
+  assert.equal(confirmationIn('Apply for this role\nSend us your application below; the hiring team reads every one.\nApplication received. The hiring team will review it directly.'), true);
+  assert.equal(confirmationIn('Apply for this role\nSend us your application below; the hiring team reads every one.\nWhy this role? *\nSubmit application'), false);
+  assert.equal(confirmationIn('We read every application received and reply within two weeks'), false);
+});
+
+// A bot check shown after Next (an iCIMS hCaptcha) left a page that did not move: not a stuck form.
+test('afterStuck: a bot check that appears after Next waits for the operator when headed, else hands off; no challenge stays stuck', () => {
+  assert.equal(afterStuck({ challenged: false, headed: true }), 'stuck');
+  assert.equal(afterStuck({ challenged: true, headed: true }), 'wait');
+  assert.equal(afterStuck({ challenged: true, headed: false }), 'manual');
+  assert.equal(afterStuck({ challenged: true, headed: true, cleared: true }), 'retry');
+  assert.equal(afterStuck({ challenged: true, headed: true, cleared: false }), 'manual');
+});
+
+test('settledAfterChallenge: after a solved bot check the step is retaken only once a labelled button is back (iCIMS shows a blank Next while it submits)', () => {
+  assert.equal(settledAfterChallenge('Enter Your Information', { text: 'Enter Your Information', buttons: [] }), false);
+  assert.equal(settledAfterChallenge('Enter Your Information', { text: 'Enter Your Information', buttons: ['Next'] }), true);
+  // Text alone moves while the portal still spins: only a labelled button counts.
+  assert.equal(settledAfterChallenge('Enter Your Information', { text: 'Enter Your Information hCaptcha', buttons: [''] }), false);
+  assert.equal(settledAfterChallenge('Enter Your Information', { text: 'Profile: Contact details', buttons: ['Submit'] }), true);
+  assert.equal(settledAfterChallenge('x', null), false);
+});
+
+test('classifyLabel: "Your Full Name" is the full name (it was once left empty)', () => {
+  assert.equal(classifyLabel('Your Full Name'), 'full_name');
+  assert.equal(classifyLabel('Your Legal Name'), 'full_name');
+  assert.equal(classifyLabel('Full Name'), 'full_name');
+  assert.equal(classifyLabel('Your name'), 'full_name');
+});
+
+test('pickOption and pickChoice: an option with zero-width characters still matches its words, and the option itself comes back', () => {
+  const opt = '​​I have reviewed the Background Check Policy';
+  assert.equal(pickOption([opt], 'I have reviewed the Background Check Policy'), opt);
+  assert.equal(pickChoice([opt], 'I have reviewed the Background Check Policy'), opt);
+  assert.equal(pickChoice(['​Yes - I live in the US', '​No'], 'Yes'), '​Yes - I live in the US');
+});
+
+test('listValues: an answer naming several values, split on "|"; one value stays one', () => {
+  assert.deepEqual(listValues('Docker | Kubernetes'), ['Docker', 'Kubernetes']);
+  assert.deepEqual(listValues(' A |  | B '), ['A', 'B']);
+  assert.deepEqual(listValues('Computer Science'), ['Computer Science']);
+  assert.deepEqual(listValues(''), []);
+});
+
+test('planFill: a checkbox group answered with several values is one action that ticks each of them; a value the group lacks asks it; a group already holding them is left alone', () => {
+  const f = field({ key: 't', kind: 'radio', checkboxes: true, label: 'Please select all of the tools you have hands-on experience with?', options: ['Terraform', 'Ansible', 'Docker', 'Kubernetes', 'CircleCI', 'Jenkins'] });
+  const jobAnswers = { [normLabel(f.label)]: 'Docker | Kubernetes | CircleCI | Terraform' };
+  const p = planFill([f], bank, { ...ctx, jobAnswers });
+  assert.deepEqual(p.actions.map((x) => [x.key, x.action, x.value, x.values]), [['t', 'radio', 'Docker | Kubernetes | CircleCI | Terraform', ['Docker', 'Kubernetes', 'CircleCI', 'Terraform']]]);
+  assert.deepEqual(p.missing, []);
+  // A value the group does not list is asked, never half-ticked.
+  const bad = planFill([f], bank, { ...ctx, jobAnswers: { [normLabel(f.label)]: 'Docker | Chef' } });
+  assert.deepEqual(bad.missing.map((m) => [m.key, m.reason]), [['t', 'no-matching-option']]);
+  assert.deepEqual(bad.actions, []);
+  // The collector reads a group's ticked boxes as "a | b": the same values in any order take no action.
+  const held = planFill([{ ...f, value: 'Kubernetes | Docker' }], bank, { ...ctx, jobAnswers: { [normLabel(f.label)]: 'Docker | Kubernetes' } });
+  assert.deepEqual([held.actions, held.missing], [[], []]);
+});
+
+test('COOKIE_DECLINE: a decline button, with an icon before its words and "cookies" after them, matches; no accept or settings button does', () => {
+  for (const t of ['Reject all cookies', '× Reject all cookies', 'Decline', 'Reject all', 'Decline all', 'Only necessary', 'Use necessary cookies only', 'Reject']) assert.match(t, COOKIE_DECLINE, t);
+  for (const t of ['Accept all cookies', '✓ Accept all cookies', 'Accept', 'Accept all', 'Cookie settings', 'You can change the optional cookie settings here if you wish.']) assert.doesNotMatch(t, COOKIE_DECLINE, t);
 });

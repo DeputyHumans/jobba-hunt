@@ -36,7 +36,8 @@ const RULES = [
   ['email', /e-?mail/],
   ['first_name', /^(legal )?(first|given) name/],
   ['last_name', /^(legal )?(last name|surname|family name)/],
-  ['full_name', /^(full |legal )?name$|^your name$/],
+  // "Your Full Name" is the full name too (it was once left empty).
+  ['full_name', /^(your )?(full |legal )?name$/],
   ['linkedin', /linkedin/],
   ['website', /\b(website|portfolio|personal site)\b/],
   ['state', /^(state|state\/province|province|state or province|state \/ province)$/],
@@ -148,15 +149,20 @@ export function eeoPick(options, label, eeo = answers().eeo) {
   return opts.find((o) => DECLINE.test(o)) || null;
 }
 
+// Zero-width characters in an option's text (an Ashby option drawn as "​​I have reviewed the
+// ... Policy") are not part of its words. The original option is still returned, so the runner finds it.
+const ZW = /[​-‍﻿]/g;
+const optKey = (o) => String(o).replace(ZW, '').trim().toLowerCase();
+
 export function pickOption(options, answer) {
-  const opts = (options || []).filter((o) => o && !PLACEHOLDER.test(o.trim()));
+  const opts = (options || []).filter((o) => o && !PLACEHOLDER.test(o.replace(ZW, '').trim()));
   if (answer === 'decline') return opts.find((o) => DECLINE.test(o)) || null;
-  const a = String(answer).trim().toLowerCase();
-  const exact = opts.find((o) => o.trim().toLowerCase() === a);
+  const a = optKey(answer);
+  const exact = opts.find((o) => optKey(o) === a);
   if (exact) return exact;
   // Several options that all start with the answer ("Yes - ... Canada", "Yes - ... USA") are
   // ambiguous: the field is asked, never filled with the first one.
-  const prefixed = opts.filter((o) => { const t = o.trim().toLowerCase(); return t.startsWith(`${a} `) || t.startsWith(`${a},`) || t.startsWith(`${a} (`); });
+  const prefixed = opts.filter((o) => { const t = optKey(o); return t.startsWith(`${a} `) || t.startsWith(`${a},`) || t.startsWith(`${a} (`); });
   return prefixed.length === 1 ? prefixed[0] : null;
 }
 
@@ -242,6 +248,9 @@ function todayIn(format, today) {
 export function planFill(fields, bank, ctx) {
   const actions = [];
   const missing = [];
+  // Fields answered through a sibling (a radio question split into one field per option): the runner's
+  // last check must not flag them as unanswered.
+  const covered = [];
   const miss = (f, reason) => missing.push({ key: f.key, label: f.label, kind: f.kind, options: f.options || [], reason });
   const hasPhoneCode = (fields || []).some((g) => classifyLabel(g.label) === 'phone_country');
   const country = bank?.profile?.country || '';
@@ -322,8 +331,23 @@ export function planFill(fields, bank, ctx) {
         if (!sameChoice(f.value, answer, country)) actions.push({ key: f.key, action: 'pick', value: answer, source, ...(source === 'eeo' ? { eeo: f.label } : {}) });
         continue;
       }
+      // A checkbox group answered with several values ("Docker | Kubernetes"): one action that ticks
+      // exactly those. A value the group does not list asks the field, nothing is half-ticked.
+      const several = f.kind === 'radio' && f.checkboxes && source !== 'eeo' ? listValues(answer) : [];
+      if (several.length > 1) {
+        const picks = several.map((v) => pickChoice(f.options, v, country));
+        if (picks.some((x) => !x)) { if (f.required) miss(f, 'no-matching-option'); continue; }
+        const shown = listValues(f.value);
+        if (shown.length === picks.length && picks.every((x) => shown.includes(x))) continue;
+        actions.push({ key: f.key, action: 'radio', value: picks.join(' | '), values: picks, source });
+        continue;
+      }
       const opt = source === 'eeo' ? eeoPick(f.options, f.label, bank.eeo ?? 'decline')
         : pickChoice(f.options, answer, country);
+      // Some forms (Gem) render each radio option of one question as its own field: the sibling with
+      // the same label that holds the answer is picked, so this one is no error.
+      const sibling = !opt && f.kind === 'radio' && source !== 'eeo' && fields.some((g) => g !== f && g.kind === 'radio' && normLabel(g.label) === normLabel(f.label) && pickChoice(g.options, answer, country));
+      if (!opt && sibling) { covered.push(f.key); continue; }
       if (!opt) { if (f.required) miss(f, 'no-matching-option'); continue; }
       if (sameValue(f.value, opt, source)) continue;
       // A dropdown widget whose options the runner read by opening it (Rippling menus) takes a pick.
@@ -385,7 +409,7 @@ export function planFill(fields, bank, ctx) {
     const m = { key: q.key, label: q.label, kind: 'checkbox', options: q.options, reason: own ? 'no-matching-option' : 'no-answer' };
     if (at >= 0) missing.splice(Math.min(at, missing.length), 0, m); else missing.push(m);
   }
-  return { actions, missing };
+  return { actions, missing, covered };
 }
 
 // Resume picker: a radio group of earlier uploads. Status none (no picker on this step),
@@ -533,9 +557,9 @@ export function choiceAliases(answer, country = homeCountry()) {
 // Outlying Islands", which a prefix match on the answer alone would take).
 export function pickChoice(options, answer, country = homeCountry()) {
   const aliases = choiceAliases(answer, country);
-  const al = aliases.map((x) => String(x).trim().toLowerCase());
-  const opts = (options || []).filter((o) => o && !PLACEHOLDER.test(o.trim()));
-  return opts.find((o) => al.includes(o.trim().toLowerCase())) || aliases.map((x) => pickOption(options, x)).find(Boolean) || null;
+  const al = aliases.map((x) => optKey(x));
+  const opts = (options || []).filter((o) => o && !PLACEHOLDER.test(o.replace(ZW, '').trim()));
+  return opts.find((o) => al.includes(optKey(o))) || aliases.map((x) => pickOption(options, x)).find(Boolean) || null;
 }
 
 export function sameChoice(shown, answer, country = homeCountry()) {
@@ -664,9 +688,16 @@ export function buttonNameRe(name) {
   return new RegExp(`^\\s*${esc}\\s*$`, 'i');
 }
 
-export function submitLabel(buttons) {
+// A site whose final button is not called Submit ("Finish") names it in config/apply.json
+// submit_labels: { "<channel>": ["<exact button text>", ...] }, added once that channel's own page
+// confirmed it. `labels` is that map. A label is matched whole, in any letter case, and only for its
+// own channel, and only when no Submit button is shown.
+export function submitLabel(buttons, channel = null, labels = {}) {
   const list = (buttons || []).filter((b) => !/\bapply and save\b/i.test(b));
-  return list.find((b) => SUBMIT_EXACT.test(b)) || list.find((b) => /submit/i.test(b));
+  const own = channel && labels && Object.prototype.hasOwnProperty.call(labels, channel) ? labels[channel] : null;
+  const wants = (Array.isArray(own) ? own : own ? [own] : []).map((w) => String(w || '').trim()).filter(Boolean);
+  return list.find((b) => SUBMIT_EXACT.test(b)) || list.find((b) => /submit/i.test(b))
+    || (wants.length ? list.find((b) => wants.some((w) => buttonNameRe(w).test(b))) : undefined);
 }
 
 // A page is a job application only when it asks who you are: a name field or a CV upload.
@@ -679,8 +710,10 @@ export function applicationForm(fields) {
   return named || upload;
 }
 
+// "Application received." counts only at the start of a line (a company form's own confirmation), so
+// a job page's "every application received" does not.
 export function confirmationIn(text) {
-  return /application (was )?sent|your application (was|has been) (successfully )?(submitted|received)|application submitted|thank(s| you) for applying|thank you for taking the time to apply|your application for [^\n]{1,160}? has been (successfully )?(submitted|received)|we('ve| have) received your application|you('ve| have) (successfully )?applied|successfully applied|your application is on its way|thank(s| you) for submitting|thank(s| you) for your application|view more jobs at [^\n]+\s+back to job post/i.test(text || '');
+  return /application (was )?sent|your application (was|has been) (successfully )?(submitted|received)|application submitted|thank(s| you) for applying|thank you for taking the time to apply|your application for [^\n]{1,160}? has been (successfully )?(submitted|received)|we('ve| have) received your application|you('ve| have) (successfully )?applied|successfully applied|your application is on its way|thank(s| you) for submitting|thank(s| you) for your application|view more jobs at [^\n]+\s+back to job post|(^|\n)\s*application received[.!]/i.test(text || '');
 }
 
 // Bot checks on company sites and job-ad redirectors (appcast "Verification Required ... Slide
@@ -749,6 +782,22 @@ export function afterSubmit({ confirmed, errors = [], formStill = false, challen
   if (challenged && !cleared) return headed && cleared === null ? 'wait' : 'manual';
   if (formStill && errors.length) return 'rejected';
   return 'unverified';
+}
+
+// The page did not move after Next. A bot check shown over it (an iCIMS hCaptcha after Next) is not a
+// stuck form: a headed run waits for the operator, then takes the step again; headless or unsolved,
+// the role goes to the user by hand. Nothing was sent either way.
+export function afterStuck({ challenged = false, headed = false, cleared = null }) {
+  if (!challenged) return 'stuck';
+  if (cleared === true) return 'retry';
+  return headed && cleared === null ? 'wait' : 'manual';
+}
+
+// After a solved bot check the site may still be submitting the step (iCIMS: the Next button goes
+// blank while the page text already changed). Retake the step only once a labelled button is back.
+export function settledAfterChallenge(beforeText, snap) {
+  if (!snap) return false;
+  return (snap.buttons || []).some((b) => String(b).trim());
 }
 
 // Which typeahead suggestion an answer picks: exact text first (case-insensitive), then the first
@@ -1165,3 +1214,15 @@ export function icimsPlan(fields, bank, ctx, { login = null } = {}) {
 export function otherOption(texts) {
   return (texts || []).find((t) => /^\W*other\b(?!\w)/i.test(String(t).trim()) && !/^\W*other\w/i.test(String(t).trim())) || null;
 }
+
+// The values of an answer that names several, split on "|" ("Docker | Kubernetes" for a checkbox
+// group that takes more than one). One value stays one.
+export function listValues(answer) {
+  return String(answer || '').split('|').map((v) => v.trim()).filter(Boolean);
+}
+
+// ---------- Cookie banners ----------
+// The decline button of a cookie banner: declining shares nothing, so it needs no consent; "Accept" is
+// never pressed. A banner can put an icon before the words and "cookies" after them ("× Reject all
+// cookies").
+export const COOKIE_DECLINE = /^\W*(decline all|reject all|decline|reject|only necessary|necessary only|use necessary cookies only)( cookies)?\W*$/i;

@@ -129,14 +129,17 @@ export function collectForm() {
   // applyboard renders "Legal First Name *" as a sibling element and its questions as a
   // <p class="required"> above the control, not a <label>). Stops at the previous
   // field's block, so it never borrows a neighbour's label.
-  function visualLabel(el, depth) {
+  function visualLabel(el, depth, capOver) {
     // A free-text box can carry a long question (a Gem form's 175 characters came back unlabeled
-    // and the required answer was never typed).
-    // keeps paragraph blobs out of their labels.
-    const cap = el.tagName === 'TEXTAREA' ? 300 : 160;
+    // and the required answer was never typed). Other fields keep the 160 cap, which
+    // keeps paragraph blobs out of their labels; a menu's caller passes its own cap.
+    const cap = capOver || (el.tagName === 'TEXTAREA' ? 300 : 160);
+    // An input-less menu is a field too: a block holding one ends the search, so a long question
+    // never lends its menu the question above it.
+    const FIELD = 'input, select, textarea, [role="combobox"]';
     for (let node = el, i = 0; i < depth && node && node !== root; i++, node = node.parentElement) {
       for (let sib = node.previousElementSibling; sib; sib = sib.previousElementSibling) {
-        if (sib.querySelector('input, select, textarea') || sib.matches('input, select, textarea')) break;
+        if (sib.querySelector(FIELD) || sib.matches(FIELD)) break;
         const t = text(sib).trim();
         if (t && t.length <= cap && !sib.querySelector('button')) return { text: t, el: sib };
       }
@@ -319,7 +322,7 @@ export function collectForm() {
       el.setAttribute('data-hunt-key', g.key);
       el.setAttribute('data-hunt-opt', opt);
       g.options.push(opt);
-      if (el.checked) g.value = opt;
+      if (el.checked) g.value = g.value ? `${g.value} | ${opt}` : opt;
       continue;
     }
     if (type === 'checkbox') {
@@ -338,7 +341,7 @@ export function collectForm() {
         el.setAttribute('data-hunt-key', g.key);
         el.setAttribute('data-hunt-opt', opt);
         g.options.push(opt);
-        if (el.checked) g.value = opt;
+        if (el.checked) g.value = g.value ? `${g.value} | ${opt}` : opt;
         continue;
       }
     }
@@ -416,7 +419,7 @@ export function collectForm() {
     const al = (el.getAttribute('aria-label') || '').trim();
     const placeholderName = !al || /^(select( an)? option|select\.*|choose\.*|please select)$/i.test(al);
     const raw = (el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean).map((id) => text(document.getElementById(id))).join(' ')
-      || (placeholderName ? visualLabel(el, 8)?.text : '') || al;
+      || (placeholderName ? visualLabel(el, 8, 600)?.text : '') || al;
     const key = `f${n++}`;
     el.setAttribute('data-hunt-key', key);
     fields.push({ key, kind: 'select', label: clean(raw), required: el.getAttribute('aria-required') === 'true' || /\*\s*$/.test(raw), options: [], value: /^(select( an)? option|select\.*|choose\.*|--+|please select)?$/i.test(shownText) ? '' : shownText, error: errorNear(el), combobox: true, widget: 'menu', id: el.id || '' });
@@ -557,7 +560,10 @@ export function stuckReport() {
   // answered, and the run stopped on it four times).
   // Ashby's application-limits callout ("...Please choose the roles where your experience is the
   // strongest match.") is a notice above the form, not an error.
-  const helpText = (el) => !!el.closest('[id$="-description"], [class*="description"], [class*="hint"], [class*="blocking-disclosure"], [class*="applicationLimitCallout"]');
+  // A help tooltip too (a list's "?" that says "If none of the options apply to you, please select
+  // "Other" ..." stopped a run before its last button), unless it is an error tooltip.
+  const tip = (el) => { const t = el.closest('[role="tooltip"], .tooltip'); return !!t && !/error|invalid/i.test(t.className || ''); };
+  const helpText = (el) => !!el.closest('[id$="-description"], [class*="description"], [class*="hint"], [class*="blocking-disclosure"], [class*="applicationLimitCallout"]') || tip(el);
   // "SMS permission required" (Paylocity): a short "<words> required" outside a label is a
   // message too; a label's "(required)" marker is not.
   const shortRequired = (el) => !el.closest('label') && /^\s*[A-Za-z][\w ]{1,40}\s+required\.?\s*$/i.test(el.textContent || '');

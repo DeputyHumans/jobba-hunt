@@ -11,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { PINNED_BINARY } from '../scripts/cloak-core.mjs';
 import { markRoot, collectForm, passInterstitial, stuckReport, invalidReport, workdayPage, safeHtml, workdayFields, walmartPage, WALMART_SEL, icimsPage, ICIMS_SEL } from '../scripts/lib/apply-dom.mjs';
 import { planFill, resumeChoice, followBoxesChecked, normLabel, eeoPick, submitLabel, workdayStage, workdayStartChoice, workdayPlan, workdayAdds, walmartStage, walmartNav, icimsStage, icimsNav, blockerIn, challengeIn, icimsPlan } from '../scripts/lib/apply-forms.mjs';
-import { checkLabelRadio, pickWidget, setBox, pressToggle, tickGroupOption, menuOptions, wdListOptions, wdPickList, wdPickPrompt, wdTypeDate, wdAddEntry, wdCheckOption, framed, icimsPick, icimsPickOther } from '../scripts/lib/apply-click.mjs';
+import { checkLabelRadio, pickWidget, setBox, pressToggle, tickGroupOption, tickGroupOptions, menuOptions, wdListOptions, wdPickList, wdPickPrompt, wdTypeDate, wdAddEntry, wdCheckOption, framed, icimsPick, icimsPickOther } from '../scripts/lib/apply-click.mjs';
 
 async function chromiumPath() {
   if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
@@ -370,6 +370,23 @@ test('checkLabelRadio: a radio re-mounted on select (tracking attributes gone) s
   }
 });
 
+// Gem's radios carry no name: two Yes/No questions, each input beside its label (for=). With the
+// first Yes already checked, picking the second Yes must click it, not take the first as done.
+test('checkLabelRadio: an unnamed radio is confirmed on itself, not by any other unnamed radio that is checked', { skip }, async () => {
+  const page = await browser.newPage();
+  try {
+    await page.route(/^https?:/, (r) => r.abort());
+    await show(page, `<form>
+      <div><input type="radio" id="a1" checked><label for="a1">Yes</label><input type="radio" id="a2"><label for="a2">No</label></div>
+      <div><input type="radio" id="b1"><label for="b1">Yes</label><input type="radio" id="b2"><label for="b2">No</label></div>
+    </form>`);
+    const ok = await checkLabelRadio(page.locator('#b1'), { waitMs: 50 });
+    const state = await page.evaluate(() => ['a1', 'b1'].map((id) => document.getElementById(id).checked));
+    assert.equal(ok, true);
+    assert.deepEqual(state, [true, true]);
+  } finally { await page.close(); }
+});
+
 
 test('stuckReport: a question\'s description ("Please select the option that best describes ...") is help text, not a validation message (Greenhouse)', { skip }, async () => {
   const page = await browser.newPage();
@@ -403,6 +420,26 @@ test('stuckReport: an Ashby application-limits callout ("Please choose the roles
     </div>`);
     const open = await page.evaluate(stuckReport);
     assert.deepEqual(open.map((o) => o.error), ['This field is required.']);
+  } finally {
+    await page.close();
+  }
+});
+
+// A list's help tooltip ("If none of the options apply to you, please select "Other" ...") behind its
+// "?" stopped a filled form before its last button: it is help text. An error tooltip is still a message.
+test('stuckReport: a help tooltip is not a validation message; an error tooltip still is', { skip }, async () => {
+  const page = await browser.newPage();
+  try {
+    await page.route(/^https?:/, (r) => r.abort());
+    const help = 'If none of the options apply to you, please select "Other" and fill in the blank that appears.';
+    await show(page, `<div data-hunt-root="1">
+      <div class="form-field"><label for="d">Degree</label><span class="help">?<div role="tooltip" class="tooltip">${help}</div></span>
+        <select id="d"><option>Select</option><option>Bachelor's Degree</option></select></div>
+      <div class="form-field"><label for="m">Major</label><span class="help">?<div class="tooltip">${help}</div></span><input id="m" value=""></div>
+      <div class="form-field"><label for="g">GPA</label><input id="g" value=""><div role="tooltip" class="tooltip tooltip-error">Please enter a valid GPA</div></div>
+    </div>`);
+    const open = await page.evaluate(stuckReport);
+    assert.deepEqual(open.map((o) => o.error), ['Please enter a valid GPA']);
   } finally {
     await page.close();
   }
@@ -512,6 +549,21 @@ test('pickWidget: opens a react-widgets dropdown, clicks the answer among option
   }
 });
 
+// Something covering a box and its label took both clicks ("checkbox did not tick" twice in a headed
+// run, while a clean copy of the page ticked): the box is then clicked from the page.
+test('setBox: a box and label covered by an overlay are still ticked from the page', { skip }, async () => {
+  const page = await browser.newPage();
+  try {
+    await page.route(/^https?:/, (r) => r.abort());
+    await show(page, `<fieldset class="checkbox" id="question_9000000401[]"><legend>Have you worked at a startup company before? *</legend><div class="checkbox__wrapper"><div class="checkbox__input"><input type="checkbox" id="question_9000000401[]_7" name="question_9000000401[]" value="7" data-hunt-key="f13"></div><label for="question_9000000401[]_7">Yes</label></div></fieldset><div style="position:fixed;inset:0;background:rgba(0,0,0,.01);z-index:9"></div>`);
+    const loc = page.locator('[data-hunt-key="f13"]');
+    assert.equal(await setBox(loc, true, { waitMs: 50 }), true);
+    assert.equal(await loc.isChecked(), true);
+  } finally {
+    await page.close();
+  }
+});
+
 test('setBox: a checkbox labelled by a sibling <label for> is ticked through that label and confirmed (Greenhouse race boxes)', { skip }, async () => {
   const page = await browser.newPage();
   try {
@@ -575,6 +627,29 @@ test('Ashby checkbox group: tickGroupOption ticks exactly the chosen option, fou
     assert.equal(await tickGroupOption(page, grp.key, 'LinkedIn'), true);
     const ticked = await page.evaluate(() => [...document.querySelectorAll('fieldset input[type="checkbox"]')].filter((b) => b.checked).map((b) => b.name));
     assert.deepEqual(ticked, ['LinkedIn']);
+  } finally { await page.close(); }
+});
+
+// "Select all of the tools you have used": a checkbox group answered with several values.
+test('Ashby checkbox group: tickGroupOptions ticks exactly several options and unticks the rest; the collector then reads the group as "a | b" and the plan takes no action', { skip }, async () => {
+  const page = await browser.newPage();
+  try {
+    await show(page, readFileSync(join(FIX, 'synthetic-ashby-group-date.html'), 'utf8'), { waitUntil: 'domcontentloaded' });
+    await page.evaluate(markRoot, 'form');
+    const snap = await page.evaluate(collectForm);
+    const q = 'Where did you hear about this position?';
+    const grp = snap.fields.find((f) => f.label === q);
+    assert.equal(await tickGroupOption(page, grp.key, 'Other'), true);
+    assert.equal(await tickGroupOptions(page, grp.key, ['LinkedIn', 'Friend']), true);
+    const ticked = await page.evaluate(() => [...document.querySelectorAll('fieldset input[type="checkbox"]')].filter((b) => b.checked).map((b) => b.name));
+    assert.deepEqual(ticked.sort(), ['Friend', 'LinkedIn']);
+    await page.evaluate(markRoot, 'form');
+    const after = await page.evaluate(collectForm);
+    const now = after.fields.find((f) => f.label === q);
+    assert.equal(now.value, 'Friend | LinkedIn');
+    const plan = planFill(after.fields, bank, { jobAnswers: { [normLabel(q)]: 'LinkedIn | Friend' } });
+    assert.ok(!plan.actions.some((a) => a.key === now.key));
+    assert.ok(!plan.missing.some((m) => m.key === now.key));
   } finally { await page.close(); }
 });
 
@@ -721,6 +796,29 @@ test('Rippling custom questions: a menu named only by its placeholder ("Select")
       ['How did you hear about Acme Corp?', 'select', 'menu', true, ''],
       ['Are you legally authorized to work in the United States?', 'select', 'menu', true, 'Yes'],
     ]);
+  } finally {
+    await page.close();
+  }
+});
+
+// A custom question longer than 160 characters named its menu with the question above it (the
+// sponsorship and non-compete menus took "legally authorized" and were answered Yes): a block holding
+// another menu ends the search, and a placeholder-named menu reads up to 600 characters.
+test('Rippling custom questions: a long question names its own menu and never borrows the question above it', { skip }, async () => {
+  const page = await browser.newPage();
+  try {
+    await page.route(/^https?:/, (r) => r.abort());
+    const q = (text, id, inner) => `<div><div><div><p>${text}<div></div></p></div></div><div data-testid="field"><div><div data-testid="customQuestions.x.${id}"><div><div data-testid="select-controller"><div>${inner}</div></div></div></div></div></div>`;
+    const menu = (id) => `<div id="${id}" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-label="Select" aria-required="true" tabindex="0"><p>Select</p></div>`;
+    const auth = 'Are you legally authorized to work for any employer in the U.S. now and in the future without the need for visa sponsorship?';
+    const spons = 'Do you now, or will you in the future, require visa sponsorship (e.g., H-1B, L-1) or are you currently working under F-1 OPT or STEM OPT status to work legally in the country in which this position is located for Acme Corp or any of its affiliates? Please note: At this time, Acme Corp and its affiliates are not able to consider candidates who require current or future visa sponsorship, or candidates working under F-1 OPT or STEM OPT authorization.';
+    const nonc = 'Are you currently subject to any agreement, such as a non-compete, non-solicitation, or required notice period, that would legally restrict or prevent you from performing the responsibilities of this role or working with our clients? Please do not disclose any confidential, proprietary, or trade secret information in your response.';
+    await show(page, `<form>${q(auth, 'a', menu('field-55'))}${q(spons, 'b', menu('field-61'))}${q(nonc, 'c', menu('field-67'))}<button type="submit" aria-disabled="true">Apply</button></form>`);
+    await page.evaluate(markRoot, 'form');
+    const labels = (await page.evaluate(collectForm)).fields.map((f) => f.label);
+    assert.equal(labels[0], auth);
+    assert.match(labels[1], /^Do you now, or will you in the future, require visa sponsorship/);
+    assert.match(labels[2], /^Are you currently subject to any agreement/);
   } finally {
     await page.close();
   }

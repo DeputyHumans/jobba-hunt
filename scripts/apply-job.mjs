@@ -23,6 +23,7 @@
 // Usage:
 //   node scripts/apply-job.mjs --job <id> --dry-run [--headed] [--cv <pdf>] [--cover <txt>] [--cover-pdf <pdf>]
 //   node scripts/apply-job.mjs --job <id> [--headed]            # real submit
+//   node scripts/apply-job.mjs --job <id> --ats-url <https url> [...]  # start at a known application page, not LinkedIn
 //   node scripts/apply-job.mjs learn --label "<question>" --answer "<the user's answer>"
 //   node scripts/apply-job.mjs check-answers                    # which answer-bank values are still empty
 //   node scripts/apply-job.mjs verify --channel <name> --evidence <run dir of a headed dry run of it>
@@ -46,8 +47,8 @@ import { applyTypeOf, alreadyAppliedIn } from './lib/extract.mjs';
 import { collectDiceView, settle as diceSettle, signedInAtHome, DICE_SEL, DICE_PROFILE, DICE_PLATFORM } from './dice-jobs.mjs';
 import { diceApplyTypeOf, diceAlreadyApplied, classifyDicePage, isDiceId, diceGuid, diceJobUrl } from './lib/dice-extract.mjs';
 import { invalidReport, markRoot, collectForm, passInterstitial, stuckReport, diceSlot, workdayPage, safeHtml, workdayFields, walmartPage, WALMART_SEL, icimsPage, ICIMS_SEL } from './lib/apply-dom.mjs';
-import { normLabel, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, optInBoxesChecked, challengeIn, REDIRECT_HOST, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, ashbyFromJid, eeoPick, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, afterSubmit, typeaheadIndex, stuckReason, comboOutcome, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayPlan, workdayAdds, workdayHistory, variantForCv, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan } from './lib/apply-forms.mjs';
-import { checkLabelRadio, typeText, pickWidget, setBox, pressToggle, clickSubmit, tickGroupOption, enterCode, selectResumeRow, menuOptions, wdListOptions, wdPickList, wdPickPrompt, wdTypeDate, wdAddEntry, wdCheckOption, framed, icimsPick, icimsPickOther, awaitReload, RELOAD_TAG } from './lib/apply-click.mjs';
+import { normLabel, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, optInBoxesChecked, challengeIn, REDIRECT_HOST, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, ashbyFromJid, eeoPick, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, afterSubmit, afterStuck, settledAfterChallenge, typeaheadIndex, stuckReason, comboOutcome, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayPlan, workdayAdds, workdayHistory, variantForCv, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan, COOKIE_DECLINE } from './lib/apply-forms.mjs';
+import { checkLabelRadio, typeText, pickWidget, setBox, pressToggle, clickSubmit, tickGroupOption, tickGroupOptions, enterCode, selectResumeRow, menuOptions, wdListOptions, wdPickList, wdPickPrompt, wdTypeDate, wdAddEntry, wdCheckOption, framed, icimsPick, icimsPickOther, awaitReload, RELOAD_TAG } from './lib/apply-click.mjs';
 import { CV_SRC, COLLATERAL_DIR, DATA_DIR, display, resolveArgPath } from './lib/paths.mjs';
 import { configFile, loadConfig, loadOwnConfig, readJsonFile, requireWorkspace, saveConfig, writeJsonAtomic } from './lib/config.mjs';
 import { ANSWERS_PATH, answers, applicationEmail, preferences, schedule, tz } from './lib/profile.mjs';
@@ -264,7 +265,9 @@ async function fill(page, actions) {
 
 async function fillOne(page, a) {
   {
-    const loc = a.action === 'radio' ? page.locator(`[data-hunt-key="${a.key}"][data-hunt-opt="${a.value.replace(/"/g, '\\"')}"]`) : page.locator(`[data-hunt-key="${a.key}"]`);
+    // A multi-value checkbox group (a.values) is found by its first option.
+    const optOf = a.values ? a.values[0] : a.value;
+    const loc = a.action === 'radio' ? page.locator(`[data-hunt-key="${a.key}"][data-hunt-opt="${optOf.replace(/"/g, '\\"')}"]`) : page.locator(`[data-hunt-key="${a.key}"]`);
     if (a.action === 'file') await loc.setInputFiles(a.value);
     // A react-widgets dropdown (Paylocity SMS consent): open, pick, confirm.
     // An EEO menu (Rippling: "Veteran Status" lists "I am not a protected veteran") is
@@ -300,9 +303,10 @@ async function fillOne(page, a) {
       if (!(await pressToggle(loc))) throw new Error(`toggle "${a.value}" did not take (aria-pressed=${await loc.getAttribute('aria-pressed').catch(() => null)})`);
     }
     else if (a.action === 'radio' && (await loc.evaluate((el) => !!el.closest('fieldset[class*="checkbox-group"]')).catch(() => false))) {
-      // An Ashby checkbox group asked as one question: tick exactly the answer,
-      // found again by the collector key.
-      if (!(await tickGroupOption(page, a.key, a.value))) throw new Error(`checkbox group option "${a.value}" did not take`);
+      // An Ashby checkbox group asked as one question: tick exactly the answer (or the answers,
+      // a.values), found again by the collector key.
+      if (a.values) { if (!(await tickGroupOptions(page, a.key, a.values))) throw new Error(`checkbox group options "${a.value}" did not take`); }
+      else if (!(await tickGroupOption(page, a.key, a.value))) throw new Error(`checkbox group option "${a.value}" did not take`);
     }
     else if (a.action === 'radio' && (await loc.getAttribute('type').catch(() => null)) === 'checkbox') {
       // LinkedIn Yes/No asked as a checkbox pair: click the option's row,
@@ -335,6 +339,10 @@ async function fillOne(page, a) {
       // Styled radios (appcast, Paylocity) hide the input inside a <label>: click the label, fall
       // back to the input when the label swallows the click, then confirm.
       else if (await lab.count()) {
+        if (!(await checkLabelRadio(loc))) throw new Error(`radio "${a.value}" did not take`);
+      } else if (!(await loc.evaluate((el) => el.name).catch(() => ''))) {
+        // A radio with no name (Gem: the label beside the input, tied by for=): the group's other
+        // checked radios say nothing about this one, so it is clicked and confirmed on itself.
         if (!(await checkLabelRadio(loc))) throw new Error(`radio "${a.value}" did not take`);
       } else {
         // LinkedIn 2026 radios: a hidden input in a scrolling dialog, the click handler on the
@@ -1061,9 +1069,18 @@ async function atsApply(site) {
   }
   await site.waitForTimeout(3000);
   // A cookie banner with a backdrop blocks the form (Workable). Decline the
-  // optional cookies: it shares nothing, so it needs no consent. Never "Accept all".
-  const decline = site.locator('button').filter({ hasText: /^\s*(decline all|reject all|decline|reject|only necessary|necessary only|use necessary cookies only)\s*$/i }).first();
-  if (await decline.isVisible().catch(() => false)) { await decline.click().catch(() => {}); await site.waitForTimeout(1000); }
+  // optional cookies: it shares nothing, so it needs no consent. Never "Accept all". The decline can
+  // be a button, a role=button or a link, with an icon before its words ("× Reject all cookies",
+  // COOKIE_DECLINE).
+  const declineCookies = async () => {
+    const decline = site.locator('button, [role="button"], a').filter({ hasText: COOKIE_DECLINE }).filter({ visible: true }).first();
+    if (!(await decline.isVisible().catch(() => false))) return false;
+    await decline.click().catch(() => {});
+    await site.waitForTimeout(1000);
+    log('cookie banner declined');
+    return true;
+  };
+  await declineCookies();
 
   // Multi-step forms (appcast applyboard: "Step 1/2", Continue): fill each page, follow
   // Continue/Next, stop on Submit. Single-page ATS forms are the one-step case.
@@ -1160,7 +1177,7 @@ async function atsApply(site) {
       const p = ats === 'icims' ? icimsPlan(sn.fields, bank, ctx, { login: EMAIL }) : planFill(sn.fields, bank, ctx);
       p.actions = notUploaded(p.actions, uploaded);
       const unanswered = sn.fields.filter((f) => ['text', 'email', 'tel', 'number', 'textarea', 'select', 'radio'].includes(f.kind)
-        && !String(f.value || '').trim() && !p.actions.some((a) => a.key === f.key) && !p.missing.some((m) => m.key === f.key)
+        && !String(f.value || '').trim() && !p.actions.some((a) => a.key === f.key) && !p.missing.some((m) => m.key === f.key) && !(p.covered || []).includes(f.key)
         && f.required && !/optional/i.test(f.label) && f.label);
       p.missing.push(...unanswered.map((f) => ({ key: f.key, label: f.label, kind: f.kind, options: (f.options || []).slice(0, 12), reason: 'no-answer' })));
       return p;
@@ -1311,6 +1328,8 @@ async function atsApply(site) {
     }
     if (plan.actions.some((a) => a.action === 'file')) await site.waitForTimeout(4000);
     const after = await site.evaluate(collectForm);
+    // The fields as the fill left them (a picked list shows its choice here, not in step<N>-fields.json).
+    writeFileSync(join(outDir, `step${step}-fields-filled.json`), JSON.stringify(after.fields.map((f) => ({ key: f.key, id: f.id, label: f.label, kind: f.kind, required: f.required, value: /phone|mobile|birth|street|address line/i.test(f.label) ? (f.value ? '[masked]' : '') : f.value })), null, 1));
     await screenshot(site, `step${step}-filled`);
     // Walmart: Next on a questionnaire page, Submit only on the review page (walmartNav). A review whose
     // cart holds other jobs too is never sent: one Submit applies to all of them.
@@ -1319,7 +1338,8 @@ async function atsApply(site) {
     if (nav?.held) { await screenshot(site, `step${step}-held-submit`); return [5, { outcome: 'manual', channel: ats, ats_url: url, detail: `iCIMS shows "${nav.held}" on the ${icStage} page, which is not known to be the last page; nothing was sent. If the step screenshots show it is the last, the channel needs that confirmed (icimsNav)`, filled }]; }
     if (nav?.jobs > 1) return [5, { outcome: 'manual', channel: ats, ats_url: url, detail: `the Walmart review applies to ${nav.jobs} jobs at once (its cart); nothing was sent. Clear the other jobs from the cart by hand`, filled }];
     if (nav?.review && !nav.submit) { await screenshot(site, `step${step}-review-no-submit`); return [5, { outcome: 'manual', channel: ats, ats_url: url, detail: `${ats === 'icims' ? 'iCIMS' : 'Walmart'} review page shows no Submit (buttons: ${after.buttons.join(' | ')}); nothing was sent`, filled }]; }
-    const submit = nav ? nav.submit : submitLabel(after.buttons);
+    // A site whose last button is not called Submit names it in config/apply.json submit_labels.
+    const submit = nav ? nav.submit : submitLabel(after.buttons, ats, cfg.submit_labels);
     if (submit && !nav && !applicationForm(after.fields)) {
       await screenshot(site, 'not-an-application');
       return [5, { outcome: 'manual', channel: ats, ats_url: url, detail: `not a job application form (no name field, no CV upload; fields: ${after.fields.map((f) => f.label).join(' | ').slice(0, 200)}); nothing was sent`, filled }];
@@ -1454,6 +1474,16 @@ async function atsApply(site) {
     }, (t) => t !== beforeText || moved?.fields?.some((f) => f.error), { tries: 10, waitMs: 3000 });
     site.off('response', onResp);
     if (moved.text === beforeText || moved.fields.some((f) => f.error)) {
+      // A bot check over a page that did not move (an iCIMS hCaptcha after Next) is no stuck form: a
+      // headed run waits for the operator to solve it, then takes the step again once a labelled
+      // button is back; headless or unsolved, the role goes to the user. Nothing was sent.
+      let gate = afterStuck({ challenged: !moved.fields.some((f) => f.error) && (await pageChallenged(site)), headed: !!flags.headed });
+      if (gate === 'wait') gate = afterStuck({ challenged: true, headed: true, cleared: await awaitHuman(site, ats) });
+      if (gate === 'retry') { await pollText(() => site.evaluate(collectForm).catch(() => null), (sn) => settledAfterChallenge(beforeText, sn), { tries: 20, waitMs: 3000 }); await screenshot(site, `step${step}-after-challenge`); continue; }
+      if (gate === 'manual') {
+        await screenshot(site, 'challenge-unsolved');
+        return [5, { outcome: 'manual', channel: ats, ats_url: url, detail: flags.headed ? `bot check after Next not solved within ${WAIT_MIN} minutes; nothing was sent, finish it by hand` : 'bot check after Next; nothing was sent (re-run headed so the operator can solve it)', filled }];
+      }
       const errs = moved.fields.filter((f) => f.error).map((f) => ({ key: f.key, label: f.label, kind: f.kind, options: f.options, reason: `validation: ${f.error}` }));
       const loose = errs.length ? [] : (await site.evaluate(stuckReport)).map((e) => ({ key: null, label: e.label, kind: 'unknown', options: [], reason: `validation: ${e.error}` }));
       // Nothing written on the page: name what the browser or the page marks invalid.
@@ -2219,6 +2249,13 @@ async function runLinkedIn() {
   let result = { outcome: 'error' };
   // A re-run of a company-site role starts from the application URL its last run recorded: no
   // LinkedIn page load just to find it again. --via-linkedin takes the old path.
+  // --ats-url <url>: start this one run at a known application page (a job-board Apply that reaches
+  // the board's index, not the job's own page). Only an https company page, never LinkedIn or Dice.
+  const atsUrl = typeof flags['ats-url'] === 'string' ? flags['ats-url'] : null;
+  const atsHost = (() => { try { const u = new URL(atsUrl); return u.protocol === 'https:' ? u.hostname.toLowerCase() : null; } catch { return null; } })();
+  const forced = atsHost && !/(^|\.)(linkedin|dice)\.com$/.test(atsHost) ? atsUrl : null;
+  if (flags['ats-url'] && !forced) log(`--ats-url ignored (an https company page only, never LinkedIn or Dice): ${flags['ats-url']}`);
+  if (forced) { log(`starting from --ats-url, LinkedIn not loaded: ${forced}`); return externalApply(context, page, { url: forced }); }
   const recorded = flags['via-linkedin'] ? null : recordedAtsUrl(job.application, (dir) => readJson(join(dir, 'result.json')));
   if (recorded) {
     log(`starting from the recorded application URL, LinkedIn not loaded: ${recorded}`);

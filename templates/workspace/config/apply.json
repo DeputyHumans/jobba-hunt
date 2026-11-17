@@ -16,6 +16,9 @@
     "icims": false
   },
   "verified_log": {},
+  "submit_labels": {
+    "_why": "A company-site form whose final button is not called Submit: {\"<channel>\": [\"<exact button text>\", ...]}, for example {\"site:careers.example.com\": [\"Finish\"]}. A label is matched whole and in any letter case, only on its own channel and only when no Submit button shows. Add one only after that channel's headed dry run showed the button is its last step."
+  },
   "auto_apply": {
     "enabled": false,
     "min_score": 80,
