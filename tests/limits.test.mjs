@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 
 const dir = mkdtempSync(join(tmpdir(), 'jobba-limits-'));
 process.env.JOBBA_LIMITS_LOG = join(dir, 'limits-log.json');
-const { canPost, recordPost, getUsageSummary, loadLimits, capOverride } = await import('../scripts/rate-limiter.mjs');
+const { canPost, recordPost, getUsageSummary, loadLimits, capOverride, allowance } = await import('../scripts/rate-limiter.mjs');
 
 const TEMPLATE = JSON.parse(readFileSync(new URL('../templates/workspace/config/limits.json', import.meta.url), 'utf8'));
 const tplMax = (platform, action) => TEMPLATE[platform][action].max;
@@ -95,4 +95,25 @@ test('cap overrides: only today\'s dated entry matches, and a load past the cap 
   const rows = readActions().filter((r) => r.action === 'cap.override');
   assert.equal(rows.length, n + 1);
   assert.deepEqual([rows.at(-1).source, rows.at(-1).job_id, rows.at(-1).detail.action], ['linkedin_apply', '9000000001', 'applications_per_day']);
+});
+
+test('allowance: past the standing cap only today\'s dated override lets one more through, tagged cap_override (every apply cap, ats_apply included)', () => {
+  const path = join(dir, 'cap-overrides-ats.json');
+  const sched = { tz: 'UTC', reset_hour: 4 };
+  const now = Date.parse('2030-03-05T12:00:00Z');
+  const opts = { now, path, schedule: sched };
+  const max = tplMax('ats_apply', 'applications_per_day');
+  for (let i = 0; i < max; i++) recordPost('ats_apply', 'applications_per_day', { jobId: `a${i}` }, { now: now - 60000 });
+  writeFileSync(path, '[]');
+  assert.deepEqual(allowance('ats_apply', 'applications_per_day', opts), { ok: false, meta: {} });
+  writeFileSync(path, JSON.stringify([{ date: '2030-03-05', platform: 'ats_apply', action: 'applications_per_day', max: max + 1, by: 'user, in session' }]));
+  assert.deepEqual(allowance('ats_apply', 'applications_per_day', opts), { ok: true, meta: { cap_override: true, override_reason: 'user, in session' } });
+  recordPost('ats_apply', 'applications_per_day', { jobId: 'over', cap_override: true }, { now: now - 30000 });
+  assert.equal(allowance('ats_apply', 'applications_per_day', opts).ok, false, 'the override max is a ceiling too');
+});
+
+test('apply-job takes every applications cap through allowance, ats_apply included', () => {
+  const src = readFileSync(new URL('../scripts/apply-job.mjs', import.meta.url), 'utf8');
+  assert.match(src, /allowance\('ats_apply', 'applications_per_day'\)/);
+  assert.doesNotMatch(src, /canPost\('ats_apply'/);
 });

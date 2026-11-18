@@ -62,7 +62,7 @@ import { applyGate, recordAttempt, sameCompanyRoles } from './lib/triage.mjs';
 import { loadCompanyOpts } from './lib/company.mjs';
 import { readPause } from './lib/pause.mjs';
 import { isHalted, haltUntil } from './lib/tick-plan.mjs';
-import { canPost, recordPost, getUsageSummary } from './rate-limiter.mjs';
+import { recordPost, allowance } from './rate-limiter.mjs';
 
 // The answer bank: <workspace>/profile/answers.json.
 const ANSWERS = ANSWERS_PATH;
@@ -175,23 +175,15 @@ if (coverPdf && !existsSync(coverPdf)) refuse(`cover letter PDF not found: ${dis
 const letterTxt = coverPdf ? join(dirname(coverPdf), 'cover-letter.txt') : null;
 const letterText = letterTxt && existsSync(letterTxt) ? readFileSync(letterTxt, 'utf8').trim() : null;
 // A dated override the user gave in the session (data/state/cap-overrides.json, today only, in the
-// user's time zone): the limit becomes that number, and every load past the standing cap is tagged
-// cap_override.
-const todayLocal = localDate();
-const OVERRIDES = join(DATA_DIR, 'state', 'cap-overrides.json');
-const overrideFor = (platform, action) => (existsSync(OVERRIDES) ? readJson(OVERRIDES) : []).find((o) => o.date === todayLocal && o.platform === platform && o.action === action) || null;
-const override = overrideFor(applyCap, 'apply_page_loads_per_day');
-// Applications per day honour the same dated override.
-const appsCap = (platform) => {
-  if (canPost(platform, 'applications_per_day').allowed) return { ok: true, meta: {} };
-  const o = overrideFor(platform, 'applications_per_day');
-  const ok = !!o && getUsageSummary()[platform].applications_per_day.count < o.max;
-  return { ok, meta: ok ? { cap_override: true, override_reason: o.by } : {} };
-};
-const loadsGate = canPost(applyCap, 'apply_page_loads_per_day');
-const overCap = !loadsGate.allowed;
-if (overCap && !(override && getUsageSummary()[applyCap].apply_page_loads_per_day.count < override.max)) refuse(`${applyCap} apply_page_loads_per_day cap reached`);
-const loadMeta = overCap ? { cap_override: true, override_reason: override?.by } : {};
+// user's time zone; rate-limiter.mjs allowance): the limit becomes that number, and every load past
+// the standing cap is tagged cap_override. Applications per day honour the same override on every
+// channel: linkedin_apply, dice_apply and ats_apply.
+const appsCap = (platform) => allowance(platform, 'applications_per_day');
+const loads = allowance(applyCap, 'apply_page_loads_per_day');
+if (!loads.ok) refuse(`${applyCap} apply_page_loads_per_day cap reached`);
+const loadMeta = loads.meta;
+// Set when a company-site run passes the ats_apply cap; recorded with that submit.
+let atsMeta = {};
 const unverified = (channel) => `channel ${channel} is not verified: run --dry-run --headed, check it, then npm run apply -- verify --channel ${channel} --evidence <that run's dir>`;
 
 // The address every form, sign-in and candidate account uses (profile/person.json application_email).
@@ -1081,7 +1073,9 @@ async function atsApply(site) {
   reachedAts = url;
   if (!ats) { await screenshot(site, 'external'); return [5, { outcome: 'manual', channel: 'unknown', ats_url: url, detail: 'unsupported application site' }]; }
   if (!dryRun && !cfg.verified?.[ats]) return [2, { outcome: 'refused', channel: ats, ats_url: url, detail: unverified(ats) }];
-  if (!dryRun && !canPost('ats_apply', 'applications_per_day').allowed) return [2, { outcome: 'refused', channel: ats, ats_url: url, detail: 'ats_apply applications_per_day cap reached' }];
+  const atsApps = allowance('ats_apply', 'applications_per_day');
+  if (!dryRun && !atsApps.ok) return [2, { outcome: 'refused', channel: ats, ats_url: url, detail: 'ats_apply applications_per_day cap reached' }];
+  atsMeta = atsApps.meta;
   if (ats === 'workday') return workdayApply(site, url);
   if (ats === 'lever' && !/\/apply\/?$/.test(new URL(url).pathname)) { url = url.replace(/\/?(\?.*)?$/, '/apply'); await site.goto(url, { waitUntil: 'domcontentloaded' }); }
   if (ats === 'workable' && !/\/apply\/?$/.test(new URL(url).pathname)) { url = url.replace(/\/?(\?.*)?$/, '/apply/'); await site.goto(url, { waitUntil: 'domcontentloaded' }); }
@@ -1532,7 +1526,7 @@ async function atsApply(site) {
         await screenshot(site, 'challenge-unsolved');
         return [5, { outcome: 'manual', channel: ats, ats_url: url, detail: flags.headed ? `bot check after Submit not solved within ${WAIT_MIN} minutes; nothing was sent, finish it by hand` : 'bot check after Submit; nothing was sent, finish it by hand (or re-run headed)', filled }];
       }
-      if (confirmationIn(text)) { recordPost('ats_apply', 'applications_per_day', { jobId: id, ats }); return [0, { outcome: 'submitted', channel: ats, ats_url: url, filled }]; }
+      if (confirmationIn(text)) { recordPost('ats_apply', 'applications_per_day', { jobId: id, ats, ...atsMeta }); return [0, { outcome: 'submitted', channel: ats, ats_url: url, filled }]; }
       const late = done ? blockerIn(ats === 'icims' ? { ...done, frames: await shownFrames(site) } : done) : null;
       // The form still there with required-field errors: the site refused it before sending
       // ("School is required."). Not sent, so the run may go again.
@@ -2256,7 +2250,7 @@ async function workdayWizard(site, url, filled, done) {
       await site.waitForTimeout(jitter([6000, 9000]));
       const text = await pollText(() => site.evaluate(() => document.body.innerText.slice(0, 8000)), (t) => confirmationIn(t) || /\/jobTasks\/completed/i.test(site.url()), { tries: 6, waitMs: 5000 });
       await screenshot(site, 'after-submit');
-      if (confirmationIn(text) || /\/jobTasks\/completed/i.test(site.url())) { recordPost('ats_apply', 'applications_per_day', { jobId: id, ats: 'workday' }); return done(0, { outcome: 'submitted' }); }
+      if (confirmationIn(text) || /\/jobTasks\/completed/i.test(site.url())) { recordPost('ats_apply', 'applications_per_day', { jobId: id, ats: 'workday', ...atsMeta }); return done(0, { outcome: 'submitted' }); }
       return done(6, { outcome: 'submit-unverified', detail: 'no confirmation after Submit; check the Workday candidate home by hand' });
     }
     if (label === lastLabel) return done(4, { outcome: 'needs_answers', detail: [{ key: null, label: `(${label}: Save and Continue did not advance)`, kind: 'unknown', options: [], reason: 'stuck' }] });

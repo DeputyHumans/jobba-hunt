@@ -220,6 +220,19 @@ export function capOverride(platform, action, { now = Date.now(), path = capOver
   return (Array.isArray(list) ? list : []).find((o) => o.date === today && o.platform === platform && o.action === action) || null;
 }
 
+/**
+ * Whether one more action fits, counting today's dated override: past the standing cap, an
+ * override entry (capOverride) raises the limit to its max for today only. Returns
+ * { ok, meta }; meta goes into recordPost, so a load past the standing cap is tagged cap_override.
+ */
+export function allowance(platform, action, options = {}) {
+  if (canPost(platform, action, options).allowed) return { ok: true, meta: {} };
+  const o = capOverride(platform, action, options);
+  const count = getUsageSummary(options)[platform]?.[action]?.count ?? Infinity;
+  const ok = !!o && count < o.max;
+  return { ok, meta: ok ? { cap_override: true, override_reason: o.by } : {} };
+}
+
 /** Remove log entries older than daysToKeep days. */
 export function pruneLog(daysToKeep = 30) {
   const log = loadLog();
