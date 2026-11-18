@@ -9,9 +9,9 @@ Run from the repo root. Read `AGENTS.md` first. Paths starting `workspace/` are 
 
 ## Inputs
 - The opportunity file in `workspace/pipeline/opportunities/` (stage, research, fit matrix, stage log).
-- The job record in `workspace/data/state/jobs.json`: the fetched `description_text` and `detail.fetched_at`. An email-only role (`job_id: email-<thread id>`) uses its thread file in `workspace/pipeline/mail/`.
+- The job record in `workspace/data/state/jobs.json`: the fetched `description_text` and `detail.fetched_at`. An email-only role (`job_id: email-<thread id>`) uses its thread file in `workspace/pipeline/mail/`, and the JD file its tailoring used (`workspace/data/applications/email-<thread id>/jd.txt`, with `tailor.json` `fetched_at`).
 - What was sent: the approved CV and letter (`application.cv`, `application.cover_pdf`), the job's answers (`workspace/data/applications/<id>/answers.json`), and the mail thread.
-- `workspace/collateral/claim-bank.md`, `workspace/collateral/screening-answers.md`, `workspace/profile/answers.json`, `workspace/profile/voice.md`.
+- `workspace/collateral/claim-bank.md` (only Claims-table rows with status `user-confirmed`, `public` or `CV`), `workspace/collateral/screening-answers.md`, `workspace/profile/answers.json`, `workspace/profile/voice.md`.
 - The call details (when, medium, who) from the operator or the mail thread. Never guessed.
 
 ## Brief
@@ -26,8 +26,13 @@ Run from the repo root. Read `AGENTS.md` first. Paths starting `workspace/` are 
    - Logistics (work authorization, location, start date) come from `profile/answers.json` and `screening-answers.md`.
    - Salary, rate and budget answers are `[bracketed]` lines only the operator fills. Never a number from a draft.
 6. **Number guardrails (section 9):** one row per figure the call may touch. "Say" is the exact figure a claim carries; "Never say" lists the tempting inflations (the claim's Do-not-say column: more years, a bigger team, a title not held). Comp numbers come only from the operator.
-7. **Questions to ask, risks, checklist, sources** (sections 10 to 13). Risks are for the operator's own decision.
-8. **Page:** `npm run brief -- <brief.md> --write-claims` renders the designed HTML next to the markdown (claim IDs open the exact claim-bank wording; a `<stem>-glossary.json` of `{ "terms": [{ "term", "def", "here" }] }` adds term hints). It fails on a claim ID the bank does not hold. A CV named outside a link is a warning: link the exact version sent. With the bikeshed publisher, publish the HTML as its own private document in the tracker's folder (`npm run bikeshed -- publish <brief.html> --title "<Company> brief: <role> (<date time>)" --folder <config/tracker.json bikeshed.folder_id> --json`) and revise it with `npm run bikeshed -- update <docId> <brief.html>`.
+7. **The 60-second read (section 2), questions to ask, risks, checklist, sources** (sections 10 to 13). Risks are for the operator's own decision.
+8. **Page:** `npm run -s brief -- <brief.md> [--glossary <json>] [--out <html>] [--write-claims]`.
+   - It renders the designed HTML next to the markdown (`<name>-brief.html`), or to `--out`. Claim IDs open the exact claim-bank wording.
+   - `--write-claims` also rewrites the brief markdown in place: the ``` **Claims** `[CLAIMS TABLE]` ``` placeholder becomes the table of every claim the brief cites. The HTML gets the table either way. `wrote_claims` in the JSON says whether the markdown changed.
+   - Glossary hints: `--glossary <json>`, or by default `<stem>-glossary.json` next to the brief, where the stem is the file name without `-brief` (and without a `-screen` before it): `{ "terms": [{ "term", "def", "here" }] }`.
+   - Exit 1 on a claim ID the bank does not hold as usable (`unknown`), or a missing brief or glossary file. A CV named outside a link is a warning (`warnings`): link the exact version sent.
+   - With the bikeshed publisher, publish the HTML as its own private document in the tracker's folder (`npm run bikeshed -- publish <brief.html> --title "<Company> brief: <role> (<date time>)" --folder <config/tracker.json bikeshed.folder_id> --json`) and revise it with `npm run bikeshed -- update <docId> <brief.html>`.
 9. **Opportunity file:** add a stage-log row ("brief written") with the brief's path and the page's URL.
 
 ## Debrief

@@ -1,24 +1,24 @@
 ---
 name: hunt-triage
-description: "Use after a LinkedIn or Dice tick or sweep, or when the operator asks to review new roles, score jobs, or see the job digest. Scores every viewed, not-yet-scored role in the job state against workspace/fit-profile.md, records the scores (the script computes the tier), writes the dated digest to workspace/pipeline/digests/, and asks the operator pursue / watch / skip for each tier A and B role. `tick` mode (called by /hunt-loop) asks nothing. `calibrate` mode checks the rubric blind against the operator's known roles. It never browses a job board and never applies."
+description: "Use after a LinkedIn or Dice tick or sweep, or when the operator asks to review new roles, score jobs, or see the job digest. Scores every viewed, not-yet-scored role in the job state against workspace/fit-profile.md, records the scores (the script computes the tier and applies the pay floors), writes the dated digest to workspace/pipeline/digests/, and asks the operator pursue / watch / skip for each tier A and B role. `tick` mode (called by /hunt-loop) asks nothing. `calibrate` mode checks the rubric blind against the operator's known roles. It never browses a job board and never applies."
 ---
 
 # /hunt-triage [tick | calibrate]
 
-Run from the repo root. Read `AGENTS.md` first. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
+Run from the repo root. Read `AGENTS.md` first. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set). The rubric's design is in `docs/fit-profile-guide.md`.
 
 ## Inputs
 - `workspace/fit-profile.md`: gates, lanes, dimensions, weights, the output schema. The only rubric.
 - `workspace/collateral/claim-bank.md`: claim IDs for `why_fit`, and the Never claim list for G4.
 - `workspace/collateral/cv-map.md`: the valid `archetype` slugs.
-- `workspace/profile/preferences.json`: `lanes`, `engagement.accept`, `location`. Floors and tiers are applied by the script, never by the score.
+- `workspace/profile/preferences.json`: `lanes`, `engagement.accept`, `location`. Tiers and pay floors are applied by the script, never by the score.
 
 ## Triage run
-1. **Export the pending roles.** `npm run -s triage -- pending` prints `{ count, file }`.
+1. **Export the pending roles.** `npm run -s triage -- pending` prints `{ count, file }`. Each role carries `job_id`, `source`, `title`, `company`, `location`, `employment_type`, `contract_types`, `workplace`, `comp_text`, `prefilter` and `description_text`.
    - Count 0: report the last run instead and stop. The last run is the newest `workspace/data/raw/*-tick.json` or `*-sweep.json`: give its `summary`, `aborted` and `budget_exhausted`.
-2. **Score each role** per `fit-profile.md`: `lane`, `gates`, `dims`, `score`, `why_fit`, `gaps`, `red_flags`, `comp_seen`, `hours_seen`, `archetype`, plus `via_agency` and `end_client` for an agency posting.
-   - **Score from the fetched `description_text` only.** Empty: every gate `unclear`, red flag `no-description`, score at most 50.
-   - **G1 reads `preferences.engagement.accept`.** A board's employment-type tag is not evidence on its own: a "Full-time" tag on a description of a fractional or part-time engagement passes G1, and a Contract or Part-time tag passes G1 on a plain title. A full-time role passes when `accept` lists `full-time`; the salary floor and target are applied by `record-triage`, not the score.
+2. **Score each role** per `fit-profile.md`: `job_id`, `lane`, `gates`, `dims`, `score`, `why_fit`, `gaps`, `red_flags`, `comp_seen`, `hours_seen`, `archetype`, plus `via_agency` and `end_client` for an agency posting.
+   - **Score from the fetched `description_text` only.** An empty description: every gate `unclear`, the red flag `no-description`, and a score of at most 50. `record` refuses any other row for that role.
+   - **G1 reads `preferences.engagement.accept`.** A board's employment-type tag is not evidence on its own: a "Full-time" tag on a description of a fractional or part-time engagement passes G1, and a Contract or Part-time tag passes G1 on a plain title. A full-time role passes when `accept` lists `full-time`.
    - **G2 reads `preferences.location`.** With `remote_required`, hybrid passes only when the description limits on-site time to occasional travel. On-site or hybrid passes inside `onsite_metros`, and fails elsewhere.
    - **Dice roles (`source: dice`).** A hands-on title (senior, lead, principal, staff or architect with an engineering noun, not leadership) scores on Lane H with `lane: "hands-on"` and its own dims. G1 reads `contract_types` against `engagement.accept`. G2 reads the job page `workplace` badge, never Dice's Remote filter. The digest shows the posted rate in the hours/comp column.
    - **LinkedIn hands-on roles.** A hands-on title scores on Lane H with `lane: "hands-on"`. G1 passes a Contract, Part-time or Temporary engagement that `engagement.accept` allows.
@@ -28,16 +28,23 @@ Run from the repo root. Read `AGENTS.md` first. Paths starting `workspace/` are 
    - **Above 10 roles, use subagents.** Fan out to `general-purpose` subagents in batches of 8. Give each the input file paths plus its batch, and require a JSON array as its only output. Never pass a subagent an expected outcome.
 3. **Persist the scores.**
    - Write the results array to `workspace/data/triage/results-YYYYMMDD.json`, then run `npm run -s triage -- record --file <it>`.
-   - Fix each `errors[]` entry and re-record only those. The script computes the tier, the IC rate floor and the full-time floor and target. Never write a tier.
+   - The script computes the tier from the score and the gates. Never write a tier.
+   - The pay floors (`preferences.money`) apply only to rows with `lane: "hands-on"`. A posted rate under `ic_rate_floor`, or a full-time salary under `ft_salary_floor`, forces tier `reject` with a red flag naming the posted figure. A full-time salary under `ft_salary_target` adds the red flag `Below target` and keeps the tier.
+
+   | Exit | Meaning | Action |
+   |---|---|---|
+   | 0 | Every row recorded (`applied`) | Step 4 |
+   | 1 | At least one row refused: `errors[]` lists `{ job_id, errors }`. The valid rows are still recorded. Also: the file is not a JSON array (`error`), and nothing is recorded | Fix each refused row (a bad field, an unknown `job_id`, a `no-description` row that claims more than the rule allows) and re-record only those rows |
 4. **Write the digest** to `workspace/pipeline/digests/YYYYMMDD-digest.md` from `templates/digest.md`.
    - Frontmatter: `title`, `created`, `updated`, `status: Draft`, `tags`.
-   - Rows from `npm run -s triage -- list --status triaged`.
-   - Sections in order: **Sweep** (one line per tick or sweep: time, source, query, new, viewed, guards), **Tier A** and **Tier B** tables (score, role @ company, lane, location, hours/comp seen, one-line why, top gap, link), **Tier C and reject** (counts, plus one line per reject naming the failing gate and its quoted line), **Decisions**, **Inbox**, **Overrides and halts**.
-   - Comp and hours verbatim, never scored. No floor appears. No em dashes.
-5. **Get the operator's decision** on every A and B role with AskUserQuestion (pursue / watch / skip; up to 4 roles per call), inside `preferences.schedule` `ask_start`-`ask_end` only. Record each: `npm run -s triage -- decide --id <id> --decision <d> --note "<the operator's words>"`.
-   - A `pursue` past the per-company limit is refused with `company limit: <id> <status>`. Tell the operator which application already holds the company; on their word, `npm run -s triage -- hold --id <id> --note "<reason>"` parks the other one, then pursue again.
+   - Rows from `npm run -s triage -- list --status triaged`. Its rows carry `job_id`, `tier`, `score`, `status`, `title`, `company`, `location`, `url`, `why_fit`, `gaps`, `red_flags`, `comp_seen` and `hours_seen`, but no lane, source or archetype: take `lane` and `archetype` from the results file, and the source from the pending file (a `dice-` job id is Dice).
+   - Sections in order: **Sweep** (one line per tick or sweep: time, source, query, new, viewed, guards), **Tier A** and **Tier B** tables (score, role @ company, lane, location, hours/comp seen, one-line why, top gap, link), **Tier C and reject** (counts, plus one line per reject naming the failing gate and its quoted line, or the floor), **Decisions**, **Inbox**, **Overrides and halts**.
+   - Comp and hours verbatim, never scored. No floor figure appears. No em dashes.
+5. **Get the operator's decision** on every A and B role with AskUserQuestion (pursue / watch / skip; up to 4 roles per call), inside `preferences.schedule` `ask_start`-`ask_end` only. Record each: `npm run -s triage -- decide --id <id> --decision pursue|watch|skip --note "<the operator's words>"`.
+   - `decide --decision pursue` exits 1 with `company limit: <id> <status>` past the per-company limit (`AGENTS.md` "Platform safety"). Tell the operator which application holds the company. An approved or pursued unsent sibling: only on their word, `npm run -s triage -- hold --id <sibling id> --note "<the operator's words>"`, then pursue again. A sent sibling stays and blocks (`hold` exits 1 with `job <id> is already <status>`): record this role as the operator says.
 6. **For each `pursue`,** create `workspace/pipeline/opportunities/YYYYMMDD-<company-slug>-<role-slug>.md` from `templates/opportunity.md`.
    - Fill the snapshot, the triage block and `fetched_at` from the job state.
+   - Frontmatter `company` is the employer the per-company limit counts. For an agency posting it is the end client (`end_client`); name the agency in the snapshot.
    - `stage: shortlisted`, `next_action: Run /hunt-kit`, `next_action_due:` today for tier A, otherwise two days out.
    - Offer `/hunt-kit` for tier A roles.
 
@@ -58,5 +65,5 @@ Run it after any change to `fit-profile.md`, after a scope change in `preference
 ## Never
 - Browse a job board, or fetch a posting the tick did not fetch.
 - Invent company facts, comp or hours.
-- Score compensation. The floors in `preferences.money` are applied by `record-triage`, never by the score, and never appear in the digest.
+- Score compensation. The floors in `preferences.money` are applied by `record`, never by the score, and never appear in the digest.
 - Write a tier.

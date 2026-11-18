@@ -25,6 +25,7 @@ Run from the repo root. Read `AGENTS.md` first. Paths starting `workspace/` are 
 5. **Run health.**
    - The newest `workspace/data/raw/*-tick.json` and `*-sweep.json` per source: date, `aborted`, `budget_exhausted`.
    - Halts: `halt_until` and `sources.dice.halt_until` in `workspace/data/state/jobs.json`.
+   - The pause: `workspace/config/pause.json` (`paused`, `reason`, `since`, `by`).
    - Caps used today: `npm run -s jobs -- limits` and `npm run -s dice -- limits`.
 6. **Recent activity:** `npm run log -- --since <date>` (add `--job <id>` for one role's history). Every halt clearing, cap override and channel verification it lists must have a row in `workspace/profile/decisions.md`; name any that does not.
 
@@ -34,11 +35,14 @@ With `--write`, save the board to `workspace/pipeline/digests/YYYYMMDD-status.md
 - Update `stage`, `updated`, `next_action` and `next_action_due`, and add a stage-log row with the date and the operator's note.
 - **Screening or NDA:** record the call dates and offer `/hunt-interview`. Material under NDA stays outside the workspace: link to it, never copy it.
 - **Proposal handoff:**
-  1. Create `workspace/pipeline/proposals/<client-slug>/`.
+  1. Create the offer folder `workspace/pipeline/proposals/<client-slug>/`. It holds the private offer notes.
   2. Set `offer_folder: pipeline/proposals/<client-slug>/` in the opportunity frontmatter.
   3. Draft the scope from the opportunity file and claims only. Pricing comes only from numbers the operator states in the session (or their standing rates in `workspace/profile/answers.json` `facts.rate_hourly` and `facts.rate_annual`); the operator approves every number.
-  4. A team CV for the bid follows the Proposal row of the targeted-CV table in `workspace/collateral/cv-map.md`.
-  5. Collateral uses the neutral brand (`preferences.brand`): the operator's name as the wordmark.
+  4. A team CV for the bid follows the Proposal row of the "Targeted CVs" table in `workspace/collateral/cv-map.md`:
+     - Its source is `workspace/pipeline/proposals/<client-slug>/<YYYYMMDD-archetype>/cv/<slug>.json`, in the variant schema, from usable claims only.
+     - Build it with `npm run -s cv -- --dir pipeline/proposals/<client-slug>/<YYYYMMDD-archetype>/cv --all`. The output goes to `workspace/data/out/cv/<YYYYMMDD-archetype>/`: the build names it after the CV folder's parent, so no CV path or file name carries the buyer. Exit 1: fix as `report[].problems` say and rebuild.
+     - No slug, share name or CV field names the buyer.
+  5. Collateral uses the neutral brand (`preferences.brand`): `brand.wordmark`, else the operator's display name (`profile/person.json` `display_name`), plus `workspace/brand/mark.json` when the operator added one. No script renders a proposal.
 - **Won / lost / withdrawn:** set the stage and record the reason in one line. For a loss, ask the operator whether the role belongs in `workspace/data/calibration.json`.
 
 ## Never
