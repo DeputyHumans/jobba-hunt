@@ -301,12 +301,14 @@ export function renderHtml(m, css) {
   const sep = '<span class="sep"> · </span>';
   // A sub-head and its bullets form one group that never breaks across pages, so a page
   // break falls between programmes, not inside one.
-  const roles = m.roles.map((r) => {
+  // One entry's blocks: bullets, and sub-heads that open a group of their own bullets. The
+  // experience list and the practice section render the same way.
+  const blocksHtml = (blocks) => {
     let body = '';
     let open = [];
     let inSub = false;
-    const flush = () => { if (open.length) { body += bul(open); open = []; } if (inSub) body += '</div>'; };
-    for (const b of r.blocks) {
+    const flush = () => { if (open.length) { body += bul(open); open = []; } if (inSub) { body += '</div>'; inSub = false; } };
+    for (const b of blocks) {
       if (b.type === 'sub') {
         flush();
         inSub = true;
@@ -316,6 +318,10 @@ export function renderHtml(m, css) {
       }
     }
     flush();
+    return body;
+  };
+  const roles = m.roles.map((r) => {
+    const body = blocksHtml(r.blocks);
     // A short role (three bullets or fewer, no sub-heads) never breaks across pages: it cannot
     // split 2 + 2 (checkPageSplit), so a split would leave a lone bullet on a page. A four-bullet
     // role may still split 2 + 2; kept whole it would jump to the next page and leave a gap.
@@ -333,7 +339,7 @@ export function renderHtml(m, css) {
   const pr = m.practice;
   const practice = pr
     ? `<section class="practice"><h2>${tx(pr.heading)}</h2><div class="role">${roleHead(tx, pr.title, pr.company, pr.dates)}`
-      + `<p class="context">${tx(pr.context)}</p>${pr.blocks.some((b) => b.type !== 'sub') ? bul(pr.blocks.filter((b) => b.type !== 'sub').map((b) => tx(b.text))) : ''}`
+      + `<p class="context">${tx(pr.context)}</p>${blocksHtml(pr.blocks)}`
       + `${pr.clients.length ? `<p class="clients">Featured clients: ${pr.clients.map(tx).join(', ')}</p>` : ''}</div></section>`
     : '';
   const contact = [p.location, p.workplace, p.phone].filter((x) => x != null && x !== '').map(esc)

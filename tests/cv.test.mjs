@@ -392,6 +392,16 @@ test('the practice section renders after Experience with its featured clients, a
   assert.ok(validateVariant(noClients, usVariant, ids).some((e) => /practice: role studio has no clients/.test(e)));
 });
 
+test('practice sub-heads render in the section, as they do in Experience', () => {
+  const m2 = { ...usMaster, roles: { ...usMaster.roles, studio: { ...usMaster.roles.studio, subheads: { ledger: { label: 'Ledgerly', dates: '2024 – Present', claims: ['C06'] } } } } };
+  const v2 = { ...usVariant, practice: { ...usVariant.practice, items: [{ sub: 'ledger' }, 'prod'] } };
+  assert.deepEqual(validateVariant(m2, v2, ids), []);
+  const html = renderHtml(assemble(m2, v2), 'body{}');
+  const sec = html.slice(html.indexOf('<section class="practice">'), html.indexOf('</section>', html.indexOf('<section class="practice">')));
+  assert.match(sec, /<div class="sub-head"><span>(<a [^>]*>)?Ledgerly(<\/a>)?<\/span><span class="dates">2024 – Present<\/span><\/div>/);
+  assert.match(sec, /bookkeeping tool/);
+});
+
 test('the practice heading can be renamed, and the PDF checks follow it', () => {
   const m = assemble(usMaster, { ...usVariant, practice: { ...usVariant.practice, heading: 'Consulting' } });
   assert.match(renderHtml(m, ''), /<h2>Consulting<\/h2>/);
