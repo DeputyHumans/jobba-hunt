@@ -143,3 +143,26 @@ test('triage auto --dry-run lists the missing generated cover letter, like the r
   assert.equal(dry.code, 2);
   assert.ok(dry.json.blockers.some((b) => /needs a generated cover letter/.test(b)), dry.json.blockers.join(' | '));
 });
+
+// ---------- D1: a tailored set for a role outside the job state ----------
+
+test('approve-docs: an email or recruiter role known only by its tailor.json records the approval there; jobs.json is untouched', () => {
+  const ws = workspace();
+  const id = 'email-18c2f0a9b7d3e4f1';
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState());
+  const before = readFileSync(join(ws.data, 'state', 'jobs.json'), 'utf8');
+  const rec = join(ws.data, 'applications', id, 'tailor.json');
+  writeJson(rec, { job_id: id, company: 'Hooli', title: 'Staff Engineer', status: 'drafting', docs: null });
+  const early = cli(ws, 'record-triage.mjs', 'approve-docs', '--id', id, '--note', 'approve');
+  assert.equal(early.code, 1, 'nothing built yet: nothing to approve');
+  writeJson(rec, { job_id: id, company: 'Hooli', title: 'Staff Engineer', status: 'review', docs: { slug: 'x', cv: { share: 'staff' } } });
+  assert.equal(cli(ws, 'record-triage.mjs', 'approve-docs', '--id', id).code, 1, 'the operator\'s words are required');
+  const r = cli(ws, 'record-triage.mjs', 'approve-docs', '--id', id, '--note', 'approve, send it');
+  assert.equal(r.code, 0, r.stderr);
+  assert.equal(r.json.job_state, false);
+  const after = JSON.parse(readFileSync(rec, 'utf8'));
+  assert.deepEqual([after.status, after.docs_note], ['approved', 'approve, send it']);
+  assert.ok(after.docs_approved_at);
+  assert.equal(readFileSync(join(ws.data, 'state', 'jobs.json'), 'utf8'), before);
+  assert.equal(cli(ws, 'record-triage.mjs', 'approve-docs', '--id', 'email-nope', '--note', 'approve').code, 1, 'an id with neither state nor tailor.json is unknown');
+});

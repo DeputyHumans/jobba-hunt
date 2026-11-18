@@ -134,6 +134,15 @@ export function approveDocs(state, id, { note }, now) {
   return j;
 }
 
+// The same approval for a role outside the job state (an email or recruiter role tailored from a JD
+// file): its only record is data/applications/<id>/tailor.json, so the approval lives there.
+export function approveTailoredRecord(rec, { note }, now) {
+  if (!rec) throw new Error('unknown job: no job state and no tailor.json');
+  if (typeof note !== 'string' || !note.trim()) throw new Error("approve-docs needs --note with the user's words");
+  if (!['built', 'review'].includes(rec.status)) throw new Error(`job ${rec.job_id} has no built documents to approve (tailor status ${rec.status})`);
+  return { ...rec, status: 'approved', docs_approved_at: now, docs_note: note.trim() };
+}
+
 // The standing auto-apply rule (config/apply.json auto_apply, off until the user opts in): a
 // role that meets every condition is pursued and approved without a question; any blocker
 // sends it back to the user. The caller measures CV coverage and checks the file and the

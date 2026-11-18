@@ -9,7 +9,8 @@
 //   node scripts/record-triage.mjs approve --id <jobId> --cv <pdf> [--cover <intro note .txt>] [--cover-pdf <cover letter .pdf, build-cover.mjs>] [--note "..."]
 //       right after the user's "Apply", never otherwise
 //   node scripts/record-triage.mjs approve-docs --id <jobId> --note "<the user's words>"
-//       the user approved the tailored CV and letter (review doc comment, or "Apply")
+//       the user approved the tailored CV and letter (review doc comment, or "Apply"). A role outside
+//       the job state (email-<thread id>, a recruiter's JD) records it in its tailor.json instead
 //   node scripts/record-triage.mjs applied --id <jobId> [--note "..."]      # the user submitted by hand
 //   node scripts/record-triage.mjs hold --id <jobId> --note "..."   # an approved or pursued, unsent role leaves the runner (watch)
 //   node scripts/record-triage.mjs withdraw --id <jobId> --note "..."   # any unsent role leaves for good (skip)
@@ -33,7 +34,7 @@ import { loadConfig } from './lib/config.mjs';
 import { cvFileBase, preferences } from './lib/profile.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { readPause } from './lib/pause.mjs';
-import { pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, recordAttempt, autoApplyBlockers, markNotSent, sameCompanyRoles, holdApplication, withdrawApplication, pickCv } from './lib/triage.mjs';
+import { pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, approveTailoredRecord, recordAttempt, autoApplyBlockers, markNotSent, sameCompanyRoles, holdApplication, withdrawApplication, pickCv } from './lib/triage.mjs';
 import { loadCompanyOpts } from './lib/company.mjs';
 
 const { positional, flags } = parseArgs(process.argv.slice(2));
@@ -94,8 +95,20 @@ if (cmd === 'pending') {
   } catch (err) { fail(err.message); }
 } else if (cmd === 'approve-docs') {
   if (!flags.id) fail('Pass --id <jobId> --note "<the user\'s words>"');
+  const id = String(flags.id);
+  if (!state.jobs[id]) {
+    // A role outside the job state (email-<thread id>, or a recruiter's JD): tailor.json holds it.
+    try {
+      const recPath = join(DATA_DIR, 'applications', id, 'tailor.json');
+      const rec = approveTailoredRecord(existsSync(recPath) ? JSON.parse(readFileSync(recPath, 'utf8')) : null, { note: str(flags.note) }, now);
+      writeFileSync(recPath, `${JSON.stringify(rec, null, 2)}\n`);
+      log('triage.docs_approved', id, short(rec.docs_note), 'user');
+      out({ success: true, job_id: id, job_state: false, docs_approved_at: rec.docs_approved_at, tailor: display(recPath) });
+    } catch (err) { fail(err.message); }
+    process.exit(0);
+  }
   try {
-    const j = approveDocs(state, String(flags.id), { note: str(flags.note) }, now);
+    const j = approveDocs(state, id, { note: str(flags.note) }, now);
     saveStateAtomic(STATE_PATH, state);
     log('triage.docs_approved', j.job_id, short(j.application.docs_note), 'user');
     out({ success: true, job_id: j.job_id, docs_approved_at: j.application.docs_approved_at, docs_review: j.application.docs_review });
