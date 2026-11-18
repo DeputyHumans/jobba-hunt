@@ -37,7 +37,8 @@ export const DICE_PLATFORM = 'dice';
 const SETTLE_MS = [4500, 6000];
 
 // Seen in saved pages of a signed-in session (2026-10-28); every entry stays ? until a
-// headed run of this script confirms it (runbook "Dice", selector table).
+// headed run of this script confirms it (the Dice selector table in docs/platforms.md, updated in
+// the same change).
 export const DICE_SEL = {
   signedIn: 'nav[aria-label="Account"] button[aria-haspopup]',                  // ?
   resultsRoot: '[aria-label="Job search results"]',                              // ?

@@ -40,13 +40,14 @@ import { operatorName } from './lib/profile.mjs';
 
 const SETTLE_MS = [3500, 4500];
 
-// Verified selectors carry ✓, best guesses ?. Confirm every ? in a --headed run and
-// update docs/runbook.md "Selector status" in the same change.
+// Tags: ✓ confirmed in a headed run (dated), ✓ offline confirmed only by a replay against a saved
+// page, ? unconfirmed. Confirm every ? in a --headed run and update the LinkedIn selector table in
+// docs/platforms.md in the same change.
 export const JOBS_SEL = {
   signedIn: '#global-nav, .global-nav__me, img.global-nav__me-photo',            // ✓ (2026-06-04)
   // Search list: virtualized <li> items carry the job ID even before they render.
   listItem: 'li[data-occludable-job-id]',                                       // ✓ (classic search, 2026-10-26)
-  aiCard: '[componentkey^="job-card-component-ref-"]',                           // ✓ (AI search /jobs/search-results/, replayed 2026-10-26)
+  aiCard: '[componentkey^="job-card-component-ref-"]',                           // ✓ offline (AI search /jobs/search-results/, replayed 2026-10-26)
   cardIdAttrs: ['data-occludable-job-id', 'data-job-id'],                       // ?
   viewLink: 'a[href*="/jobs/view/"]',                                            // ? (fallback when list items are absent)
   detailPane: '.jobs-search__job-details, [class*="job-details"]',               // ? (excluded from fallback ID scan)
