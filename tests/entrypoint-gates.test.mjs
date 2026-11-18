@@ -166,3 +166,22 @@ test('approve-docs: an email or recruiter role known only by its tailor.json rec
   assert.equal(readFileSync(join(ws.data, 'state', 'jobs.json'), 'utf8'), before);
   assert.equal(cli(ws, 'record-triage.mjs', 'approve-docs', '--id', 'email-nope', '--note', 'approve').code, 1, 'an id with neither state nor tailor.json is unknown');
 });
+
+// ---------- D18: the next tick never lands inside the jitter gap ----------
+
+test('a refused tick still names a next_tick_at past the jitter floor', () => {
+  const ws = workspace();
+  verified(ws, 'searches.json');
+  // A one-minute gap: only the jitter floor can push the next tick past the limiter's gap.
+  const cfgPath = join(ws.home, 'config', 'searches.json');
+  const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
+  writeJson(cfgPath, { ...cfg, tick: { ...cfg.tick, gap_seconds: [60, 60] } });
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState());
+  const last = new Date(Date.now() - 5 * 60000).toISOString();
+  writeJson(join(ws.data, 'state', 'limits-log.json'), [{ timestamp: last, platform: 'linkedin_jobs', actionType: 'ticks_per_day', tickId: 'earlier' }]);
+  const r = cli(ws, 'tick.mjs', '--dry-run');
+  assert.ok(r.json.next_tick_at, JSON.stringify(r.json));
+  const tpl = JSON.parse(readFileSync(join(CODE_ROOT, 'templates', 'workspace', 'config', 'limits.json'), 'utf8'));
+  const floor = Date.parse(last) + tpl.linkedin_jobs.ticks_per_day.jitterMin * 60000;
+  assert.ok(Date.parse(r.json.next_tick_at) >= floor + 60000, `next_tick_at ${r.json.next_tick_at} is past the floor`);
+});

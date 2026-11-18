@@ -142,6 +142,16 @@ export function pickTick(cfg, state, ms) {
 // Seconds until the next tick, for ScheduleWakeup (clamped there to [60, 3600]).
 // Inside hours: a jittered gap. Outside: hop toward the next window; on the final hop,
 // land 1-5 min after opening so the first tick is never on the minute.
+// When the next tick may run, as an absolute time: the jittered gap from ms, but never before the
+// limiter's jitter floor (notBefore: the last recorded tick plus jitterMin, rate-limiter
+// nextAllowedAt) plus a minute. The loop schedules from this instant, so the time the rest of a
+// firing takes can never pull the next tick inside the gap (a refusal, exit 2).
+export function nextTickAt(ms, hours, gap, { notBefore = null, rand = Math.random } = {}) {
+  const at = ms + nextTickDelay(ms, hours, gap, rand) * 1000;
+  const floor = notBefore ? Date.parse(notBefore) + 60000 : 0;
+  return Math.max(at, floor);
+}
+
 export function nextTickDelay(ms, hours, [gapMin, gapMax], rand = Math.random) {
   if (isOpen(ms, hours)) return Math.round(gapMin + rand() * (gapMax - gapMin));
   const until = Math.round((nextOpen(ms, hours) - ms) / 1000);

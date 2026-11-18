@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isOpen, nextOpen, haltUntil, isHalted, queryWindow, pickTick, nextTickDelay, lastResetAt, nextResetAt } from '../scripts/lib/tick-plan.mjs';
+import { isOpen, nextOpen, haltUntil, isHalted, queryWindow, pickTick, nextTickDelay, nextTickAt, lastResetAt, nextResetAt } from '../scripts/lib/tick-plan.mjs';
 import { emptyState } from '../scripts/lib/state.mjs';
 
 const HOURS = { tz: 'America/Chicago', days: [1, 2, 3, 4, 5], start: '08:00', end: '18:00' };
@@ -135,3 +135,13 @@ test('next tick delay: jittered gap inside hours, a hop of at most 3600 s toward
   const nearOpen = nextTickDelay(ms('2026-11-02T13:40:00Z'), HOURS, gap, () => 0);
   assert.equal(nearOpen, 1200 + 60);
 });
+
+test('next tick at: an absolute time, never before the limiter\'s jitter floor plus a minute', () => {
+  const gap = [1500, 2100];
+  const now = ms('2026-10-27T16:00:00Z');
+  assert.equal(nextTickAt(now, HOURS, gap, { rand: () => 0 }), now + 1500 * 1000, 'no floor: the jittered gap');
+  const floor = '2026-10-27T16:40:00.000Z';
+  assert.equal(nextTickAt(now, HOURS, gap, { notBefore: floor, rand: () => 0 }), Date.parse(floor) + 60000, 'a later floor wins');
+  assert.equal(nextTickAt(now, HOURS, gap, { notBefore: '2026-10-27T16:05:00.000Z', rand: () => 0 }), now + 1500 * 1000, 'an earlier floor changes nothing');
+});
+

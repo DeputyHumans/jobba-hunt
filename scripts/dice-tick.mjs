@@ -17,7 +17,7 @@
 // Exit codes: 0 done, 1 aborted by a guard (Dice halted until the next reset_hour, or 7 days on
 // a checkpoint), 2 refused (a cap, or the query set is not verified yet), 3 profile busy,
 // 4 outside the tick window or paused (config/pause.json), 5 halted by an earlier Dice abort.
-// The last stdout line is JSON with next_delay_seconds.
+// The last stdout line is JSON with next_tick_at and next_delay_seconds, as tick.mjs.
 
 import './lib/env.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -27,7 +27,7 @@ import { searchJobs, viewJob, signedInAtHome, capture, DICE_PROFILE, DICE_PLATFO
 import { buildDiceUrl } from './lib/dice-url.mjs';
 import { compilePrefilter } from './lib/prefilter.mjs';
 import { DATA_DIR, STATE_PATH, loadState, saveStateAtomic, recordTick, sourceState } from './lib/state.mjs';
-import { isOpen, nextOpen, isHalted, haltUntil, pickTick, nextTickDelay, queryWindow } from './lib/tick-plan.mjs';
+import { isOpen, nextOpen, isHalted, haltUntil, pickTick, nextTickAt, queryWindow } from './lib/tick-plan.mjs';
 import { createRun, survivorsOf, pendingTriageCount } from './lib/sweep-core.mjs';
 import { canPost, recordPost, getUsageSummary } from './rate-limiter.mjs';
 import { loadConfig, loadSearchConfig } from './lib/config.mjs';
@@ -47,8 +47,15 @@ const loop = sourceState(state, 'dice');
 if (flags.now && !flags['dry-run']) { log('--now is for --dry-run only: a live tick always uses the real clock.'); process.exit(2); }
 const nowMs = flags.now ? Date.parse(flags.now) : Date.now();
 if (Number.isNaN(nowMs)) { log(`unparseable --now ${flags.now}`); process.exit(2); }
-const delay = (ms) => nextTickDelay(ms, T, T.gap_seconds);
-const finish = (code, obj) => { out({ source: 'dice', ...obj, next_delay_seconds: delay(code === 0 || code === 1 ? Date.now() : nowMs) }); process.exit(code); };
+// The next tick: an absolute time (next_tick_at) the loop schedules from, never inside the
+// limiter's jitter gap after the last recorded tick; next_delay_seconds is the same instant as an
+// offset from the end of this run (or from --now in a dry run).
+const finish = (code, obj) => {
+  const from = code === 0 || code === 1 ? Date.now() : nowMs;
+  const at = nextTickAt(from, T, T.gap_seconds, { notBefore: getUsageSummary().dice_jobs.ticks_per_day.nextAllowedAt || null });
+  out({ source: 'dice', ...obj, next_tick_at: new Date(at).toISOString(), next_delay_seconds: Math.round((at - from) / 1000) });
+  process.exit(code);
+};
 
 if (isHalted(loop, nowMs)) {
   log(`DICE HALTED until ${loop.halt_until} (an earlier abort). No override exists, by design.`);
@@ -59,7 +66,7 @@ if (isHalted(loop, nowMs)) {
 const paused = readPause();
 if (paused?.paused && !flags['dry-run']) {
   log(`PAUSED: ${paused.reason || 'no reason given'} (config/pause.json, since ${paused.since || '?'}). Nothing viewed.`);
-  out({ source: 'dice', success: true, closed: true, paused: true, reason: paused.reason || null, next_delay_seconds: 3600 });
+  out({ source: 'dice', success: true, closed: true, paused: true, reason: paused.reason || null, next_tick_at: new Date(Date.now() + 3600000).toISOString(), next_delay_seconds: 3600 });
   process.exit(4);
 }
 // A halt that has run out is cleared by the first live run that ends without a new abort.
