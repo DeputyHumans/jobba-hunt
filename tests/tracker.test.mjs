@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { parseComp, parseFrontmatter, parseInterviews, buildTracker, renderTrackerHtml, publishTracker, BANNED, bannedWords, runLabels, capRows, zoneLabel, watchEvents, HEADINGS, coName } from '../scripts/lib/tracker.mjs';
 import { markSvg, wordmarkName, loadMark } from '../scripts/lib/brand-mark.mjs';
 
@@ -517,6 +518,15 @@ test('mail: a draft thread becomes a Reply card', () => {
   for (const s of ['Acme Corp', 'Next steps for Fractional CTO', 'Asks for two call slots this week.', 'href="#job-9000000001"', 'CV: <span class="mono">fractional-cto</span>', 'Reply']) assert.ok(row.includes(s), s);
   assert.match(row, /<details class="draft"><summary>Draft reply<\/summary><pre>Hi Dana,\n\nI can talk \[TIMES\]\.\n\nJordan<\/pre><\/details>/);
   assert.ok(!html.includes('dana@acme.example'));
+});
+
+test('mail: a platform-message card clears after config/tracker.json read_card_days business days', () => {
+  const pm = mailThread({ kind: 'platform-message', emails: [{ at: '2026-10-20T15:00:00Z', from_name: 'LinkedIn', summary: 'New message' }], draft: null });
+  const at = (days) => build({ state, opportunities, usage, runs, claims, variants, overrides, mail: [pm], now: NOW, readCardDays: days });
+  assert.ok(at(30).needs.some((n) => n.id === 'mail-th1'), 'still open inside the window');
+  assert.ok(!at(1).needs.some((n) => n.id === 'mail-th1'), 'cleared past the window');
+  const tpl = JSON.parse(readFileSync(new URL('../templates/workspace/config/tracker.json', import.meta.url), 'utf8'));
+  assert.equal(tpl.read_card_days, 5, 'the template keeps the old default');
 });
 
 test('mail card strips addresses and phones from summary', () => {

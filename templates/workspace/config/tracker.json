@@ -13,5 +13,7 @@
     "enabled": true,
     "poll_seconds": 30
   },
-  "silent_days": 5
+  "silent_days": 5,
+  "read_card_days": 5,
+  "_why": "silent_days: business days without a reply before an application counts as silent (the No reply metric). read_card_days: business days a \"Read it on <board>\" card (a platform-message email) stays on Needs you."
 }

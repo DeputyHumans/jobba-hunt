@@ -265,7 +265,7 @@ function detailText(d) {
 
 export function buildTracker({
   state, opportunities = [], usage = null, runs = [], claims = {}, retired = null, variants = [], overrides = [], letters = {}, mail = [],
-  actions = [], reviews = {}, nextCheck = null, hours = null, tz = null, limits = null, silentDays = null, resetHour = null, operator = null,
+  actions = [], reviews = {}, nextCheck = null, hours = null, tz = null, limits = null, silentDays = null, readCardDays = null, resetHour = null, operator = null,
   allowEmail = null, now = new Date(),
 }) {
   const zone = tz || profileTz() || 'UTC';
@@ -273,7 +273,10 @@ export function buildTracker({
   const sched = (!hours || resetHour == null) ? (schedule() || {}) : {};
   const biz = { ...hoursFrom(sched), ...(hours || {}) };
   const capsCfg = limits || loadConfig('limits.json', { required: false });
-  const SILENT_DAYS = silentDays ?? loadConfig('tracker.json', { required: false }).silent_days ?? 5;
+  const trackerCfg = (silentDays == null || readCardDays == null) ? loadConfig('tracker.json', { required: false }) : {};
+  const SILENT_DAYS = silentDays ?? trackerCfg.silent_days ?? 5;
+  // A "Read it on <board>" card (platform-message) clears after this many business days.
+  const READ_CARD_DAYS = readCardDays ?? trackerCfg.read_card_days ?? 5;
   const RESET_HOUR = resetHour ?? sched.reset_hour ?? 4;
   const who = operator || operatorName();
   ALLOW_EMAIL = (allowEmail ?? applicationEmail()) || null;
@@ -363,7 +366,7 @@ export function buildTracker({
     const kind = MAIL_KIND[t.kind];
     if (t.status !== 'draft' || !kind) continue;
     if (t.kind === 'receipt' && state.jobs[t.job_id]?.application?.status !== 'submit-unverified') continue;
-    if (kind === 'read' && businessDaysSince(t.emails[0]?.at, now) >= 5) continue;
+    if (kind === 'read' && businessDaysSince(t.emails[0]?.at, now) >= READ_CARD_DAYS) continue;
     const cv = t.cv ? shareOf(t.cv) : null;
     needs.push({ id: `mail-${t.thread_id}`, mail: true, kind, title: scrub(t.subject), company: scrub(t.firm), url: null, tier: null, score: null,
       from: scrub(t.sender_name), summary: scrub(t.emails.at(-1)?.summary), job: t.job_id && onPage.has(String(t.job_id)) ? String(t.job_id) : null,
