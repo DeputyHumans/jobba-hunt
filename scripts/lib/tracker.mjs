@@ -288,6 +288,15 @@ export function buildTracker({
   const weekAgo = now.getTime() - 7 * 864e5;
   const opp = Object.fromEntries(opportunities.map((o) => [String(o.job_id), o]));
   const cvUrl = Object.fromEntries(variants.filter((v) => v.url).map((v) => [v.share, v.url]));
+  // A CV built for one job (tailored: out/cv/<job id>/...) links to that job's review document
+  // (data/tracker/review-docs.json); a standard CV links to its own render (cv-publish). A tailored CV
+  // never borrows the link of a standard CV that shares its share name.
+  const reEsc = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const cvLinkFor = (cvPath, id) => {
+    if (!cvPath) return null;
+    if (new RegExp(`(^|/)cv/${reEsc(id)}/`).test(String(cvPath))) return reviews?.[id]?.cv?.url || null;
+    return cvUrl[shareOf(cvPath)] || null;
+  };
 
   const searched = jobs.filter((j) => FINAL_APPLIED.has(j.application?.status))
     .map((j) => {
@@ -296,8 +305,8 @@ export function buildTracker({
       const att = (j.application.attempts || []).filter((a) => FINAL_APPLIED.has(a.outcome)).at(-1) || lastAttempt(j) || {};
       const cv = shareOf(j.application.cv);
       return {
-        ...role(j), date: j.application.submitted_at, posted: postedOf(j), comp: compOf(j), hours: t.hours_seen || null, cv, cv_url: cvUrl[cv] || null, cv_note: o.cv_note || null,
-        letter: !!(j.application.cover_pdf || j.application.cover_note), letter_url: letters[j.job_id] || null,
+        ...role(j), date: j.application.submitted_at, posted: postedOf(j), comp: compOf(j), hours: t.hours_seen || null, cv, cv_url: cvLinkFor(j.application.cv, j.job_id), cv_note: o.cv_note || null,
+        letter: !!(j.application.cover_pdf || j.application.cover_note), letter_url: letters[j.job_id] || reviews?.[j.job_id]?.letter?.url || null,
         channel: att.mode === 'by-hand' ? 'By hand' : CHANNEL[att.channel] || SOURCE[srcOf(j)], stage: stageOf(o.stage, parseInterviews(o.interviews)), updated: o.updated || null,
         why: whyOf(t, claims),
         gaps: (t.gaps || []).slice(0, 2), flags: (t.red_flags || []).slice(0, 2), archetype: t.archetype || null,
@@ -354,7 +363,7 @@ export function buildTracker({
       needs.push({ ...role(j), kind: 'needs_answers', questions });
     } else if (last?.outcome === 'manual') {
       needs.push({ ...role(j), kind: 'manual', link: app.ats_url || j.url, detail: typeof last.detail === 'string' ? last.detail : 'Finish by hand',
-        cv: shareOf(app.cv), cv_url: cvUrl[shareOf(app.cv)] || null, letter: !!(app.cover_pdf || app.cover_note), letter_url: letters[j.job_id] || null });
+        cv: shareOf(app.cv), cv_url: cvLinkFor(app.cv, j.job_id), letter: !!(app.cover_pdf || app.cover_note), letter_url: letters[j.job_id] || reviews?.[j.job_id]?.letter?.url || null });
     } else if (app.status === 'approved') {
       needs.push({ ...role(j), kind: 'queued', detail: last?.outcome === 'refused' ? 'Approved, waiting for the daily cap to reset' : 'Approved, not yet submitted' });
     }

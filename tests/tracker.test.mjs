@@ -307,6 +307,21 @@ test('CV links: a CV with a bikeshed render links to it in the card and the inve
   assert.match(html, /<a href="#job-9000000001">Acme Corp<\/a>/);
 });
 
+test('CV links: a CV tailored for the job links to its own review document, never to a standard CV of the same share name', () => {
+  const url = 'https://bikeshed.now/d/cv-render-example';
+  const withUrl = variants.map((v) => (v.slug === 'mvp-build' ? { ...v, url } : v));
+  const st = JSON.parse(JSON.stringify(state));
+  st.jobs['9000000001'].application.cv = 'workspace/data/out/cv/9000000001/share/jordan-example-cv-fractional-cto.pdf';
+  const none = build({ state: st, opportunities, runs, claims, variants: withUrl, now: NOW });
+  assert.equal(none.applications.find((a) => a.id === '9000000001').cv_url, null, 'no review doc: plain text, not the standard CV');
+  const reviews = { 9000000001: { cv: { url: 'https://bikeshed.now/d/review-cv-9000000001' }, letter: { url: 'https://bikeshed.now/d/review-letter-9000000001' } } };
+  const m = build({ state: st, opportunities, runs, claims, variants: withUrl, reviews, now: NOW });
+  assert.equal(m.applications.find((a) => a.id === '9000000001').cv_url, 'https://bikeshed.now/d/review-cv-9000000001');
+  st.jobs['9000000001'].application.cover_pdf = 'workspace/data/applications/9000000001/x-cover-letter-acme-corp.pdf';
+  const withLetter = build({ state: st, opportunities, runs, claims, variants: withUrl, reviews, now: NOW });
+  assert.equal(withLetter.applications.find((a) => a.id === '9000000001').letter_url, 'https://bikeshed.now/d/review-letter-9000000001', 'an unpublished sent letter falls back to its review document');
+});
+
 test('cv_note from the opportunity shows as a flag on the application card', () => {
   const note = 'Sent CV predates the 27 Oct rebuild. Send the rebuilt PDF before any call.';
   const opps = opportunities.map((o) => (o.job_id === '9000000001' ? { ...o, cv_note: note } : o));
