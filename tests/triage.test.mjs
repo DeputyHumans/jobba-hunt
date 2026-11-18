@@ -40,6 +40,19 @@ test('validation rejects out-of-range scores, bad gate values and missing arrays
   assert.ok(validateTriage(result('x1')).length);
 });
 
+test('an empty description: every gate unclear, red flag no-description, score at most 50, or the row is refused', () => {
+  const s = seeded();
+  setDetail(s, '9000000003', { fetched_at: T, description_text: '  ', employment_type: 'Contract', workplace: 'Remote' });
+  const bad = applyTriage(s, [result('9000000003')], T);
+  assert.deepEqual(bad.applied, []);
+  assert.match(bad.errors[0].errors.join(' | '), /no-description/);
+  const over = applyTriage(s, [result('9000000003', { score: 51, gates: { G1: 'unclear', G2: 'unclear', G3: 'unclear', G4: 'unclear' }, red_flags: ['no-description'] })], T);
+  assert.match(over.errors[0].errors.join(' | '), /score at most 50/);
+  const ok = applyTriage(s, [result('9000000003', { score: 50, gates: { G1: 'unclear', G2: 'unclear', G3: 'unclear', G4: 'unclear' }, red_flags: ['no-description'] })], T);
+  assert.deepEqual(ok.applied, ['9000000003']);
+  assert.equal(s.jobs['9000000003'].triage.tier, 'C');
+});
+
 test('pending triage = viewed, not dropped, not yet scored', () => {
   const s = seeded();
   assert.deepEqual(pendingForTriage(s).map((j) => j.job_id), ['9000000001', '9000000002']);
@@ -177,6 +190,7 @@ test('auto-apply: an application already on record, LinkedIn showing applied, or
 test('IC rate floor: a hands-on role under the floor is rejected and never auto-applied; leadership is untouched', () => {
   assert.equal(money().ic_rate_floor, 95);
   const s = seeded();
+  setDetail(s, '9000000003', { fetched_at: T, description_text: 'CTO for a platform team.', employment_type: 'Contract', workplace: 'Remote' });
   applyTriage(s, [
     result('9000000001', { lane: 'hands-on', comp_seen: '$80 - $85/hr' }),
     result('9000000002', { lane: 'hands-on', comp_seen: 'Depends on Experience' }),

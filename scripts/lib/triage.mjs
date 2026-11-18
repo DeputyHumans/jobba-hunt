@@ -36,6 +36,19 @@ export function validateTriage(r, { lanes = triageLanes() } = {}) {
   return e;
 }
 
+// Score from the fetched description only. A role whose description is empty cannot pass or fail a
+// gate on evidence: every gate is unclear, the red flags name no-description, and the score is at
+// most 50. A row that claims more is refused.
+export const NO_DESCRIPTION_MAX = 50;
+export function noDescriptionErrors(job, r) {
+  if (String(job?.detail?.description_text || '').trim()) return [];
+  const e = [];
+  if (GATES.some((g) => r?.gates?.[g] !== 'unclear')) e.push('no-description: the posting has no description, so every gate must be unclear');
+  if (!(r?.red_flags || []).includes('no-description')) e.push('no-description: red_flags must include "no-description"');
+  if (Number.isInteger(r?.score) && r.score > NO_DESCRIPTION_MAX) e.push(`no-description: score at most ${NO_DESCRIPTION_MAX}`);
+  return e;
+}
+
 export function pendingForTriage(state) {
   return Object.values(state.jobs)
     .filter((j) => j.detail && !j.triage && j.prefilter?.verdict !== 'drop' && !['closed', 'dropped'].includes(j.status))
@@ -55,6 +68,7 @@ export function applyTriage(state, results, now, { tierCuts = tiers(), lanes = t
   for (const r of results) {
     const errs = validateTriage(r, { lanes });
     if (!state.jobs[r?.job_id]) errs.push(`unknown job_id ${r?.job_id}`);
+    else errs.push(...noDescriptionErrors(state.jobs[r.job_id], r));
     if (errs.length) { errors.push({ job_id: r?.job_id ?? null, errors: errs }); continue; }
     const j = state.jobs[r.job_id];
     // IC rate floor (preferences.money.ic_rate_floor), enforced here so a model score can never
