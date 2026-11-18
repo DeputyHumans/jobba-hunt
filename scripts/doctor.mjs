@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { platform } from 'node:os';
+import { MIN_NODE, nodeOk } from './lib/node-version.mjs';
 import {
   BIN_DIR, BRAND_DIR, CODE_ROOT, COLLATERAL_DIR, CONFIG_DIR, DATA_DIR, HOME, PROFILE_DIR, SECRETS_DIR, display, workspaceExists,
 } from './lib/paths.mjs';
@@ -28,11 +29,10 @@ const has = (cmd) => spawnSync('sh', ['-c', `command -v ${cmd}`], { stdio: 'igno
 const run = (bin, a, opts = {}) => spawnSync(bin, a, { encoding: 'utf8', timeout: 30000, ...opts });
 
 // ---------- host and install ----------
-const major = Number(process.versions.node.split('.')[0]);
-add('host', major >= 20 ? 'ok' : 'FAIL', `Node ${process.versions.node}`, major >= 20 ? '' : 'install Node 20+ (see .nvmrc), e.g. nvm install && nvm use');
+add('host', nodeOk() ? 'ok' : 'FAIL', `Node ${process.versions.node}`, nodeOk() ? '' : `install Node ${MIN_NODE} or newer (package.json engines), e.g. nvm install && nvm use`);
 add('host', has('git') ? 'ok' : 'FAIL', 'git', 'install git');
 
-const deps = ['cloakbrowser', 'playwright-core', 'bikeshed-now', '@googleworkspace/cli', 'pdf-lib', 'pdfjs-dist', 'docx'];
+const deps = ['cloakbrowser', 'playwright-core', 'bikeshed-now', '@googleworkspace/cli', 'pdf-lib', 'pdfjs-dist', 'docx', 'marked'];
 const missingDeps = deps.filter((d) => !existsSync(join(CODE_ROOT, 'node_modules', d, 'package.json')));
 add('install', missingDeps.length ? 'FAIL' : 'ok', missingDeps.length ? `npm dependencies missing: ${missingDeps.join(', ')}` : 'npm dependencies', 'npm ci');
 

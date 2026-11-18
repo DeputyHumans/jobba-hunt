@@ -46,7 +46,7 @@
     "playwright-core": "1.62.1"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.13.0"
   },
   "allowScripts": {
     "@googleworkspace/cli@0.22.5": true

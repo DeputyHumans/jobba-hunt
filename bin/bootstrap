@@ -31,8 +31,10 @@ if ! command -v node >/dev/null 2>&1; then
   fail "install Node, then run ./bin/bootstrap again."
 fi
 
-MAJOR=$(node -p 'process.versions.node.split(".")[0]')
-[ "$MAJOR" -ge 20 ] || fail "Node $(node -v) is too old: version 20 or newer is required (.nvmrc says $WANT). With nvm: nvm install $WANT && nvm use $WANT"
+# The minimum is package.json engines.node (the newest minimum any dependency declares).
+NEED=$(node -p 'require("./package.json").engines.node.replace(/^>=\s*/, "")')
+node -e 'const [a,b,c]=process.versions.node.split(".").map(Number),[x,y,z]=process.argv[1].split(".").map(Number);process.exit(a!==x?(a>x?0:1):b!==y?(b>y?0:1):(c>=z?0:1))' "$NEED" \
+  || fail "Node $(node -v) is too old: version $NEED or newer is required (package.json engines). With nvm: nvm install $WANT && nvm use $WANT"
 say "Node $(node -v), npm $(npm -v)"
 
 say ""

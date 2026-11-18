@@ -12,6 +12,7 @@ import { notifyCommand, notify } from '../scripts/lib/notify.mjs';
 import { planLinks } from '../scripts/skills-link.mjs';
 import { documentXmlToText, zipEntries } from '../scripts/lib/docx-text.mjs';
 import { termsFrom, scan } from '../scripts/check-pii.mjs';
+import { MIN_NODE, parseVersion, satisfies, nodeOk } from '../scripts/lib/node-version.mjs';
 
 test('paths: the test runner points HOME at a temporary copy of the synthetic workspace and DATA_DIR at a temp dir', () => {
   assert.ok(!HOME.startsWith(CODE_ROOT));
@@ -162,6 +163,31 @@ test('every skill in .agents/skills has a SKILL.md with name and description fro
     assert.match(head, /\nname:\s*\S/, `${s} frontmatter has name`);
     assert.match(head, /\ndescription:\s*\S/, `${s} frontmatter has description`);
   }
+});
+
+test('node-version: satisfies reads >=, ^ and || ranges', () => {
+  assert.deepEqual(parseVersion('v22.13.1'), [22, 13, 1]);
+  assert.ok(satisfies('22.13.0', '>=22.13.0 || >=24'));
+  assert.ok(!satisfies('22.12.0', '>=22.13.0 || >=24'));
+  assert.ok(satisfies('22.13.0', '^20.19.0 || >=22.12.0'));
+  assert.ok(satisfies('20.19.3', '^20.19.0 || >=22.12.0'));
+  assert.ok(!satisfies('21.0.0', '^20.19.0'));
+  assert.ok(satisfies('22.13.0', '>= 20'));
+  assert.ok(nodeOk(MIN_NODE) && !nodeOk('20.19.0'));
+});
+
+test('package.json engines is the newest minimum any dependency requires', () => {
+  const pkg = JSON.parse(readFileSync(join(CODE_ROOT, 'package.json'), 'utf8'));
+  assert.equal(pkg.engines.node, `>=${MIN_NODE}`);
+  for (const name of Object.keys(pkg.dependencies)) {
+    const range = JSON.parse(readFileSync(join(CODE_ROOT, 'node_modules', name, 'package.json'), 'utf8')).engines?.node;
+    if (range) assert.ok(satisfies(MIN_NODE, range), `${name} needs ${range}; engines says >=${MIN_NODE}`);
+  }
+});
+
+test('doctor and bootstrap take the Node minimum from package.json engines', () => {
+  assert.match(readFileSync(join(CODE_ROOT, 'scripts', 'doctor.mjs'), 'utf8'), /nodeOk\(/);
+  assert.match(readFileSync(join(CODE_ROOT, 'bin', 'bootstrap'), 'utf8'), /engines\.node/);
 });
 
 void writeFileSync; void mkdirSync;
