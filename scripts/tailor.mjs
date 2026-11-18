@@ -82,6 +82,16 @@ export function companyLeak(cvJson, company) {
   return re.test(JSON.stringify(own).toLowerCase());
 }
 
+// A (re)built set: status built, and any earlier approval of a role outside the job state
+// (recorded in tailor.json by approve-docs) is dropped, so a rebuilt set needs a fresh approval.
+export function builtRecord(rec, docs) {
+  const { docs_approved_at, docs_note, ...rest } = rec;
+  return { ...rest, docs, status: 'built' };
+}
+
+// Approved: the job state's docs_approved_at, or, for a role outside the job state, tailor.json's own.
+export const docsApproved = (rec, job) => (job ? !!job.application?.docs_approved_at : rec?.status === 'approved' && !!rec?.docs_approved_at);
+
 export function shouldContinue(rounds, maxRounds) {
   if (rounds.length >= maxRounds) return false;
   if (rounds.length < 2) return true;
@@ -110,7 +120,7 @@ async function main() {
   const termsPath = join(dir, 'jd.terms.txt');
   const state = loadState(STATE_PATH);
   const job = state.jobs?.[id];
-  const rec = readJsonFile(recPath, null);
+  let rec = readJsonFile(recPath, null);
   const save = (r) => writeJsonAtomic(recPath, r);
   const maxRounds = Number(preferences().tailoring?.max_rounds) || 3;
 
@@ -201,8 +211,7 @@ async function main() {
       if (c.code !== 0) stop(1, { error: 'cover letter checks failed', report: c.json, detail: c.stderr.slice(-600) });
       docs.letter = c.json;
     }
-    rec.docs = docs;
-    rec.status = 'built';
+    rec = builtRecord(rec, docs);
     save(rec);
     {
       const s2 = loadState(STATE_PATH);
@@ -293,14 +302,13 @@ async function main() {
       if (c.code !== 0) stop(1, { error: 'cover letter checks failed', report: c.json, detail: c.stderr.slice(-600) });
       docs.letter = c.json;
     }
-    rec.docs = docs;
-    rec.status = 'built';
+    rec = builtRecord(rec, docs);
     save(rec);
     logAction({ actor: 'agent', action: 'tailor.fallback', job_id: id, detail: `archetype ${base} at ${rec.baseline.pct}%; no draft reached it` });
     stop(0, { job_id: id, fallback: base, pct: rec.baseline.pct, cv: docs.cv, letter: docs.letter || null, next: 'review' });
   }
 
-  if (cmd === 'status') stop(0, { record: rec, approved: !!state.jobs?.[id]?.application?.docs_approved_at });
+  if (cmd === 'status') stop(0, { record: rec, approved: docsApproved(rec, state.jobs?.[id]) });
   stop(2, { error: `unknown command ${cmd}` });
 }
 

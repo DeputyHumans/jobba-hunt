@@ -258,3 +258,18 @@ test('auto and the runner: an unapproved B or C letter blocks; an approved one d
   const id2 = tailoredSet(ok, 'c-three-questions', { approved: true });
   assert.ok(!cli(ok, 'record-triage.mjs', 'auto', '--id', id2, '--dry-run').json.blockers.some((b) => /letter approach/.test(b)));
 });
+
+test('tailor status reports the tailor.json approval of a role outside the job state', () => {
+  const ws = workspace();
+  const id = 'email-18c2f0a9b7d3e4f2';
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState());
+  const terms = 'Kubernetes\n';
+  writeFileSync(join(ws.data, 'jd.terms.txt'), terms);
+  const dir = join(ws.data, 'applications', id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'jd.terms.txt'), terms);
+  writeJson(join(dir, 'tailor.json'), { job_id: id, status: 'review', terms_hash: createHash('sha256').update(terms).digest('hex').slice(0, 16), docs: { slug: 'x' } });
+  assert.equal(cli(ws, 'tailor.mjs', 'status', '--job', id).json.approved, false);
+  assert.equal(cli(ws, 'record-triage.mjs', 'approve-docs', '--id', id, '--note', 'approve').code, 0);
+  assert.equal(cli(ws, 'tailor.mjs', 'status', '--job', id).json.approved, true);
+});

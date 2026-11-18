@@ -4,7 +4,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { companyLeak, parseTerms, shouldContinue, suggestTerms } from '../scripts/tailor.mjs';
+import { companyLeak, parseTerms, shouldContinue, suggestTerms, builtRecord, docsApproved } from '../scripts/tailor.mjs';
 import { CODE_ROOT } from '../scripts/lib/paths.mjs';
 
 test('parseTerms drops comments and blank lines', () => {
@@ -85,3 +85,14 @@ test('prepare takes a JD file for a role the tick never viewed, and refuses one 
   assert.match(rec.posting_source, /^file:/);
   assert.equal(run('prepare', '--job', 'nothing-here').code, 1, 'no posting at all is refused');
 });
+
+test('a rebuilt set drops an earlier tailor.json approval; approval reads the job state, or tailor.json for a role outside it', () => {
+  const approved = { job_id: 'email-abc', status: 'approved', docs_approved_at: '2026-11-01T10:00:00Z', docs_note: 'approve', docs: { slug: 'old' } };
+  assert.equal(docsApproved(approved, undefined), true);
+  const rebuilt = builtRecord(approved, { slug: 'new' });
+  assert.deepEqual([rebuilt.status, rebuilt.docs.slug, 'docs_approved_at' in rebuilt, 'docs_note' in rebuilt], ['built', 'new', false, false]);
+  assert.equal(docsApproved(rebuilt, undefined), false);
+  assert.equal(docsApproved(approved, { application: {} }), false, 'a role in the job state reads its own approval');
+  assert.equal(docsApproved({}, { application: { docs_approved_at: 'x' } }), true);
+});
+
