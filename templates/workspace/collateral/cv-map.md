@@ -77,7 +77,7 @@ Slugs name archetypes, never companies, so every variant is reusable. No company
 | Per-job tailored | `data/applications/<job_id>/cv/<slug>.json`, frozen terms in `jd.terms.txt` | `data/out/cv/<job_id>/` (`npm run tailor -- build`) | Never copied into `variants/` |
 | Recruiter list | `pipeline/recruiter/<YYYYMMDD-list>/` with `jd/`, `cv/`, `roles.json`, `bikeshed.json` | `data/out/cv/<YYYYMMDD-list>/` | Never in `share/` or auto-apply. Its pages carry no recruiter name and no process text |
 | Board profile | `pipeline/channels/<board>/cv/` | `data/out/cv/<board>/` | The resume a job board shows recruiters (`docs/kits/`) |
-| Proposal | `pipeline/proposals/<YYYYMMDD-archetype>/cv/` | `data/out/cv/<YYYYMMDD-archetype>/` | Team-member CV for a bid. The folder names the archetype, never the buyer |
+| Proposal | `pipeline/proposals/<client-slug>/<YYYYMMDD-archetype>/cv/` | `data/out/cv/<YYYYMMDD-archetype>/` | Team-member CV for a bid. The output folder is named after the CV folder's parent, so the archetype folder keeps the buyer out of every CV path and file name. The offer folder above it holds private notes |
 
 | Step | Command |
 |---|---|

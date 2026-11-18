@@ -19,7 +19,7 @@ applied_on:
 next_action: Run /hunt-kit  # only a real task for the operator; empty after applying (no follow-up dates)
 next_action_due: YYYY-MM-DD
 cv_note:
-offer_folder:  # pipeline/proposals/<client>/ once the stage reaches proposal
+offer_folder:  # pipeline/proposals/<client-slug>/ once the stage reaches proposal
 ---
 
 # <Role> at <Company>

@@ -54,7 +54,7 @@ Score each dimension 0-5. `score = round(sum(dim / 5 * weight))`.
 
 | Gate | Pass | Fail | Unclear |
 |---|---|---|---|
-| G1 Structure | **Dice:** a contract badge in `engagement.accept` (Contract Corp To Corp, Contract Independent, Third Party, Contract W2), or the description allows one. **LinkedIn:** a Contract, Part-time or Temporary engagement, or a role stated in hours per week. **Both:** a full-time role when `engagement.accept` lists `full-time`, at or above `preferences.money.ft_salary_floor` or with no pay stated. `<fill>` | A structure outside `engagement.accept`; a full-time role posted under `ft_salary_floor` | **Dice:** Contract with no tax terms listed |
+| G1 Structure | **Dice:** a contract badge in `engagement.accept` (Contract Corp To Corp, Contract Independent, Third Party, Contract W2), or the description allows one. **LinkedIn:** a Contract, Part-time or Temporary engagement, or a role stated in hours per week. **Both:** a full-time role when `engagement.accept` lists `full-time`. `<fill>` | A structure outside `engagement.accept` | **Dice:** Contract with no tax terms listed |
 | G2 Location | As the leadership lane | As the leadership lane. Dice's Remote filter also returns "Remote or Hybrid in <city>" roles: the job page's work-setting badge decides, never the search filter | As the leadership lane |
 | G3 Seniority | Senior, lead, principal, staff or architect, hands-on (writes and reviews code, owns design or delivery). `<fill>` | Junior or mid-level; helpdesk or field support; a pure PM, BA or manual QA role; work that is rating or labeling model output (AI-training marketplaces). `<fill>` | The title says senior but the description reads as support or maintenance only |
 | G4 Honesty | Every must-have is backed by stack claims: `<fill: claim IDs>` | A must-have needs a stack, a certification or a number of years no claim supports. `<fill>` | The must-haves are vague |
@@ -83,9 +83,9 @@ Same formula, these dimensions:
 
 ## Compensation
 
-**Shown, never scored.** Record `comp_seen` and `hours_seen` verbatim when the posting states them. Pricing belongs to the proposal stage (`pipeline/proposals/<client>/`).
+**Shown, never scored.** Record `comp_seen` and `hours_seen` verbatim when the posting states them. Pricing belongs to the proposal stage (`pipeline/proposals/<client-slug>/`).
 
-The floors in `preferences.money` are enforced by `scripts/lib/rate.mjs` and `record-triage`, never by the score:
+The floors in `preferences.money` are enforced by the scripts, never by the score or a gate: the prefilter drops a role under a floor before any view, and `npm run triage -- record` forces tier `reject` for one that reaches triage. They apply to individual-contributor roles only: the prefilter judges that by the title (no executive word), triage by `lane: "hands-on"`:
 
 | Floor | Rule |
 |---|---|

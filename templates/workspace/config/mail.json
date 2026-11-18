@@ -7,7 +7,7 @@
   "bridge": {
     "wait_seconds": 180,
     "max_list": 500,
-    "_why": "wait_seconds: how long a code wait (security code, one-time password, verify link) polls for the agent's response before handing off. max_list: the most headers one scan asks the agent to list."
+    "_why": "wait_seconds: how long a bridge fetch request polls for the agent's response when the caller names no wait. The apply runner's code waits (security code, one-time password, verify link) always use config/apply.json code_wait_seconds. max_list: the most headers one scan asks the agent to list."
   },
   "me": "",
   "first_scan_after": null,
