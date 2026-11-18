@@ -4,7 +4,7 @@ The four pluggable edges of the system: mail, vault, publisher and notifications
 
 ## In-folder isolation
 
-`scripts/lib/env.mjs` is imported first by every entrypoint. An explicit environment variable always wins over its defaults.
+Every entrypoint that starts a browser or one of the project's CLIs (bikeshed, gws) imports `scripts/lib/env.mjs` before it starts one: directly, or through `scripts/cloak-core.mjs`, `scripts/rate-limiter.mjs`, `scripts/lib/state.mjs` or an adapter. `check:pii`, `check:portable`, `npm test` and `skills:link` start neither and do not import it. An explicit environment variable always wins over its defaults.
 
 | What | Where | How |
 |---|---|---|
@@ -18,12 +18,12 @@ The operator signs in through the same environment: `npm run bikeshed -- <args>`
 
 ## Mail (`config/mail.json` `adapter`)
 
-Read-only, whatever the adapter. Used by the inbox scan (`npm run mail`, `docs/inbox-scan-design.md`) and by the apply runner's code waits.
+Read-only, whatever the adapter (`AGENTS.md` "Mail (any adapter)"). Used by the inbox scan (`npm run mail`, `docs/inbox-scan-design.md`) and by the apply runner's code waits.
 
 | Adapter | Reads through | Credentials |
 |---|---|---|
-| `gws` | The bundled Google Workspace CLI (`node_modules/.bin/gws`; `mail.gws.bin` or `JOBBA_GWS_BIN` override it): `list` and `get` only | `.secrets/gws` (`npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly`) |
-| `bridge` | The agent, with the harness mail connector's read tools, through request and response files | The connector's own; its write tools denied by `npm run onboard -- mail-guard` |
+| `gws` | The bundled Google Workspace CLI: `JOBBA_GWS_BIN`, else `gws.bin` in `config/mail.json`, else `node_modules/.bin/gws`. `list` and `get` only | `.secrets/gws` (`npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly`) |
+| `bridge` | The agent, with the harness mail connector's read tools, through request and response files | The connector's own; its write tools denied by `npm run onboard -- mail-guard --deny <tools>` |
 | `none` | Nothing | None |
 
 **Contract** (`scripts/lib/adapters/mail.mjs`): `openMail({ cfg })` returns `{ kind, list(q, {max}), headers(id), body(id), thread(threadId), fetchRecent(opts) }`.
@@ -58,7 +58,7 @@ A mailed security code, a sign-in code or an account verification link: `fetchRe
 |---|---|
 | `adapter` | `gws`, `bridge` or `none` |
 | `me` | The one mailbox read; the sender of the operator's own replies |
-| `gws.bin` | CLI override |
+| `gws.bin` | CLI override (`JOBBA_GWS_BIN` wins) |
 | `bridge.wait_seconds`, `bridge.max_list` | Default wait for a fetch request that names none (180); most headers listed per request |
 | `query`, `max_per_run`, `first_scan_after` | What is listed, how many per firing, where the first scan starts |
 | `hunt_senders`, `subject_strong`, `subject_words`, `security` | Hunt signals |
@@ -72,9 +72,9 @@ For ATS candidate accounts (Workday, iCIMS and other portals). The apply runner 
 | Adapter | Behaviour |
 |---|---|
 | `none` (default) | `unlocked()` is false, `findLogin()` finds nothing, `createLogin()` and `loginPassword()` throw `VaultDisabledError`. Account portals go to the operator |
-| `op` | The 1Password CLI (`op`, or `JOBBA_OP_BIN`). `op.account`, `op.vault` and `op.tag` (default `jobba-hunt`) come from config; empty account or vault means op's own default. op generates the password itself (`--generate-password`), so it is never on argv. It is stored and read back before a sign-up form is sent. A locked or signed-out vault creates nothing |
+| `op` | The 1Password CLI: `JOBBA_OP_BIN`, else `op.bin` in `config/vault.json`, else `op` on `PATH`. `op.account`, `op.vault` and `op.tag` (default `jobba-hunt`) come from config; empty account or vault means op's own default. op generates the password itself (`--generate-password`), so it is never on argv. It is stored and read back before a sign-up form is sent. A locked or signed-out vault creates nothing |
 
-**Contract** (`scripts/lib/adapters/vault.mjs`): `openVault({ cfg })` returns `{ unlocked(), findLogin(title), loginPassword(id), createLogin({ title, url, username, notes }) }`. Item titles name the portal and host (for example `Workday <host>`). Passwords never enter the repo, `data/`, logs or screenshots.
+**Contract** (`scripts/lib/adapters/vault.mjs`): `openVault({ cfg })` returns `{ kind, unlocked(), findLogin(title), loginPassword(id), createLogin({ title, url, username, notes }) }`, `kind` `op` or `none`. Item titles name the portal and host (for example `Workday <host>`). Passwords never enter the repo, `data/`, logs or screenshots.
 
 ## Publisher (`config/tracker.json` `publisher`)
 
@@ -83,13 +83,13 @@ For ATS candidate accounts (Workday, iCIMS and other portals). The apply runner 
 | `bikeshed` (default) | One private document updated in place, in the hunt folder, never the root | Each tailored CV and letter as its own private document in the `Reviews` subfolder | `npm run watch` polls the tracker and every review document |
 | `local` | `data/tracker/tracker.html` only; every publish reports `published: false` | None: review happens in the session (`npm run tailor -- review` lists the files) | None |
 
-**Contract** (`scripts/lib/adapters/publish.mjs`): `trackerPublisher({ cfg })` returns `{ kind, publish({ html, file, st, title }), comments(doc), reply(doc, thread, text), resolve(doc, thread) }`. `publish` resolves a status: `created`, `updated`, `unchanged`, `comments`, `auth`, `refused`, `no-folder`, `error`, or `local`.
+**Contract** (`scripts/lib/adapters/publish.mjs`): `trackerPublisher({ cfg })` returns `{ kind, cfg, publish({ html, file, st, title }), comments(doc), reply(doc, thread, text), resolve(doc, thread) }`. `cfg` is the flat bikeshed block of `config/tracker.json` (`folder_id`, `doc_id`, `url`, `letters_folder_id`, `reviews_folder_id`). `publish` resolves a status: `created`, `updated`, `unchanged`, `comments`, `auth`, `refused`, `no-folder`, `error`, or `local`.
 
 **bikeshed calls** (`scripts/lib/adapters/bikeshed.mjs`): `bikeshedRun(args)` and `bikeshedRunSync(args)` run the project's CLI with `childEnv('bikeshed')` and return `{ code, stdout, stderr }` (127: CLI missing, run `npm ci`). `isAuthError(r)` tells a signed-out CLI from other failures. Tests inject a fake runner.
 
-**Config keys:** `title`; `bikeshed.folder_id`, `doc_id`, `url`, `letters_folder_id`, `reviews_folder_id`; `watch.enabled`, `watch.poll_seconds` (30); `silent_days`. CV documents: `config/cv-bikeshed.json`. Review documents: `data/tracker/review-docs.json`.
+**Config keys:** `publisher`; `title` (the tracker's page and document title); `bikeshed.folder_id`, `doc_id`, `url`, `letters_folder_id`, `reviews_folder_id`; `watch.enabled`, `watch.poll_seconds` (30); `silent_days` (5 business days before an application counts as silent); `read_card_days` (5 business days a "Read it on <board>" card stays on Needs you). CV documents: `config/cv-bikeshed.json` (`folder_id`, `docs`). Review documents: `data/tracker/review-docs.json`, one document per job and part (`cv`, `letter`).
 
-**Comment watch** (`npm run watch`): one JSON line per new thread or comment, `{ doc, kind, job_id?, thread_id, section, quote, text, author, at }`. An empty thread prints once with `typing: true`. Comments the agent sent through the CLI are never printed. A failed poll prints `{ doc, kind, error: "auth" | "failed", message }` once. Dedupe state: `data/tracker/watch-state.json`. It never replies or resolves: the agent does. `--once` polls once (exit 2 when every document failed on sign-in).
+**Comment watch** (`npm run watch`): one JSON line per new thread or comment, `{ doc, kind, job_id?, part?, thread_id, section, quote, text, author, at }`. `kind` is `tracker` or `review`; a review event carries its `job_id` and `part` (`cv` or `letter`). An empty thread prints once with `typing: true`. Comments the agent sent through the CLI are never printed. A failed poll prints `{ doc, kind, error: "auth" | "failed", message }` once. Dedupe state: `data/tracker/watch-state.json`. It never replies or resolves: the agent does. `--once` polls once (exit 2 when every document failed on sign-in).
 
 ## Notifications (`scripts/lib/notify.mjs`)
 
