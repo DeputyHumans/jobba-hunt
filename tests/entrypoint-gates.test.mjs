@@ -273,3 +273,17 @@ test('tailor status reports the tailor.json approval of a role outside the job s
   assert.equal(cli(ws, 'record-triage.mjs', 'approve-docs', '--id', id, '--note', 'approve').code, 0);
   assert.equal(cli(ws, 'tailor.mjs', 'status', '--job', id).json.approved, true);
 });
+
+test('doctor: the vault row finds op through JOBBA_OP_BIN or config op.bin, not only on PATH', () => {
+  const ws = workspace();
+  writeJson(join(ws.home, 'config', 'vault.json'), { adapter: 'op', op: { bin: process.execPath } });
+  const r = spawnSync(process.execPath, [join(CODE_ROOT, 'scripts', 'doctor.mjs'), '--offline', '--json'], {
+    cwd: CODE_ROOT, encoding: 'utf8', timeout: 120000, env: { ...process.env, JOBBA_HOME: ws.home, JOBBA_DATA_DIR: ws.data, PATH: '/usr/bin:/bin' },
+  });
+  const rows = JSON.parse(r.stdout.trim().split('\n').pop()).rows;
+  const vault = rows.find((x) => x.group === 'vault');
+  assert.equal(vault.status, 'ok', JSON.stringify(vault));
+  const bs = rows.find((x) => /bikeshed/.test(x.fix || ''));
+  if (bs) assert.doesNotMatch(bs.fix, /--origin/);
+});
+

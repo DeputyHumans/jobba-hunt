@@ -125,12 +125,15 @@ if (!preflight) {
       if (!offline && existsSync(join(BIN_DIR, 'bikeshed'))) {
         const { childEnv } = await import('./lib/env.mjs');
         const r = run(join(BIN_DIR, 'bikeshed'), ['folders', '--json'], { env: childEnv('bikeshed') });
-        add('dashboard', r.status === 0 ? 'ok' : 'FAIL', r.status === 0 ? 'bikeshed signed in' : 'bikeshed not signed in', 'npm run bikeshed -- login --origin https://bikeshed.now');
+        add('dashboard', r.status === 0 ? 'ok' : 'FAIL', r.status === 0 ? 'bikeshed signed in' : 'bikeshed not signed in', 'npm run bikeshed -- login');
       }
     } else add('dashboard', 'ok', `publisher: ${tracker.publisher} (no comment watch)`);
 
     const vault = readJson(join(CONFIG_DIR, 'vault.json')) || { adapter: 'none' };
-    add('vault', vault.adapter === 'op' && !has('op') ? 'FAIL' : 'ok', `vault adapter: ${vault.adapter}`, vault.adapter === 'op' ? 'install the 1Password CLI, or set adapter none' : '');
+    // The op binary the vault adapter runs: JOBBA_OP_BIN, else vault.json op.bin, else op on PATH.
+    const opBin = process.env.JOBBA_OP_BIN || vault.op?.bin || 'op';
+    const opFound = opBin.includes('/') ? existsSync(opBin) : has(opBin);
+    add('vault', vault.adapter === 'op' && !opFound ? 'FAIL' : 'ok', `vault adapter: ${vault.adapter}${vault.adapter === 'op' ? ` (${opBin})` : ''}`, vault.adapter === 'op' ? 'install the 1Password CLI, set JOBBA_OP_BIN or vault.json op.bin, or set adapter none' : '');
 
     const apply = readJson(join(CONFIG_DIR, 'apply.json')) || {};
     const verified = Object.entries(apply.verified || {}).filter(([, v]) => v).map(([k]) => k);

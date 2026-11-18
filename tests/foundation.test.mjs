@@ -185,8 +185,11 @@ test('package.json engines is the newest minimum any dependency requires', () =>
   }
 });
 
-test('doctor and bootstrap take the Node minimum from package.json engines', () => {
+test('doctor, setup and bootstrap take the Node minimum from package.json engines', () => {
   assert.match(readFileSync(join(CODE_ROOT, 'scripts', 'doctor.mjs'), 'utf8'), /nodeOk\(/);
+  const setup = readFileSync(join(CODE_ROOT, 'scripts', 'setup.mjs'), 'utf8');
+  assert.match(setup, /nodeOk\(/);
+  assert.match(setup, /'marked'/, 'setup checks every dependency doctor checks');
   assert.match(readFileSync(join(CODE_ROOT, 'bin', 'bootstrap'), 'utf8'), /engines\.node/);
 });
 

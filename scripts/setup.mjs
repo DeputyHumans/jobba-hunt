@@ -16,6 +16,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { platform } from 'node:os';
 import { BIN_DIR, CODE_ROOT } from './lib/paths.mjs';
+import { MIN_NODE, nodeOk } from './lib/node-version.mjs';
 
 const ok = (m) => console.log(`  ok    ${m}`);
 const warn = (m) => console.log(`  warn  ${m}`);
@@ -25,10 +26,9 @@ let failed = false;
 console.log('jobba-hunt setup\n');
 
 // 1. Node and dependencies
-const major = Number(process.versions.node.split('.')[0]);
-if (major < 20) { bad(`Node ${process.versions.node}: version 20 or newer is required (see .nvmrc)`); process.exit(1); }
+if (!nodeOk()) { bad(`Node ${process.versions.node}: version ${MIN_NODE} or newer is required (package.json engines)`); process.exit(1); }
 ok(`Node ${process.versions.node}`);
-const deps = ['cloakbrowser', 'playwright-core', 'bikeshed-now', '@googleworkspace/cli', 'pdf-lib', 'pdfjs-dist', 'docx'];
+const deps = ['cloakbrowser', 'playwright-core', 'bikeshed-now', '@googleworkspace/cli', 'pdf-lib', 'pdfjs-dist', 'docx', 'marked'];
 const missing = deps.filter((d) => !existsSync(join(CODE_ROOT, 'node_modules', d, 'package.json')));
 if (missing.length) { bad(`npm dependencies missing: ${missing.join(', ')}. Run: npm ci`); process.exit(1); }
 ok('npm dependencies installed');
