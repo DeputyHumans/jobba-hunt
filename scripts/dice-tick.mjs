@@ -11,8 +11,8 @@
 //   node scripts/dice-tick.mjs [--headed] [--no-views]
 //   node scripts/dice-tick.mjs --sweep [--views 80] [--headed]   # one-time full Dice sweep, on the
 //        user's explicit instruction only: every query, page 2 when page 1 is full, then views of
-//        every kept role up to --views. No tick-window check; caps, guards and the Dice halt
-//        still apply.
+//        every kept role up to --views. No tick-window check; the sweeps_per_day and
+//        searches_per_day caps, the guards, the Dice halt and the pause still apply.
 //
 // Exit codes: 0 done, 1 aborted by a guard (Dice halted until the next reset_hour, or 7 days on
 // a checkpoint), 2 refused (a cap, or the query set is not verified yet), 3 profile busy,
@@ -95,7 +95,7 @@ if (!cfg.verified) {
   log('REFUSED: config/dice-searches.json is not verified (run the Dice query probe first: /hunt-probe, docs/query-probe-method.md).');
   finish(2, { success: false, refused: true, cap: 'not-verified', reason: 'Dice query set not verified (probe pending)' });
 }
-for (const cap of sweep ? ['searches_per_day'] : ['ticks_per_day', 'searches_per_day']) {
+for (const cap of sweep ? ['sweeps_per_day', 'searches_per_day'] : ['ticks_per_day', 'searches_per_day']) {
   const g = canPost('dice_jobs', cap);
   if (!g.allowed) {
     log(`REFUSED: ${cap}: ${g.reason}. Next allowed ${g.nextAllowedAt}.`);
@@ -116,7 +116,10 @@ try {
   throw err;
 }
 if (!sweep) recordPost('dice_jobs', 'ticks_per_day', { tickId, query: pick.id });
-else log(`dice sweep on the user's instruction: ${plan.length} queries, views <= ${viewBudget}`);
+else {
+  recordPost('dice_jobs', 'sweeps_per_day', { sweepId: tickId });
+  log(`dice sweep on the user's instruction: ${plan.length} queries, views <= ${viewBudget}`);
+}
 
 const run = createRun({
   page, state, cfg, P: compilePrefilter(loadConfig('prefilter.json')), runId: tickId, log, suspectStreak: loop.suspect_streak,

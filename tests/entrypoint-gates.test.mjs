@@ -111,3 +111,21 @@ test('reader CLIs: search and view refuse while paused or halted; limits still a
   assert.equal(dl.code, 1);
   assert.equal(dl.json.paused, true);
 });
+
+// ---------- D12: the Dice sweep cap ----------
+
+test('dice-tick --sweep: refused once dice_jobs sweeps_per_day is used up', () => {
+  const ws = workspace();
+  verified(ws, 'dice-searches.json');
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState());
+  writeJson(join(ws.data, 'state', 'limits-log.json'), [{ timestamp: new Date().toISOString(), platform: 'dice_jobs', actionType: 'sweeps_per_day', sweepId: 'earlier' }]);
+  const r = cli(ws, 'dice-tick.mjs', '--sweep');
+  assert.equal(r.code, 2);
+  assert.equal(r.json.refused, true);
+  assert.equal(r.json.cap, 'sweeps_per_day');
+});
+
+test('dice-tick records a sweep against sweeps_per_day', () => {
+  const src = readFileSync(join(CODE_ROOT, 'scripts', 'dice-tick.mjs'), 'utf8');
+  assert.match(src, /recordPost\('dice_jobs', 'sweeps_per_day'/);
+});
