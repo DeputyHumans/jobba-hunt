@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  claimIdsFromBank, validateVariant, assemble, renderHtml, modelText, lintText,
+  claimIdsFromBank, claimStatuses, explainClaims, validateVariant, assemble, renderHtml, modelText, lintText,
   coverage, checkExtracted, rankForJd, checkPageSplit, variantPool, bodySegments, repeatedPhrases,
   sourceRefRe, cvPerson, inlineFonts, paperOf, sheetCss, pageRuleCss, pdfFooterTemplate, displayText, PAPER,
   contactFor, wantsPhone, withoutPhone, linkify, headingsFor,
@@ -45,15 +45,25 @@ const variant = {
 const ids = new Set(['C01', 'C02', 'C03', 'C06', 'C08', 'C09', 'C18', 'C19', 'C35']);
 
 test('claim IDs are read from the claim-bank table rows', () => {
-  const md = '| ID | Claim |\n|---|---|\n| C01 | 17 years |\n| C34 | open source |\nnot a row C99\n';
+  const md = '| ID | Claim | Category | Source | Status |\n|---|---|---|---|---|\n| C01 | 17 years | x | CV:1 | CV |\n| C34 | open source | x | url:https://example.com | `public` |\nnot a row C99\n';
   assert.deepEqual([...claimIdsFromBank(md)], ['C01', 'C34']);
   const bank = claimIdsFromBank(readFileSync(new URL('collateral/claim-bank.md', FIX), 'utf8'));
   assert.ok(bank.has('C01') && bank.has('C35'), 'the fixture bank holds the persona\'s claims');
   assert.ok(bank.size >= 25 && bank.size <= 40);
 });
 
+test('only user-confirmed, public and CV rows of the Claims table are usable; Pending rows and other statuses are not', () => {
+  const md = ['## Claims', '| ID | Claim | Category | Source | Status |', '|---|---|---|---|---|',
+    '| C01 | a | x | user:2026-11-01 | user-confirmed |', '| C02 | b | x | src:cv.pdf#p1 | pending |', '| C03 | c | x | user:2026-11-01 | Operator-stated |',
+    '', '## Pending', '| ID | Candidate claim | Category | Source | Question for the operator |', '|---|---|---|---|---|', '| C04 | d | x | src:cv.pdf#p2 | Is this right? |'].join('\n');
+  assert.deepEqual([...claimIdsFromBank(md)], ['C01']);
+  const st = claimStatuses(md);
+  assert.deepEqual([st.get('C02').status, st.get('C02').usable, st.get('C03').usable, st.has('C04')], ['pending', false, false, false]);
+  assert.deepEqual(explainClaims(['summary: unknown claim C02', 'summary: unknown claim C99'], st), ['summary: claim C02 is not usable (status pending; usable: user-confirmed, public, CV)', 'summary: unknown claim C99']);
+});
+
 test('a retired claim row keeps its ID reserved but is no longer valid provenance', () => {
-  const md = '| C19 | degree |\n| C20 | **Retired (fictional): kept reserved.** |\n';
+  const md = '| C19 | degree | education | CV:44 | CV |\n| C20 | **Retired (fictional): kept reserved.** | - | - | - |\n';
   assert.deepEqual([...claimIdsFromBank(md)], ['C19']);
   const bank = claimIdsFromBank(readFileSync(new URL('collateral/claim-bank.md', FIX), 'utf8'));
   assert.equal(bank.has('C20'), false, 'C20 is retired in the fixture bank');

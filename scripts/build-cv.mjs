@@ -33,7 +33,7 @@ import { readFileSync, writeFileSync, mkdirSync, copyFileSync, readdirSync, exis
 import { basename, dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
-  claimIdsFromBank, validateVariant, assemble, renderHtml, modelText, lintText, coverage, checkExtracted, rankForJd, checkPageSplit, variantPool, bodySegments, repeatedPhrases,
+  claimIdsFromBank, claimStatuses, explainClaims, validateVariant, assemble, renderHtml, modelText, lintText, coverage, checkExtracted, rankForJd, checkPageSplit, variantPool, bodySegments, repeatedPhrases,
   cvPerson, inlineFonts, paperOf, sheetCss, pageRuleCss, pdfFooterTemplate, CV_MARGINS, wantsPhone, withoutPhone, headingsFor,
 } from './lib/cv.mjs';
 import { pageStarts, paginate } from './lib/cv-pages.mjs';
@@ -57,7 +57,8 @@ try { requireWorkspace(); } catch (err) { console.error(err.message); finish({ s
 const master = readJson(join(CV_SRC, 'master.json'));
 master.person = cvPerson(person(), master.person);
 const rules = readJson(join(CV_SRC, 'never-claim.json'));
-const claimIds = claimIdsFromBank(readFileSync(join(COLLATERAL_DIR, 'claim-bank.md'), 'utf8'));
+const bankMd = readFileSync(join(COLLATERAL_DIR, 'claim-bank.md'), 'utf8');
+const claimIds = claimIdsFromBank(bankMd);
 const readVariants = (dir) => (existsSync(dir) ? readdirSync(dir) : []).filter((f) => f.endsWith('.json')).sort().map((f) => readJson(join(dir, f)));
 const variants = readVariants(join(CV_SRC, 'variants'));
 const listDir = opt('dir') ? resolveArgPath(opt('dir')) : null;
@@ -136,7 +137,7 @@ let failed = false;
 
 try {
   for (const v of pick) {
-    const errs = validateVariant(master, v, claimIds);
+    const errs = explainClaims(validateVariant(master, v, claimIds), claimStatuses(bankMd));
     // The phone shows when the variant opts in (contact.phone "profile") or person.json's
     // show_phone_on_cv says so; it is then the one number the lint lets through.
     const phone = wantsPhone(v, person().show_phone_on_cv) ? cvPhone() : null;

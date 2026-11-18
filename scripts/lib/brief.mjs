@@ -5,6 +5,7 @@
 
 import { marked } from 'marked';
 import { markSvg, wordmarkName } from './brand-mark.mjs';
+import { claimStatuses } from './cv.mjs';
 
 export const CLAIMS_PLACEHOLDER = '**Claims** `[CLAIMS TABLE]`';
 const CLAIM_RE = /\bC\d{2,3}\b/g;
@@ -20,11 +21,14 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g
 const unescape = (s) => s.replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 
 // collateral/claim-bank.md rows: | ID | claim | category | source | status | never say |. Retired rows are left out.
+// Only usable claims (cv.mjs claimStatuses: the Claims table, statuses user-confirmed, public,
+// CV): a brief never cites a pending, retired or otherwise unconfirmed row.
 export function parseClaimBank(md) {
+  const usable = new Set([...claimStatuses(md)].filter(([, v]) => v.usable).map(([id]) => id));
   const bank = new Map();
   for (const line of md.split('\n')) {
-    const m = /^\| (C\d{2,}) \|(?! \*\*Retired)/.exec(line);
-    if (!m) continue;
+    const m = /^\|\s*(C\d{2,})\s*\|/.exec(line);
+    if (!m || !usable.has(m[1]) || bank.has(m[1])) continue;
     const c = line.split('|').map((s) => s.trim());
     bank.set(m[1], { text: plain(c[2]), cat: plain(c[3]), src: plain(c[4]), status: plain(c[5]), never: plain(c[6]) });
   }

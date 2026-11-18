@@ -15,6 +15,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { platform } from 'node:os';
 import { MIN_NODE, nodeOk } from './lib/node-version.mjs';
+import { claimIdsFromBank } from './lib/cv.mjs';
 import {
   BIN_DIR, BRAND_DIR, CODE_ROOT, COLLATERAL_DIR, CONFIG_DIR, DATA_DIR, HOME, PROFILE_DIR, SECRETS_DIR, display, workspaceExists,
 } from './lib/paths.mjs';
@@ -88,9 +89,9 @@ if (!preflight) {
     add('profile', empty.length ? 'warn' : 'ok', empty.length ? `answer bank empty: ${empty.join(', ')}` : 'answer bank basics', '/hunt-onboard (answers phase)');
 
     const bank = existsSync(join(COLLATERAL_DIR, 'claim-bank.md')) ? readFileSync(join(COLLATERAL_DIR, 'claim-bank.md'), 'utf8') : '';
-    const claims = [...bank.matchAll(/^\|\s*(C\d+)\s*\|/gm)].length;
+    const claims = claimIdsFromBank(bank).size;
     const pending = [...bank.matchAll(/^\|\s*(P\d+)\s*\|/gm)].length;
-    add('collateral', claims ? (pending ? 'warn' : 'ok') : 'FAIL', `${claims} claims${pending ? `, ${pending} pending confirmation` : ''}`, '/hunt-onboard (claims phase)');
+    add('collateral', claims ? (pending ? 'warn' : 'ok') : 'FAIL', `${claims} usable claims${pending ? `, ${pending} pending confirmation` : ''}`, '/hunt-onboard (claims phase)');
     const master = readJson(join(COLLATERAL_DIR, 'cv', 'master.json')) || {};
     const roles = Object.keys(master.roles || {}).length;
     add('collateral', roles ? 'ok' : 'FAIL', `${roles} roles in cv/master.json`, '/hunt-onboard (ingest phase)');

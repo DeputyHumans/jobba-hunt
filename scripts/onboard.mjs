@@ -24,6 +24,7 @@ import {
 } from './lib/paths.mjs';
 import { deepMerge, readJsonFile, writeJsonAtomic } from './lib/config.mjs';
 import { logAction } from './lib/actions-log.mjs';
+import { claimStatuses, explainClaims } from './lib/cv.mjs';
 
 export const PHASES = ['preflight', 'init', 'ingest', 'claims', 'interview', 'answers', 'calibration', 'access', 'cvs', 'searches', 'ready'];
 const ONB = join(PROFILE_DIR, 'onboarding.json');
@@ -88,11 +89,13 @@ export function validateWorkspace(home = HOME) {
   const bankPath = join(home, 'collateral', 'claim-bank.md');
   const bank = existsSync(bankPath) ? readFileSync(bankPath, 'utf8') : '';
   if (!bank) p('collateral/claim-bank.md', 'missing');
-  const claimIds = new Set([...bank.matchAll(/^\|\s*(C\d+)\s*\|/gm)].map((m) => m[1]));
+  // Only usable claims count (cv.mjs claimStatuses): a pending or retired row is named as such.
+  const statuses = claimStatuses(bank);
+  const claimIds = new Set([...statuses].filter(([, v]) => v.usable).map(([id]) => id));
   const master = j('collateral/cv/master.json');
   if (master) {
     if (!Object.keys(master.roles || {}).length) p('collateral/cv/master.json', 'no roles');
-    const cite = (where, claims) => { for (const c of claims || []) if (!claimIds.has(c)) p('collateral/cv/master.json', `${where} cites unknown claim ${c}`); };
+    const cite = (where, claims) => { for (const c of claims || []) if (!claimIds.has(c)) p('collateral/cv/master.json', explainClaims([`${where} cites unknown claim ${c}`], statuses)[0]); };
     for (const [id, b] of Object.entries(master.bullets || {})) cite(`bullet ${id}`, b.claims);
     for (const [id, r] of Object.entries(master.roles || {})) cite(`role ${id}`, r.claims);
   }

@@ -9,16 +9,18 @@ const bankMd = [
   '|---|---|---|---|---|---|',
   '| C14 | Runs two AI features in production at Acme Corp. | ai | CV:16 | CV | User or revenue numbers |',
   '| C20 | **Retired (fictional): kept so the ID stays reserved.** Was: something. | leadership | CV:1 | Retired | All of it |',
-  '| C80 | Wrote the review checklist for AI-generated code. | ai | operator 2026-11-01 | Operator-stated | Which team uses which checklist |',
+  '| C80 | Wrote the review checklist for AI-generated code. | ai | user:2026-11-01 | user-confirmed | Which team uses which checklist |',
+  '| C81 | Pending wording, not confirmed yet. | ai | src:cv.pdf#p2 | pending | All of it |',
 ].join('\n');
 const bank = parseClaimBank(bankMd);
 const assets = { css: '.x{}', sansWoff2: Buffer.from('s'), monoWoff2: Buffer.from('m'), mark: null, wordmark: 'Jordan Example', kicker: 'Job hunt', accent: '#2F5D8A', operator: 'Jordan' };
 const MARK = { viewBox: '-5 -5 34 34', frame: { x: 3, y: 3, size: 18, strokeWidth: 2 }, seal: { x: 10, y: 10, size: 7 } };
 const brief = (body) => `---\ntitle: X\ncall: "Mon 16 Nov 2026 · 1:30 PM PT"\n---\n\n# Acme: Staff Engineer, AI, recruiter screen brief\n\n${body}`;
 
-test('the bank leaves retired claims out', () => {
+test('the bank leaves retired and unconfirmed claims out', () => {
   assert.deepEqual([...bank.keys()], ['C14', 'C80']);
-  assert.equal(bank.get('C80').status, 'Operator-stated');
+  assert.equal(bank.get('C80').status, 'user-confirmed');
+  assert.deepEqual(claimUse('C81', bank).unknown, ['C81'], 'a pending claim is not citable');
 });
 
 test('front matter, H1 and hero parts', () => {

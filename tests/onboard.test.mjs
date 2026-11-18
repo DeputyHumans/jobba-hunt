@@ -45,6 +45,19 @@ test('validation catches a claim cited by the CV but missing from the bank', () 
   assert.ok(validateWorkspace(home).some((x) => /unknown claim C999/.test(x.msg)));
 });
 
+test('validation names a cited claim the bank holds as pending', () => {
+  const home = mkdtempSync(join(tmpdir(), 'jobba-ws-'));
+  cpSync(join(CODE_ROOT, 'tests', 'fixtures', 'workspace'), home, { recursive: true });
+  initWorkspace({ templates: TEMPLATES_DIR, home });
+  const bank = join(home, 'collateral', 'claim-bank.md');
+  writeFileSync(bank, readFileSync(bank, 'utf8').replace(/^\| C01 \|(.*)\| CV \|$/m, '| C01 |$1| pending |'));
+  const p = join(home, 'collateral', 'cv', 'master.json');
+  const m = JSON.parse(readFileSync(p, 'utf8'));
+  m.bullets[Object.keys(m.bullets)[0]].claims = ['C01'];
+  writeFileSync(p, JSON.stringify(m));
+  assert.ok(validateWorkspace(home).some((x) => /claim C01 is not usable \(status pending/.test(x.msg)));
+});
+
 test('nextPhase walks the phases in order', () => {
   assert.equal(nextPhase({}), PHASES[0]);
   assert.equal(nextPhase(Object.fromEntries(PHASES.map((p) => [p, 'x']))), null);

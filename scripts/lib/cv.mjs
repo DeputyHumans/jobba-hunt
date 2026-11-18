@@ -21,8 +21,34 @@ export function sourceRefRe(prefixes = []) {
 }
 
 // A retired row ("| C20 | **Retired …") keeps its ID reserved but no longer counts as provenance.
+// collateral/claim-bank.md: only rows of the Claims table count (a bank without a "## Claims"
+// heading counts every table row), and only the statuses the bank's legend marks usable. Pending
+// rows, retired rows and any other status keep their IDs reserved but are no provenance.
+export const USABLE_STATUSES = ['user-confirmed', 'public', 'CV'];
+export function claimStatuses(md) {
+  const text = String(md || '');
+  const m = /^## Claims[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(text);
+  const table = m ? m[1] : text;
+  const out = new Map();
+  for (const line of table.split('\n')) {
+    const id = /^\|\s*(C\d{2,})\s*\|/.exec(line)?.[1];
+    if (!id) continue;
+    const cells = line.split('|').map((s) => s.trim());
+    const retired = /^\*\*Retired/i.test(cells[2] || '');
+    const status = retired ? 'retired' : (cells[5] || '').replace(/`/g, '').trim();
+    out.set(id, { status, usable: !retired && USABLE_STATUSES.some((u) => u.toLowerCase() === status.toLowerCase()) });
+  }
+  return out;
+}
 export function claimIdsFromBank(md) {
-  return new Set([...md.matchAll(/^\| (C\d{2,}) \|(?! \*\*Retired)/gm)].map((m) => m[1]));
+  return new Set([...claimStatuses(md)].filter(([, v]) => v.usable).map(([id]) => id));
+}
+// "unknown claim Cnn" for a claim the bank holds but does not allow names its status.
+export function explainClaims(errs, statuses) {
+  return errs.map((e) => e.replace(/unknown claim (C\d{2,})/, (all, id) => {
+    const s = statuses.get(id);
+    return s && !s.usable ? `claim ${id} is not usable (status ${s.status || 'missing'}; usable: ${USABLE_STATUSES.join(', ')})` : all;
+  }));
 }
 
 // ---------- validation ----------

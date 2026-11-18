@@ -35,6 +35,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, rmSync
 import { join, dirname, relative, isAbsolute } from 'node:path';
 import { DATA_DIR, PIPELINE_DIR, COLLATERAL_DIR, ws, display, resolveArgPath } from './lib/paths.mjs';
 import { loadConfig } from './lib/config.mjs';
+import { claimIdsFromBank } from './lib/cv.mjs';
 import { tz } from './lib/profile.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { STATE_PATH, loadState } from './lib/state.mjs';
@@ -170,7 +171,8 @@ async function record() {
   const sentFile = typeof flag('sent') === 'string' ? resolveArgPath(flag('sent')) : null;
   const pend = sentFile ? readJson(sentFile, {}) : {};
   const bank = join(COLLATERAL_DIR, 'claim-bank.md');
-  const claims = new Set(existsSync(bank) ? [...readFileSync(bank, 'utf8').matchAll(/^\|\s*(C\d+)\s*\|/gm)].map((m) => m[1]) : []);
+  // Drafts cite only usable claims (cv.mjs claimIdsFromBank: the Claims table, confirmed statuses).
+  const claims = existsSync(bank) ? claimIdsFromBank(readFileSync(bank, 'utf8')) : new Set();
   const results = Array.isArray(raw) ? raw : raw.results || [];
   const r = recordResults({
     results, sent: pend.sent || [], threads: loadThreads(), opportunities: loadOpps(),
