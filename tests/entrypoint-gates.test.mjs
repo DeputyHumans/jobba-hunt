@@ -287,3 +287,28 @@ test('doctor: the vault row finds op through JOBBA_OP_BIN or config op.bin, not 
   if (bs) assert.doesNotMatch(bs.fix, /--origin/);
 });
 
+
+// ---------- halts: a probe abort halts its source; the operator clears a halt by command ----------
+
+test('jobs and dice clear-halt: only with the operator\'s words; it clears that source alone and logs halt.cleared', () => {
+  const ws = workspace();
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState({ halt_until: FUTURE, sources: { dice: { halt_until: FUTURE } } }));
+  assert.equal(cli(ws, 'linkedin-jobs.mjs', 'clear-halt').code, 1, 'needs --note with the operator\'s words');
+  const r = cli(ws, 'linkedin-jobs.mjs', 'clear-halt', '--note', 'clear it, I logged in by hand');
+  assert.equal(r.code, 0, JSON.stringify(r.json));
+  assert.deepEqual([r.json.cleared, r.json.was], [true, FUTURE]);
+  const st = JSON.parse(readFileSync(join(ws.data, 'state', 'jobs.json'), 'utf8'));
+  assert.deepEqual([st.halt_until, st.sources.dice.halt_until], [null, FUTURE], 'Dice stays halted');
+  const log = readFileSync(join(ws.data, 'log', 'actions.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const row = log.find((x) => x.action === 'halt.cleared');
+  assert.deepEqual([row.actor, row.source], ['user', 'linkedin']);
+  const d = cli(ws, 'dice-jobs.mjs', 'clear-halt', '--note', 'clear Dice too');
+  assert.deepEqual([d.code, d.json.cleared], [0, true]);
+  assert.equal(cli(ws, 'dice-jobs.mjs', 'clear-halt', '--note', 'again').json.cleared, false, 'nothing to clear');
+});
+
+test('a probe guard abort halts its source; its own cap stop does not', async () => {
+  const { haltsSource } = await import('../scripts/lib/tick-plan.mjs');
+  assert.deepEqual(['checkpoint', 'login-lost', 'canary-failed', 'blocked', 'cap-reached', null].map(haltsSource), [true, true, true, true, false, false]);
+  assert.match(readFileSync(join(CODE_ROOT, 'scripts', 'probe-searches.mjs'), 'utf8'), /haltsSource\(result\.aborted\)/);
+});

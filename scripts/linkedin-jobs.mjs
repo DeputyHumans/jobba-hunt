@@ -16,6 +16,7 @@
 //   node scripts/linkedin-jobs.mjs view --id 9000000001 [--headed] [--pause] [--capture]
 //   node scripts/linkedin-jobs.mjs limits                         # caps used today, no browser
 //   node scripts/linkedin-jobs.mjs prune                          # drop limiter-log entries older than 30 days
+//   node scripts/linkedin-jobs.mjs clear-halt --note "<the operator's words>"   # clear the LinkedIn halt early, no browser
 //
 // --pause keeps the headed window open until Enter (discovery: apply filters in the
 // UI and read the URL LinkedIn generates). --capture saves page HTML + screenshot to
@@ -31,7 +32,8 @@ import {
 import { parseCardText, parseTopCard, classifySearch, isEmptyMarkerText, parseResultCount, applyTypeOf, alreadyAppliedIn } from './lib/extract.mjs';
 import { buildSearchUrl } from './lib/search-url.mjs';
 import { canPost, recordPost, getUsageSummary, pruneLog } from './rate-limiter.mjs';
-import { DATA_DIR, STATE_PATH, loadState } from './lib/state.mjs';
+import { DATA_DIR, STATE_PATH, loadState, saveStateAtomic, sourceState } from './lib/state.mjs';
+import { logAction } from './lib/actions-log.mjs';
 import { runStop } from './lib/tick-plan.mjs';
 import { readPause } from './lib/pause.mjs';
 import { display } from './lib/paths.mjs';
@@ -254,10 +256,23 @@ function budget(action) {
 async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
   const cmd = positional[0];
+  // The operator clears this source's halt early, in their own words (AGENTS.md "Platform safety"):
+  // logged as halt.cleared by the user. Record it in the digest and profile/decisions.md too.
+  if (cmd === 'clear-halt') {
+    if (typeof flags.note !== 'string' || !flags.note.trim()) fail('Pass --note "<the operator\'s words>": only the operator clears a halt early');
+    const state = loadState(STATE_PATH);
+    const holder = state;
+    const was = holder.halt_until || null;
+    if (!was) return out({ success: true, cleared: false, halt_until: null });
+    holder.halt_until = null;
+    saveStateAtomic(STATE_PATH, state);
+    logAction({ actor: 'user', action: 'halt.cleared', source: 'linkedin', detail: { was, note: flags.note.trim().slice(0, 200), by: 'operator' } });
+    return out({ success: true, cleared: true, was });
+  }
   if (cmd === 'limits') return out({ success: true, usage: getUsageSummary() });
   if (cmd === 'prune') return out({ success: true, ...pruneLog(30) });
   if (!['login', 'whoami', 'search', 'view'].includes(cmd)) {
-    fail('usage: linkedin-jobs.mjs login | whoami | search --query "..." | view --id <jobId> | limits | prune');
+    fail('usage: linkedin-jobs.mjs login | whoami | search --query "..." | view --id <jobId> | limits | prune | clear-halt --note "<the operator\'s words>"');
   }
   if (cmd === 'search' && !flags.query) fail('Pass --query "..."');
   if (cmd === 'view' && !/^\d{6,}$/.test(String(flags.id || ''))) fail('Pass --id <numeric LinkedIn job id>');

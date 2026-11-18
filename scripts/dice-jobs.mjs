@@ -13,6 +13,7 @@
 //   node scripts/dice-jobs.mjs search --query "python LLM" [--employment contract|any] [--tpr 604800] [--headed] [--pause] [--capture]
 //   node scripts/dice-jobs.mjs view --id dice-<guid> [--headed] [--pause] [--capture]
 //   node scripts/dice-jobs.mjs limits                         # caps used today, no browser
+//   node scripts/dice-jobs.mjs clear-halt --note "<the operator's words>"   # clear the Dice halt early, no browser
 //
 // The browser profile is <data>/browser/dice (CloakBrowser, inside the workspace), separate from
 // the LinkedIn profile, so a Dice session never shares a cookie jar with LinkedIn.
@@ -25,7 +26,8 @@ import { parseArgs, out, fail, openContext, ProfileBusyError, jitter, profileBas
 import { normalizeDiceCard, parseDiceBadges, diceApplyTypeOf, diceAlreadyApplied, classifyDicePage, parseDiceResultCount, parseDiceLocationLine, isDiceId, diceGuid, diceJobUrl } from './lib/dice-extract.mjs';
 import { buildDiceUrl } from './lib/dice-url.mjs';
 import { canPost, recordPost, getUsageSummary } from './rate-limiter.mjs';
-import { DATA_DIR, STATE_PATH, loadState } from './lib/state.mjs';
+import { DATA_DIR, STATE_PATH, loadState, saveStateAtomic, sourceState } from './lib/state.mjs';
+import { logAction } from './lib/actions-log.mjs';
 import { runStop } from './lib/tick-plan.mjs';
 import { readPause } from './lib/pause.mjs';
 import { display } from './lib/paths.mjs';
@@ -299,8 +301,21 @@ function budget(action) {
 async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
   const cmd = positional[0];
+  // The operator clears this source's halt early, in their own words (AGENTS.md "Platform safety"):
+  // logged as halt.cleared by the user. Record it in the digest and profile/decisions.md too.
+  if (cmd === 'clear-halt') {
+    if (typeof flags.note !== 'string' || !flags.note.trim()) fail('Pass --note "<the operator\'s words>": only the operator clears a halt early');
+    const state = loadState(STATE_PATH);
+    const holder = sourceState(state, 'dice');
+    const was = holder.halt_until || null;
+    if (!was) return out({ success: true, cleared: false, halt_until: null });
+    holder.halt_until = null;
+    saveStateAtomic(STATE_PATH, state);
+    logAction({ actor: 'user', action: 'halt.cleared', source: 'dice', detail: { was, note: flags.note.trim().slice(0, 200), by: 'operator' } });
+    return out({ success: true, cleared: true, was });
+  }
   if (cmd === 'limits') return out({ success: true, usage: { dice_jobs: getUsageSummary().dice_jobs, dice_apply: getUsageSummary().dice_apply } });
-  if (!['login', 'whoami', 'search', 'view'].includes(cmd)) fail('usage: dice-jobs.mjs login | whoami | search --query "..." | view --id dice-<guid> | limits');
+  if (!['login', 'whoami', 'search', 'view'].includes(cmd)) fail('usage: dice-jobs.mjs login | whoami | search --query "..." | view --id dice-<guid> | limits | clear-halt --note "<the operator\'s words>"');
   if (cmd === 'search' && !flags.query) fail('Pass --query "..."');
   if (cmd === 'view' && !isDiceId(flags.id)) fail('Pass --id dice-<guid>');
   if (cmd === 'search') budget('searches_per_day');

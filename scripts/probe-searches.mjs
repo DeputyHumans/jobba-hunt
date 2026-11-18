@@ -25,7 +25,8 @@
 // Output: <data>/probes/YYYYMMDD-HHMM-<name>.json, rewritten after every page load so an
 // abort keeps what was already read. Analyse with scripts/probe-report.mjs.
 //
-// Exit codes: 0 done, 1 aborted by a guard, 2 refused (not enough cap left today, or
+// Exit codes: 0 done, 1 aborted by a guard (the source is then halted, like a tick abort) or a usage
+// error, 2 refused (not enough cap left today, or
 // --mark-verified on a probe that did not finish), 3 profile busy (not counted; never loop),
 // 4 paused (config/pause.json), 5 halted (the source's halt from an earlier abort). A dry run and
 // --mark-verified open no browser and run while paused or halted.
@@ -41,12 +42,13 @@ import { buildDiceUrl } from './lib/dice-url.mjs';
 import { compilePrefilter, prefilterJob } from './lib/prefilter.mjs';
 import { pickViewIds } from './lib/probe-metrics.mjs';
 import { evaluateSearch, evaluateView } from './lib/guards.mjs';
-import { DATA_DIR, STATE_PATH, loadState, saveStateAtomic, upsertCards, setPrefilter, setDetail } from './lib/state.mjs';
+import { DATA_DIR, STATE_PATH, loadState, saveStateAtomic, upsertCards, setPrefilter, setDetail, sourceState } from './lib/state.mjs';
 import { canPost, recordPost, getUsageSummary } from './rate-limiter.mjs';
 import { loadConfig, loadSearchConfig, loadOwnConfig, saveConfig, readJsonFile } from './lib/config.mjs';
 import { display, resolveArgPath } from './lib/paths.mjs';
 import { logAction } from './lib/actions-log.mjs';
-import { runStop } from './lib/tick-plan.mjs';
+import { runStop, haltsSource, haltUntil } from './lib/tick-plan.mjs';
+import { schedule, tz } from './lib/profile.mjs';
 import { readPause } from './lib/pause.mjs';
 
 const log = (s) => process.stderr.write(`${s}\n`);
@@ -221,6 +223,16 @@ try {
   save();
 }
 
+// A guard abort halts the source like any tick or sweep abort: until the next reset, 7 days on a
+// checkpoint or authwall (the state is read again: --into-state may have written it).
+if (haltsSource(result.aborted)) {
+  const s2 = loadState(STATE_PATH);
+  const holder = dice ? sourceState(s2, 'dice') : s2;
+  holder.halt_until = haltUntil(result.aborted, Date.now(), tz(), schedule()?.reset_hour ?? 4);
+  saveStateAtomic(STATE_PATH, s2);
+  logAction({ action: 'halt.set', source: dice ? 'dice' : 'linkedin', detail: { abort: result.aborted, until: holder.halt_until, by: `probe-${probe.name}` } });
+  log(`${dice ? 'Dice' : 'LinkedIn'} halted until ${holder.halt_until}.`);
+}
 logAction({ action: 'probe.run', source: result.source, ref: display(outPath), detail: { name: probe.name, searches: result.searches.length, views: result.views.length, aborted: result.aborted || null, into_state: intoState } });
 log(`\n${result.searches.length} searches, ${result.views.length} views | guards: ${result.aborted || 'none'}\nprobe -> ${display(outPath)}`);
 if (result.aborted === 'checkpoint' || result.aborted === 'login-lost') log('!! STOP. Same rules as a sweep abort: see docs/runbook.md "Guards and actions".');
