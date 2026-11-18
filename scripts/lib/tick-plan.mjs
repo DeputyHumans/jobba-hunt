@@ -104,6 +104,16 @@ export function isHalted(state, ms) {
   return !!state.halt_until && ms < Date.parse(state.halt_until);
 }
 
+// What stops a browser run outside the loop ticks (a sweep, a probe, a reader CLI search or
+// view): the source's halt first, then the hunt-wide pause (config/pause.json). `halt` is the
+// object holding halt_until (the state for LinkedIn, state.sources.dice for Dice). null means go.
+// login, whoami and limits never ask: recovering from a halt needs them.
+export function runStop(halt, pause, ms) {
+  if (halt && isHalted(halt, ms)) return { halted: true, halt_until: halt.halt_until, reason: `halted until ${halt.halt_until} (an earlier abort)` };
+  if (pause?.paused) return { paused: true, reason: `paused: ${pause.reason || 'no reason given'}` };
+  return null;
+}
+
 export function queryWindow(state, queryId, ms, windowCfg) {
   const last = state.query_runs?.[queryId]?.last_ok || state.last_successful_sweep;
   return tprSeconds(last, ms, windowCfg);

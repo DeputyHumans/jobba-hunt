@@ -52,3 +52,62 @@ test('triage record: a results file with a bad row exits 1, and the good rows ar
   assert.ok(r.json.errors.length >= 1);
   assert.deepEqual(r.json.applied, ['9000000001']);
 });
+
+// ---------- D11: pause and halt outside the ticks ----------
+
+test('sweep: refuses while paused (exit 4) and while halted (exit 2), before any browser', () => {
+  const ws = workspace();
+  verified(ws, 'searches.json');
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState());
+  pause(ws);
+  const p = cli(ws, 'sweep-jobs.mjs');
+  assert.equal(p.code, 4);
+  assert.equal(p.json.paused, true);
+  assert.match(p.json.reason, /paused: CV refresh/);
+  writeJson(join(ws.home, 'config', 'pause.json'), { paused: false });
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState({ halt_until: FUTURE }));
+  const h = cli(ws, 'sweep-jobs.mjs');
+  assert.equal(h.code, 2);
+  assert.equal(h.json.halted, true);
+});
+
+test('probe: a live probe refuses while paused (exit 4) or halted (exit 5); the dry run still plans', () => {
+  const ws = workspace();
+  const probe = join(ws.home, 'config', 'probes', 'gate-probe.json');
+  writeJson(probe, { name: 'gate-probe', tpr_seconds: 604800, defaults: { geo: 'us', workplace: 'remote' }, views: [], searches: [{ id: 'P1', keywords: 'head of platform' }] });
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState());
+  pause(ws);
+  assert.equal(cli(ws, 'probe-searches.mjs', '--file', probe, '--dry-run').code, 0, 'a dry run launches no browser and stays allowed');
+  const p = cli(ws, 'probe-searches.mjs', '--file', probe);
+  assert.equal(p.code, 4);
+  assert.equal(p.json.paused, true);
+  writeJson(join(ws.home, 'config', 'pause.json'), { paused: false });
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState({ halt_until: FUTURE }));
+  const h = cli(ws, 'probe-searches.mjs', '--file', probe);
+  assert.equal(h.code, 5);
+  assert.equal(h.json.halted, true);
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState({ sources: { dice: { halt_until: FUTURE } } }));
+  const d = cli(ws, 'probe-searches.mjs', '--file', probe, '--source', 'dice');
+  assert.equal(d.code, 5, 'a Dice probe waits on the Dice halt');
+});
+
+test('reader CLIs: search and view refuse while paused or halted; limits still answers', () => {
+  const ws = workspace();
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState({ halt_until: FUTURE }));
+  const li = cli(ws, 'linkedin-jobs.mjs', 'view', '--id', '9000000001');
+  assert.equal(li.code, 1);
+  assert.equal(li.json.halted, true);
+  assert.equal(cli(ws, 'linkedin-jobs.mjs', 'limits').code, 0);
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState({ sources: { dice: { halt_until: FUTURE } } }));
+  const dv = cli(ws, 'dice-jobs.mjs', 'search', '--query', 'platform');
+  assert.equal(dv.code, 1);
+  assert.equal(dv.json.halted, true);
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState());
+  pause(ws);
+  const ls = cli(ws, 'linkedin-jobs.mjs', 'search', '--query', 'platform');
+  assert.equal(ls.code, 1);
+  assert.equal(ls.json.paused, true);
+  const dl = cli(ws, 'dice-jobs.mjs', 'view', '--id', 'dice-00000000-0000-0000-0000-000000000001');
+  assert.equal(dl.code, 1);
+  assert.equal(dl.json.paused, true);
+});

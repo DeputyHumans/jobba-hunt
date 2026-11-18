@@ -15,7 +15,7 @@
 //
 // Exit codes: 0 done (incl. budget exhausted), 1 aborted by a guard, 2 refused (a daily cap,
 // a halt, or the query set is not verified yet), 3 profile busy (not counted; re-run later by
-// hand, never loop).
+// hand, never loop), 4 paused (config/pause.json; a dry run still plans).
 
 import './lib/env.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -26,6 +26,7 @@ import { planSearches } from './lib/search-url.mjs';
 import { compilePrefilter } from './lib/prefilter.mjs';
 import { DATA_DIR, STATE_PATH, loadState, saveStateAtomic, markSweepSuccess, touchedIds } from './lib/state.mjs';
 import { queryWindow, haltUntil, isHalted } from './lib/tick-plan.mjs';
+import { readPause, pauseBlock } from './lib/pause.mjs';
 import { createRun, survivorsOf, pendingTriageCount } from './lib/sweep-core.mjs';
 import { canPost, recordPost, getUsageSummary } from './rate-limiter.mjs';
 import { loadConfig, loadSearchConfig } from './lib/config.mjs';
@@ -69,15 +70,22 @@ if (flags['dry-run']) {
   process.exit(0);
 }
 
-if (!cfg.verified) {
-  log('REFUSED: config/searches.json is not verified (run the LinkedIn query probe first: /hunt-probe, docs/query-probe-method.md).');
-  out({ success: false, refused: true, cap: 'not-verified', reason: 'LinkedIn query set not verified (probe pending)' });
-  process.exit(2);
-}
-
 if (isHalted(state, startedAt.getTime())) {
   log(`HALTED until ${state.halt_until} (an earlier abort). No override exists, by design.`);
   out({ success: false, halted: true, halt_until: state.halt_until });
+  process.exit(2);
+}
+
+const paused = pauseBlock(readPause());
+if (paused) {
+  log(`PAUSED (${paused}). Only the user lifts the pause (config/pause.json).`);
+  out({ success: false, paused: true, reason: paused });
+  process.exit(4);
+}
+
+if (!cfg.verified) {
+  log('REFUSED: config/searches.json is not verified (run the LinkedIn query probe first: /hunt-probe, docs/query-probe-method.md).');
+  out({ success: false, refused: true, cap: 'not-verified', reason: 'LinkedIn query set not verified (probe pending)' });
   process.exit(2);
 }
 

@@ -31,7 +31,9 @@ import {
 import { parseCardText, parseTopCard, classifySearch, isEmptyMarkerText, parseResultCount, applyTypeOf, alreadyAppliedIn } from './lib/extract.mjs';
 import { buildSearchUrl } from './lib/search-url.mjs';
 import { canPost, recordPost, getUsageSummary, pruneLog } from './rate-limiter.mjs';
-import { DATA_DIR } from './lib/state.mjs';
+import { DATA_DIR, STATE_PATH, loadState } from './lib/state.mjs';
+import { runStop } from './lib/tick-plan.mjs';
+import { readPause } from './lib/pause.mjs';
 import { display } from './lib/paths.mjs';
 import { loadSearchConfig } from './lib/config.mjs';
 import { operatorName } from './lib/profile.mjs';
@@ -260,6 +262,13 @@ async function main() {
   if (cmd === 'view' && !/^\d{6,}$/.test(String(flags.id || ''))) fail('Pass --id <numeric LinkedIn job id>');
   if (cmd === 'search') budget('searches_per_day');
   if (cmd === 'view') budget('job_views_per_day');
+  // A page load outside the loop waits on the loop's stops: this source's halt, then the pause.
+  // login and whoami never wait (recovering from a halt needs them).
+  if (cmd === 'search' || cmd === 'view') {
+    const state = loadState(STATE_PATH);
+    const stop = runStop(state, readPause(), Date.now());
+    if (stop) fail(`${cmd} refused: ${stop.reason}`, stop);
+  }
 
   const headed = cmd === 'login' || !!flags.headed || !!flags.pause;
   let context, page;

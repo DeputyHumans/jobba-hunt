@@ -26,7 +26,9 @@
 // abort keeps what was already read. Analyse with scripts/probe-report.mjs.
 //
 // Exit codes: 0 done, 1 aborted by a guard, 2 refused (not enough cap left today, or
-// --mark-verified on a probe that did not finish), 3 profile busy (not counted; never loop).
+// --mark-verified on a probe that did not finish), 3 profile busy (not counted; never loop),
+// 4 paused (config/pause.json), 5 halted (the source's halt from an earlier abort). A dry run and
+// --mark-verified open no browser and run while paused or halted.
 
 import './lib/env.mjs';
 import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -44,6 +46,8 @@ import { canPost, recordPost, getUsageSummary } from './rate-limiter.mjs';
 import { loadConfig, loadSearchConfig, loadOwnConfig, saveConfig, readJsonFile } from './lib/config.mjs';
 import { display, resolveArgPath } from './lib/paths.mjs';
 import { logAction } from './lib/actions-log.mjs';
+import { runStop } from './lib/tick-plan.mjs';
+import { readPause } from './lib/pause.mjs';
 
 const log = (s) => process.stderr.write(`${s}\n`);
 
@@ -107,6 +111,16 @@ if (flags['dry-run']) {
   log(`\nDRY RUN. ~${eta} min. Writes ${display(join(DATA_DIR, 'probes', `${label}-${probe.name}.json`))}. No browser launched.`);
   out({ success: true, dry_run: true, probe: probe.name, searches: searches.length, views: maxViews, eta_minutes: eta });
   process.exit(0);
+}
+
+// A live probe loads pages like a tick, so it waits on the same stops: the source's halt, then
+// the pause. The dry run above opens no browser and runs regardless.
+const haltState = loadState(STATE_PATH);
+const stop = runStop(dice ? haltState.sources?.dice : haltState, readPause(), Date.now());
+if (stop) {
+  log(`REFUSED: ${stop.reason}.`);
+  out({ success: false, ...stop });
+  process.exit(stop.halted ? 5 : 4);
 }
 
 // A probe is only comparable if every query in it ran under the same conditions, so it
