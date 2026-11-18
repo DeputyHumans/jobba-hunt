@@ -61,8 +61,9 @@ export async function scanPending({ gws, cfg, st = {}, known = new Set(), openTh
       return (await gws.thread(threadId)).filter((m) => isSent(m) && Date.parse(m.date) > Date.parse(since));
     } catch (e) { threadErrors.push({ thread_id: threadId, error: e.message }); return []; }
   };
-  // Open cards: any reply after the newest email on the thread, even one sent before the draft.
-  for (const t of openThreads.filter((x) => x.status === 'draft' && (x.since || x.draft_at))) {
+  // Open cards: any reply after the newest email on the thread, even one sent before the draft. A
+  // Security card's thread is never fetched: the fetch would read the notice's body.
+  for (const t of openThreads.filter((x) => x.status === 'draft' && x.kind !== 'security' && (x.since || x.draft_at))) {
     for (const m of await repliesAfter(t.thread_id, t.since || t.draft_at)) sent.push({ thread_id: t.thread_id, at: m.date, text: ownText(m.text, sigNames) });
   }
   // New mail the user already answered (from a phone, over a weekend) is recorded as sent. A

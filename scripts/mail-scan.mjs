@@ -91,7 +91,7 @@ function scanContext() {
   const opps = loadOpps().map((o) => parseFrontmatter(o.md));
   const known = new Set([...threads.map((t) => String(t.thread_id)), ...opps.map((o) => o.thread_id).filter(Boolean).map(String)]);
   // An open card is checked for the user's reply after the newest email on its thread.
-  const openThreads = threads.map((t) => ({ thread_id: String(t.thread_id), status: t.status, draft_at: t.draft_at || null, since: t.emails.at(-1)?.at || null }));
+  const openThreads = threads.map((t) => ({ thread_id: String(t.thread_id), kind: t.kind || null, status: t.status, draft_at: t.draft_at || null, since: t.emails.at(-1)?.at || null }));
   const jobs = loadState(STATE_PATH).jobs || {};
   const companies = new Set(Object.values(jobs).filter((j) => j && (j.application?.status || j.status === 'applied' || j.triage?.decision === 'pursue')).map((j) => companyKey(j.company)).filter((k) => k.length >= 4));
   return { cfg, st, known, openThreads, companies };

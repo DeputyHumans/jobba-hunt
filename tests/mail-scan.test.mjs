@@ -13,15 +13,17 @@ const H = {
 };
 const fakeGws = ({ failOn } = {}) => {
   const bodies = [];
+  const threads = [];
   return {
     bodies,
+    threads,
     list: async () => Object.values(H).map((h) => ({ id: h.id, threadId: h.threadId })),
     headers: async (id) => { if (id === failOn) throw new Error('gws: bad json'); return H[id]; },
     body: async (id) => { bodies.push(id); return `body ${id}`; },
-    thread: async () => [
+    thread: async (id) => (threads.push(id), [
       { id: 'p0', fromAddr: ME, date: '2026-11-02T17:00:00.000Z', labels: ['SENT'], text: 'Old note' },
       { id: 'p1', fromAddr: ME, date: '2026-11-02T18:30:00.000Z', labels: ['SENT'], text: 'Hi Sam\n\nOn Mon, Nov 2, 2026 Sam Recruiter wrote:\n> what rate' },
-    ],
+    ]),
   };
 };
 
@@ -45,6 +47,14 @@ test('scanPending: sent detection', async () => {
   const open = [{ thread_id: 'tm', status: 'draft', draft_at: '2026-11-02T18:00:00Z' }];
   const r = await scanPending({ gws: fakeGws(), cfg, st: {}, known: new Set(), openThreads: open, now: NOW });
   assert.deepEqual(r.sent.filter((s) => s.thread_id === 'tm'), [{ thread_id: 'tm', at: '2026-11-02T18:30:00.000Z', text: 'Hi Sam' }]);
+});
+
+test('scanPending: an open Security card\'s thread is never fetched (its body would be read)', async () => {
+  const gws = fakeGws();
+  const open = [{ thread_id: 'tsec', kind: 'security', status: 'draft', draft_at: '2026-11-02T18:00:00Z' }, { thread_id: 'tm', kind: 'reply', status: 'draft', draft_at: '2026-11-02T18:00:00Z' }];
+  await scanPending({ gws, cfg, st: {}, known: new Set(), openThreads: open, now: NOW });
+  assert.ok(!gws.threads.includes('tsec'));
+  assert.ok(gws.threads.includes('tm'));
 });
 
 test('scanQuery: the last scan minus an hour, and a clear error before the first scan date is set', () => {
