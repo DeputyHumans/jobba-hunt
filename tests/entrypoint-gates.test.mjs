@@ -129,3 +129,17 @@ test('dice-tick records a sweep against sweeps_per_day', () => {
   const src = readFileSync(join(CODE_ROOT, 'scripts', 'dice-tick.mjs'), 'utf8');
   assert.match(src, /recordPost\('dice_jobs', 'sweeps_per_day'/);
 });
+
+// ---------- D5: auto --dry-run shows the letter blocker ----------
+
+test('triage auto --dry-run lists the missing generated cover letter, like the real run', () => {
+  const ws = workspace();
+  const job = { job_id: '9000000001', title: 'Head of Engineering', company: 'Acme Corp', status: 'triaged', detail: { fetched_at: '2026-11-01T10:00:00Z', description_text: 'A real posting.', apply: { type: 'easy' } },
+    triage: { score: 90, tier: 'A', lane: 'leadership', gates: { G1: 'pass', G2: 'pass', G3: 'pass', G4: 'pass' }, archetype: 'platform-lead', decision: null } };
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState({ jobs: { 9000000001: job } }));
+  const tpl = JSON.parse(readFileSync(join(CODE_ROOT, 'templates', 'workspace', 'config', 'apply.json'), 'utf8'));
+  writeJson(join(ws.home, 'config', 'apply.json'), { ...tpl, verified: { ...tpl.verified, easy: true }, auto_apply: { ...tpl.auto_apply, enabled: true, channels: ['easy'], cover_letter: { easy: 'generated' } } });
+  const dry = cli(ws, 'record-triage.mjs', 'auto', '--id', '9000000001', '--dry-run');
+  assert.equal(dry.code, 2);
+  assert.ok(dry.json.blockers.some((b) => /needs a generated cover letter/.test(b)), dry.json.blockers.join(' | '));
+});

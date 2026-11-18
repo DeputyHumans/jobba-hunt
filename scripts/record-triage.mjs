@@ -195,10 +195,11 @@ if (cmd === 'pending') {
   blockers.push(...extra);
   if (rule && rule.enabled !== true && !blockers.some((b) => b.startsWith('auto-apply is off'))) blockers.unshift('auto-apply is off (config/apply.json auto_apply.enabled)');
   // A channel whose rule says "generated" goes out only with a claims-only cover letter PDF
-  // (scripts/build-cover.mjs, approach A).
+  // (scripts/build-cover.mjs). The dry run reports it too, so the loop sees when the letter is the
+  // only thing missing.
   const coverPdf = str(flags['cover-pdf']) || (tailoredLetter && existsSync(tailoredLetter) ? storedPath(tailoredLetter) : null);
   if (rule?.cover_letter?.[type] === 'generated') {
-    if (!coverPdf && !flags['dry-run']) blockers.push('needs a generated cover letter (--cover-pdf, scripts/build-cover.mjs)');
+    if (!coverPdf) blockers.push('needs a generated cover letter (--cover-pdf, scripts/build-cover.mjs)');
     else if (coverPdf && !fileExists(coverPdf)) blockers.push(`cover letter not found: ${coverPdf}`);
   }
   const base = { job_id: id, title: j.title, company: j.company, url: j.url, score: j.triage?.score ?? null, archetype: j.triage?.archetype ?? null, ...(pick ? { cv_slug: pick.slug, archetype_coverage: pick.archetype_pct } : {}), cv, coverage };
