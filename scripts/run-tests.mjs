@@ -17,7 +17,7 @@ const only = process.argv.slice(2);
 const r = spawnSync(process.execPath, ['--test', ...(only.length ? only : files)], {
   cwd: CODE_ROOT,
   stdio: 'inherit',
-  env: { ...process.env, JOBBA_HOME: home, JOBBA_DATA_DIR: dataDir, TZ: 'UTC' },
+  env: { ...process.env, JOBBA_HOME: home, JOBBA_DATA_DIR: dataDir, TZ: 'UTC', JOBBA_NO_BROWSER: '1' },
 });
 rmSync(dataDir, { recursive: true, force: true });
 rmSync(home, { recursive: true, force: true });

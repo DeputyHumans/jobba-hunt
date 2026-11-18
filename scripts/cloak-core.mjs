@@ -120,6 +120,8 @@ async function loadCloak() {
 
 // `dir` overrides the <CLOAK_PROFILE_DIR>/<platform> profile folder.
 export async function openContext(platform, { headed = false, flags = {}, dir: ownDir = null } = {}) {
+  // Tests set JOBBA_NO_BROWSER so a gate that fails to stop a run can never reach a job board.
+  if (process.env.JOBBA_NO_BROWSER) throw new Error(`browser launch blocked (JOBBA_NO_BROWSER): ${platform}`);
   const { launchPersistentContext } = await loadCloak();
   const dir = ownDir || profileDir(platform, flags);
   if (ownDir) mkdirSync(ownDir, { recursive: true });
