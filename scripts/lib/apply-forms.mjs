@@ -245,6 +245,31 @@ function todayIn(format, today) {
   return String(format || 'MM/DD/YYYY').split('/').map((p) => part[p] ?? p).join('/');
 }
 
+// A question asking whether an AI, a bot or an agent is applying (or filled the form) on someone's
+// behalf is the operator's alone: the runner never answers it, not even from a learned answer, never
+// learns one for it, and hands the role over (aiApplicantHandoff). A false positive costs a hand-off,
+// never a wrong answer. "AI" or "agent" in an ordinary question ("experience building AI agents",
+// "why apply for this AI role") is not one.
+const AI_ACTOR = String.raw`(?:ai|a\.i\.|artificial intelligence|bots?|agents?|automat\w*|llms?|chatgpt|gpt)`;
+const AI_APPLIES = [
+  // the actor does the applying: "an AI agent to apply", "AI applying", "artificial intelligence used to fill"
+  new RegExp(String.raw`\b${AI_ACTOR}\b(?:\s+[\w'’-]+){0,2}?\s+(?:to\s+)?(?:apply|applying|submit\w*|complet\w*|fill\w*)\b`, 'i'),
+  // the application is done by the actor: "submitted by a bot", "completed with AI"
+  new RegExp(String.raw`\b(?:appl\w*|submit\w*|complet\w*|fill\w*)\b(?:\s+[\w'’-]+){0,3}?\s+(?:by|with|using|via|through)\s+(?:an?\s+|the\s+)?${AI_ACTOR}\b`, 'i'),
+];
+const AI_ON_BEHALF = new RegExp(String.raw`\b${AI_ACTOR}\b[\s\S]*\bbehalf\b|\bbehalf\b[\s\S]*\b${AI_ACTOR}\b`, 'i');
+export const isAiApplicantQuestion = (label) => {
+  const s = String(label || '');
+  return AI_APPLIES.some((re) => re.test(s)) || AI_ON_BEHALF.test(s);
+};
+// A run stopped on an AI-applicant question is a hand-off (exit 5, outcome manual), not an open
+// question: the operator submits that role by hand.
+export function aiApplicantHandoff([code, result]) {
+  const q = Array.isArray(result?.detail) ? result.detail.filter((m) => m?.reason === 'ai-applicant-question') : [];
+  if (result?.outcome !== 'needs_answers' || !q.length) return [code, result];
+  return [5, { ...result, outcome: 'manual', reason: 'ai-applicant-question', detail: `the form asks whether an AI applies (${q.map((m) => `"${m.label}"`).join(', ')}): the operator submits this role by hand`, questions: result.detail }];
+}
+
 export function planFill(fields, bank, ctx) {
   const actions = [];
   const missing = [];
@@ -291,6 +316,7 @@ export function planFill(fields, bank, ctx) {
     // The free-text box a list's Other entry brought, which the pick typed the answer into: its own
     // label ("Other") is no question.
     if (f.other_for && nonEmpty(f.value)) continue;
+    if (isAiApplicantQuestion(f.label)) { miss(f, 'ai-applicant-question'); continue; }
     const got = answerFor(f, bank, ctx);
     const { source, blank } = got;
     // A form with its own country-code field takes the national number as digits ("(555) ..."
@@ -426,6 +452,7 @@ export function planFill(fields, bank, ctx) {
     const planned = (b, action) => actions.some((a) => a.key === b.key && a.action === action);
     if (!boxes.some((b) => b.required) || boxes.some((b) => planned(b, 'check') || (nonEmpty(b.value) && !planned(b, 'uncheck')))) continue;
     const q = { ...boxes[0], id: '', kind: 'radio', label: boxes[0].group_label || boxes[0].group, options: boxes.map((b) => b.label) };
+    if (isAiApplicantQuestion(q.label)) { missing.push({ key: q.key, label: q.label, kind: 'checkbox', options: q.options, reason: 'ai-applicant-question' }); continue; }
     const got = answerFor(q, bank, ctx);
     const own = ['job', 'learned'].includes(got.source) && got.answer;
     const box = own ? boxes.find((b) => b.label === pickChoice(q.options, got.answer, country)) : null;
@@ -790,6 +817,7 @@ export function validateAnswers(bank) {
 }
 
 export function learnAnswer(bank, label, answer, source) {
+  if (isAiApplicantQuestion(label)) throw new Error('an AI-applicant question is never learned: the operator submits that role by hand');
   const n = normLabel(label);
   bank.learned = (bank.learned || []).filter((l) => l.label !== n);
   bank.learned.push({ label: n, answer: String(answer), source });

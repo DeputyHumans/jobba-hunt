@@ -49,7 +49,7 @@ import { applyTypeOf, alreadyAppliedIn } from './lib/extract.mjs';
 import { collectDiceView, settle as diceSettle, signedInAtHome, DICE_SEL, DICE_PROFILE, DICE_PLATFORM } from './dice-jobs.mjs';
 import { diceApplyTypeOf, diceAlreadyApplied, classifyDicePage, isDiceId, diceGuid, diceJobUrl } from './lib/dice-extract.mjs';
 import { invalidReport, markRoot, collectForm, passInterstitial, stuckReport, diceSlot, workdayPage, safeHtml, workdayFields, walmartPage, WALMART_SEL, icimsPage, ICIMS_SEL, phenomPage } from './lib/apply-dom.mjs';
-import { normLabel, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, optInBoxesChecked, challengeIn, REDIRECT_HOST, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, ashbyFromJid, eeoPick, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, afterSubmit, afterStuck, settledAfterChallenge, typeaheadIndex, stuckReason, comboOutcome, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayPlan, workdayAdds, workdayHistory, variantForCv, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan, COOKIE_DECLINE, phenomStage, phenomNav, alertDetail, entriesLost, uploadName } from './lib/apply-forms.mjs';
+import { normLabel, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, optInBoxesChecked, challengeIn, REDIRECT_HOST, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, ashbyFromJid, eeoPick, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, afterSubmit, afterStuck, settledAfterChallenge, typeaheadIndex, stuckReason, comboOutcome, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayPlan, workdayAdds, workdayHistory, variantForCv, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan, COOKIE_DECLINE, phenomStage, phenomNav, alertDetail, entriesLost, uploadName, aiApplicantHandoff } from './lib/apply-forms.mjs';
 import { checkLabelRadio, typeText, pickWidget, setBox, pressToggle, clickSubmit, tickGroupOption, tickGroupOptions, enterCode, selectResumeRow, menuOptions, wdListOptions, wdPickList, wdPickPrompt, wdTypeDate, wdAddEntry, wdCheckOption, framed, icimsPick, icimsPickOther, rsPick, rsPickOther, rsShown, rsRow, awaitReload, RELOAD_TAG, watchDialogs, phenomAwaitResume, selectDirect } from './lib/apply-click.mjs';
 import { CV_SRC, COLLATERAL_DIR, DATA_DIR, display, resolveArgPath } from './lib/paths.mjs';
 import { configFile, loadConfig, loadOwnConfig, readJsonFile, requireWorkspace, saveConfig, writeJsonAtomic } from './lib/config.mjs';
@@ -98,7 +98,7 @@ if (positional[0] === 'learn') {
   if (!existsSync(ANSWERS) || typeof flags.label !== 'string' || typeof flags.answer !== 'string') { out({ success: false, error: `need the answer bank (${display(ANSWERS)}) and --label "<question>" --answer "<the operator's answer>"` }); process.exit(2); }
   // The workspace file itself (no template merge), so only the learned answer changes.
   const bank = readJsonFile(ANSWERS);
-  learnAnswer(bank, flags.label, flags.answer, `user ${localDate()}`);
+  try { learnAnswer(bank, flags.label, flags.answer, `user ${localDate()}`); } catch (err) { out({ success: false, error: err.message }); process.exit(2); }
   writeJsonAtomic(ANSWERS, bank);
   logAction({ actor: 'user', action: 'answers.learned', source: 'apply', detail: { label: short(normLabel(flags.label), 120), learned: bank.learned.length } });
   out({ success: true, learned: bank.learned.length });
@@ -2360,6 +2360,8 @@ try {
 } finally {
   await context.close().catch(() => {});
 }
+// A form that asks whether an AI applies is the operator's to submit (planFill never answers it).
+[code, result] = aiApplicantHandoff([code, result]);
 finish(code, result);
 
 async function runDice() {

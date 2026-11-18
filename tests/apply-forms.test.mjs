@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normLabel, classifyLabel, pickOption, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, challengeIn, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, eeoPick, eeoProbe, eeoAnswer, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, pickChoice, eeoCategory, afterSubmit, typeaheadIndex, stuckReason, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayHistory, variantForCv, previousWorkerAnswer, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan, otherOption, afterStuck, settledAfterChallenge, listValues, listChoice, listSearches, COOKIE_DECLINE } from '../scripts/lib/apply-forms.mjs';
+  normLabel, classifyLabel, pickOption, planFill, detectAts, confirmationIn, blockerIn, validateAnswers, learnAnswer, resumeChoice, followBoxesChecked, typeaheadFallback, maskPrivate, siteChannel, paylocityApplyUrl, NEXT_STEP, challengeIn, entryAnswers, entriesToRemove, entriesNotKept, sameChoice, pollText, choiceAliases, greenhouseFromGhJid, eeoPick, eeoProbe, eeoAnswer, codeRequestIn, securityCodeIn, paycorStandaloneUrl, rescanActions, formSettled, notUploaded, pickChoice, eeoCategory, afterSubmit, typeaheadIndex, stuckReason, submitLabel, applicationForm, ripplingApplyUrl, resumeParseState, recordedAtsUrl, workdayStage, workdayError, workdayStartChoice, workdayVerifyLink, workdayHistory, variantForCv, previousWorkerAnswer, walmartStage, walmartNav, walmartOtpCode, walmartCodeMail, codeMismatch, buttonNameRe, icimsFrameIndex, icimsStage, icimsNav, icimsCodeMail, icimsPlan, otherOption, afterStuck, settledAfterChallenge, listValues, listChoice, listSearches, COOKIE_DECLINE, isAiApplicantQuestion, aiApplicantHandoff } from '../scripts/lib/apply-forms.mjs';
 
 // The synthetic persona (tests/fixtures/workspace/profile/answers.json), with the facts these tests
 // depend on spelled out here.
@@ -1644,3 +1644,35 @@ test('COOKIE_DECLINE: a decline button, with an icon before its words and "cooki
   for (const t of ['Reject all cookies', '× Reject all cookies', 'Decline', 'Reject all', 'Decline all', 'Only necessary', 'Use necessary cookies only', 'Reject']) assert.match(t, COOKIE_DECLINE, t);
   for (const t of ['Accept all cookies', '✓ Accept all cookies', 'Accept', 'Accept all', 'Cookie settings', 'You can change the optional cookie settings here if you wish.']) assert.doesNotMatch(t, COOKIE_DECLINE, t);
 });
+
+test('AI-applicant question: detected in its common wordings, never answered from the bank, never learned', () => {
+  for (const q of ['Are you using an AI agent to apply for this job?', 'Is this application being submitted by a bot or automated tool?', 'Did you use AI to complete this application?',
+    'Is an AI applying on your behalf?', 'Was artificial intelligence used to fill out this application?', 'Are you a human applicant or an automated agent submitting on behalf of a candidate?']) {
+    assert.equal(isAiApplicantQuestion(q), true, q);
+  }
+  for (const q of ['Do you have experience building AI agents?', 'Years of experience with automated testing', 'How did you hear about us?', 'Describe an AI product you shipped', 'Are you willing to relocate?']) {
+    assert.equal(isAiApplicantQuestion(q), false, q);
+  }
+  const label = 'Are you using an AI agent to apply for this job?';
+  const learned = { ...bank, learned: [{ label: normLabel(label), answer: 'No', source: 'test' }] };
+  const p = planFill([field({ key: 'ai', kind: 'radio', label, options: ['Yes', 'No'], required: true })], learned, ctx);
+  assert.deepEqual(p.actions.filter((a) => a.key === 'ai'), [], 'nothing is filled for it, even with a learned answer');
+  assert.deepEqual(p.missing.map((m) => [m.key, m.reason]), [['ai', 'ai-applicant-question']]);
+  assert.throws(() => learnAnswer({ learned: [] }, label, 'No', 'user'), /AI-applicant/);
+  const group = (k, l) => field({ key: k, kind: 'checkbox', label: l, group: 'ai_use', group_label: 'Was this application completed with AI?', required: true });
+  const g = planFill([group('g1', 'Yes'), group('g2', 'No')], bank, ctx);
+  assert.ok(g.missing.some((m) => m.reason === 'ai-applicant-question'), 'a checkbox group asking it is handed over too');
+  assert.deepEqual(g.actions.filter((a) => a.action === 'check'), []);
+});
+
+test('AI-applicant question: a run that met one becomes a hand-off for the operator (exit 5), not a question', () => {
+  const missing = [{ key: 'ai', label: 'Is an AI applying on your behalf?', kind: 'radio', options: ['Yes', 'No'], reason: 'ai-applicant-question' }];
+  const [code, r] = aiApplicantHandoff([4, { outcome: 'needs_answers', channel: 'greenhouse', ats_url: 'https://boards.greenhouse.io/x', detail: missing, filled: [] }]);
+  assert.equal(code, 5);
+  assert.equal(r.outcome, 'manual');
+  assert.equal(r.reason, 'ai-applicant-question');
+  assert.equal(r.ats_url, 'https://boards.greenhouse.io/x');
+  const other = [4, { outcome: 'needs_answers', detail: [{ key: 'x', reason: 'no-answer' }] }];
+  assert.deepEqual(aiApplicantHandoff(other), other);
+});
+
