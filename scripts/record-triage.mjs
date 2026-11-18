@@ -2,7 +2,8 @@
 // Triage state CLI used by the /hunt-triage skill and /hunt-loop. No browser, no network.
 //
 //   node scripts/record-triage.mjs pending                 # writes data/triage/pending-<date>.json, prints path + count
-//   node scripts/record-triage.mjs record --file <results.json>   # array of scored results (see fit-profile.md)
+//   node scripts/record-triage.mjs record --file <results.json>   # array of scored results (see fit-profile.md);
+//       valid rows are recorded, and any refused row makes it exit 1 with the errors listed
 //   node scripts/record-triage.mjs decide --id <jobId> --decision pursue|watch|skip [--note "..."]
 //   node scripts/record-triage.mjs list [--tier A|B|C|reject] [--status triaged|shortlisted|watching|skipped]
 //   node scripts/record-triage.mjs approve --id <jobId> --cv <pdf> [--cover <intro note .txt>] [--cover-pdf <cover letter .pdf, build-cover.mjs>] [--note "..."]
@@ -10,8 +11,8 @@
 //   node scripts/record-triage.mjs approve-docs --id <jobId> --note "<the user's words>"
 //       the user approved the tailored CV and letter (review doc comment, or "Apply")
 //   node scripts/record-triage.mjs applied --id <jobId> [--note "..."]      # the user submitted by hand
-//   node scripts/record-triage.mjs hold --id <jobId> --note "..."   # an approved or pursued role leaves the runner (watch)
-//   node scripts/record-triage.mjs withdraw --id <jobId> --note "..."   # an approved, unsent application leaves for good (skip)
+//   node scripts/record-triage.mjs hold --id <jobId> --note "..."   # an approved or pursued, unsent role leaves the runner (watch)
+//   node scripts/record-triage.mjs withdraw --id <jobId> --note "..."   # any unsent role leaves for good (skip)
 //   node scripts/record-triage.mjs confirm --id <jobId> --evidence <png> [--note "..."]
 //   node scripts/record-triage.mjs not-sent --id <jobId> --evidence <png> --note "<the user's words>"
 //   node scripts/record-triage.mjs auto --id <jobId> [--cover-pdf <pdf>] [--dry-run]
@@ -65,6 +66,8 @@ if (cmd === 'pending') {
   saveStateAtomic(STATE_PATH, state);
   for (const id of r.applied) { const t = state.jobs[id].triage; log('triage.recorded', id, `tier ${t.tier}, score ${t.score}`); }
   out({ success: r.errors.length === 0, ...r });
+  // The valid rows are recorded; any refused row makes the run exit 1 so the caller fixes it.
+  if (r.errors.length) process.exit(1);
 } else if (cmd === 'decide') {
   if (!flags.id || !flags.decision) fail('Pass --id <jobId> --decision pursue|watch|skip');
   try {
