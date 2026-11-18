@@ -23,6 +23,10 @@ test('companyLeak looks only at the text the draft writes itself', () => {
   assert.equal(companyLeak(draft, 'Vandelay Industries'), false);
   assert.equal(companyLeak({ headline: 'Ready for Vandelay Industries' }, 'Vandelay Industries, Inc.'), true);
   assert.equal(companyLeak({ headline: 'x' }, ''), false);
+  for (const leak of [{ title: 'CV for Vandelay Industries' }, { description: 'For Vandelay Industries' }, { practice: { role: 'studio', heading: 'Vandelay Industries work' } }, { practice: { role: 'studio', title: 'Vandelay Industries lead' } }, { contact: { location: 'Vandelay Industries HQ' } }]) {
+    assert.equal(companyLeak(leak, 'Vandelay Industries'), true, JSON.stringify(leak));
+  }
+  assert.equal(companyLeak({ practice: { role: 'vandelay industries', items: ['vandelay industries x'] } }, 'Vandelay Industries'), false, 'role and bullet keys point at master.json, like experience');
 });
 
 test('shouldContinue stops at max rounds or when a round did not improve', () => {

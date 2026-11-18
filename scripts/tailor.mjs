@@ -65,11 +65,14 @@ export function suggestTerms(jd, vocabulary) {
   return { hits, asks };
 }
 
-// The CV must never name the employer it is sent to in the text the draft writes itself (slug, share,
-// title, headline, summary, highlights, skills). Experience entries point at master.json roles, so an
-// operator who once worked for that employer keeps the role in their history.
+// The CV must never name the employer it is sent to in the text the draft writes itself: slug, share,
+// title (the page title), description (the page's meta description), target_title, headline, summary,
+// highlights, skills, the practice section's heading and title, and the contact location. Experience
+// and practice entries point at master.json roles and bullets by key, so an operator who once worked
+// for that employer keeps the role in their history.
 export function companyLeak(cvJson, company) {
-  const own = ['slug', 'share', 'target_title', 'headline', 'summary', 'highlights', 'skills'].map((k) => cvJson?.[k]);
+  const own = ['slug', 'share', 'title', 'description', 'target_title', 'headline', 'summary', 'highlights', 'skills'].map((k) => cvJson?.[k])
+    .concat(cvJson?.practice?.heading, cvJson?.practice?.title, cvJson?.contact?.location);
   const c = String(company || '').trim();
   if (c.length < 3) return false;
   const core = c.replace(/,?\s+(inc|llc|ltd|corp|corporation|co|gmbh|plc)\.?$/i, '').trim();
