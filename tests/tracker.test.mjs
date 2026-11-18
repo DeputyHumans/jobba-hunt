@@ -520,6 +520,15 @@ test('mail: a draft thread becomes a Reply card', () => {
   assert.ok(!html.includes('dana@acme.example'));
 });
 
+test('mail: a probable match links the role as "Probably", never as a sure one', () => {
+  const sure = renderTrackerHtml(withMail([mailThread()]), assets);
+  assert.ok(sure.includes('<a href="#job-9000000001">The role</a>'));
+  const html = renderTrackerHtml(withMail([mailThread({ match: 'probable' })]), assets);
+  const row = html.slice(html.indexOf('<tr id="mail-th1">'), html.indexOf('</tr>', html.indexOf('<tr id="mail-th1">')));
+  assert.match(row, /<a href="#job-9000000001">Probably [^<]*<\/a>/);
+  assert.ok(!row.includes('>The role</a>'));
+});
+
 test('mail: a platform-message card clears after config/tracker.json read_card_days business days', () => {
   const pm = mailThread({ kind: 'platform-message', emails: [{ at: '2026-10-20T15:00:00Z', from_name: 'LinkedIn', summary: 'New message' }], draft: null });
   const at = (days) => build({ state, opportunities, usage, runs, claims, variants, overrides, mail: [pm], now: NOW, readCardDays: days });

@@ -115,6 +115,18 @@ test('record: two firms on one role get two thread files', () => {
   assert.deepEqual(files, ['pipeline/mail/20261102-initech-principal-ai-transformation-architect.md', 'pipeline/mail/20261102-initech-principal-ai-transformation-architect--hooli-staffing.md']);
 });
 
+test('record: match is stored on the thread; a probable match says so in the stage log; an unknown value is refused', () => {
+  const OPP2 = OPP.replace(`job_id: "${DICE_ID}"`, 'job_id: "9000000042"');
+  const opp = [{ file: '20261102-initech-principal-ai-transformation-architect.md', md: OPP2 }];
+  const r = { thread_id: 'tp', at: '2026-11-02T20:00:00.000Z', kind: 'reply', firm: 'Initech Talent', sender_name: 'X', reply_to: null, subject: 'Principal AI Transformation Architect', summary: 's', job_id: '9000000042', match: 'probable', draft: 'Hi.', audit: 'ok', claims: [], cv: null, new_cv: false, action: 'a' };
+  const out = recordResults({ results: [r], opportunities: opp, claims: claimIds, now: NOW2 });
+  const thread = out.writes.find((w) => w.path.startsWith('pipeline/mail/2'));
+  assert.equal(parseThread(thread.content).match, 'probable');
+  const stage = out.writes.find((w) => w.path.startsWith('pipeline/opportunities/'));
+  assert.match(stage.content, /probable match/);
+  assert.ok(validateMailResult({ ...r, match: 'maybe' }, claimIds).some((e) => /match/.test(e)));
+});
+
 test('record: a Dice contact row joins the table, above any closing note', () => {
   const contacts = '# Contacts\n\n| Date | Firm | Role | Structure | Location | Gates | Response | Source |\n|---|---|---|---|---|---|---|---|\n| 2026-10-29 | Initech Staffing | None | n/a | n/a | n/a | None | inferred Dice |\n\n**Pass count to date:** 0 of 1.\n';
   const r = { thread_id: 'tz', at: '2026-11-02T20:00:00.000Z', kind: 'blast', firm: 'Staffco', sender_name: 'S', reply_to: null, subject: 'Role', summary: 's', job_id: null, match: 'none', draft: null, audit: null, claims: [], cv: null, new_cv: false, action: '', dice_contact: { role: 'AI Engineer', structure: 'W2', location: 'Springfield', gates: 'G3 unclear' } };

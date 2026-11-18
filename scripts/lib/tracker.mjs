@@ -370,6 +370,8 @@ export function buildTracker({
     const cv = t.cv ? shareOf(t.cv) : null;
     needs.push({ id: `mail-${t.thread_id}`, mail: true, kind, title: scrub(t.subject), company: scrub(t.firm), url: null, tier: null, score: null,
       from: scrub(t.sender_name), summary: scrub(t.emails.at(-1)?.summary), job: t.job_id && onPage.has(String(t.job_id)) ? String(t.job_id) : null,
+      // A match the session was unsure of (match: probable) is shown as such, never as the role.
+      probable: t.match === 'probable', job_title: t.job_id ? scrub(state.jobs?.[t.job_id]?.title || '') : '',
       cv, cv_url: cv ? cvUrl[cv] || null : null, new_cv: !!t.new_cv, action: scrub(t.action), draft: t.draft ? scrub(t.draft) : null });
   }
   const ORDER = { security: -1, unverified: 0, needs_answers: 1, manual: 2, reply: 2.5, close: 2.6, read: 2.7, docs_review: 2.8, decision: 3, queued: 4 };
@@ -887,7 +889,7 @@ function applicationsHtml(m) {
 }
 
 function mailRow(n) {
-  const what = `${esc(n.from)}: ${esc(n.summary)}${n.job ? ` <a href="#job-${esc(n.job)}">The role</a>.` : ''}${n.cv ? ` CV: ${cvLink(n.cv, n.cv_url)}${n.new_cv ? ' (new CV)' : ''}.` : ''}`
+  const what = `${esc(n.from)}: ${esc(n.summary)}${n.job ? ` <a href="#job-${esc(n.job)}">${n.probable ? `Probably ${esc(n.job_title || 'this role')}` : 'The role'}</a>.` : ''}${n.cv ? ` CV: ${cvLink(n.cv, n.cv_url)}${n.new_cv ? ' (new CV)' : ''}.` : ''}`
     + `${n.action ? ` <strong>${esc(n.action)}</strong>` : ''}${n.draft ? `<details class="draft"><summary>Draft reply</summary><pre>${esc(n.draft)}</pre></details>` : ''}`;
   return `<tr id="${esc(n.id)}"><th scope="row">${link(n)}</th>${cell('Needed', `<span class="badge need">${esc(NEED_LABEL[n.kind])}</span>`)}${cell('Fit', tier(n))}${cell('What', what)}</tr>`;
 }

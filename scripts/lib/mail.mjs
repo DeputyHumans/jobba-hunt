@@ -60,6 +60,7 @@ export function validateMailResult(r, claimIds) {
     if (text.includes('—')) errors.push(`${id}: draft has an em dash`);
   }
   for (const c of r.claims || []) if (!claimIds.has(c)) errors.push(`${id}: unknown claim ${c}`);
+  if (r.match != null && !MATCHES.includes(r.match)) errors.push(`${id}: match must be ${MATCHES.join(', ')}`);
   return errors;
 }
 
@@ -88,7 +89,10 @@ const oneLine = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const slug = (s, words = 6) => oneLine(s).toLowerCase().replace(/^(re|fwd?|fw):\s*/g, '').replace(/[^a-z0-9]+/g, '-').split('-').filter(Boolean).slice(0, words).join('-');
 const FENCE = '````';
 const OPEN_KINDS = new Set(['reply', 'interview', 'outreach-fit', 'outreach-nofit', 'rejection', 'security', 'platform-message']);
-const FIELDS = ['mail_status', 'thread_id', 'kind', 'firm', 'sender_name', 'reply_to', 'subject', 'job_id', 'opportunity', 'cv', 'new_cv', 'draft_at', 'notified', 'claims'];
+const FIELDS = ['mail_status', 'thread_id', 'kind', 'firm', 'sender_name', 'reply_to', 'subject', 'job_id', 'match', 'opportunity', 'cv', 'new_cv', 'draft_at', 'notified', 'claims'];
+// How sure the session is that the email belongs to job_id: sure, probable (shown as "Probably
+// <job>" and noted in the stage log, never silently merged) or none.
+const MATCHES = ['sure', 'probable', 'none'];
 
 export function threadFileName({ opportunityFile, date, firm, topic }) {
   return opportunityFile || `${String(date).replaceAll('-', '')}-${slug(firm, 3)}-${slug(topic)}.md`;
@@ -101,7 +105,7 @@ export function renderThread(t, { now = new Date(), tz = profileTz(), owner = nu
   const val = (k) => (k === 'mail_status' ? t.status : k === 'kind' ? t.kind : JSON.stringify(t[k] ?? null));
   const first = t.emails[0]?.at || now.toISOString();
   const fm = ['---', `title: ${JSON.stringify(`${t.firm}: ${oneLine(t.subject)}`)}`, `created: ${dayOf(first)}`, `updated: ${dayOf(now.toISOString())}`, `owner: ${ownerOf(owner)}`, 'status: Draft',
-    `tags: [job-hunt, mail, ${t.kind}]`, 'related_docs:', '  - README.md', ...(t.opportunity ? [`  - ../opportunities/${t.opportunity}`] : []), ...FIELDS.map((k) => `${k}: ${val(k)}`), '---'];
+    `tags: [job-hunt, mail, ${t.kind}]`, 'related_docs:', '  - README.md', ...(t.opportunity ? [`  - ../opportunities/${t.opportunity}`] : []), ...FIELDS.filter((k) => k !== 'match' || t.match != null).map((k) => `${k}: ${val(k)}`), '---'];
   const emails = t.emails.map((e) => `- \`${e.at}\` ${oneLine(e.from_name)}: ${oneLine(e.summary)}`).join('\n');
   const draft = t.draft ? `${FENCE}text\n${t.draft}\n${FENCE}${t.audit ? `\nAudit: ${oneLine(t.audit)}` : ''}` : `None.${t.audit ? `\nAudit: ${oneLine(t.audit)}` : ''}`;
   const sent = t.sent.length ? t.sent.map((s) => `### \`${s.at}\`\n${FENCE}text\n${s.text}\n${FENCE}`).join('\n\n') : 'None yet.';
@@ -218,7 +222,7 @@ export function recordResults({ results = [], sent = [], threads = [], opportuni
       if (taken(file)) { const base = file; file = base.replace(/\.md$/, `-${String(r.thread_id).slice(0, 6)}.md`); if (taken(file)) file = base.replace(/\.md$/, `-${r.thread_id}.md`); }
       t = { thread_id: r.thread_id, emails: [], sent: [], notified: false, draft: null, draft_at: null, file };
     }
-    Object.assign(t, { kind: r.kind, firm: r.firm, sender_name: r.sender_name, reply_to: r.reply_to ?? null, subject: r.subject, job_id: r.job_id ?? t.job_id ?? null, opportunity: oppFile,
+    Object.assign(t, { kind: r.kind, firm: r.firm, sender_name: r.sender_name, reply_to: r.reply_to ?? null, subject: r.subject, job_id: r.job_id ?? t.job_id ?? null, match: r.match ?? t.match ?? null, opportunity: oppFile,
       cv: r.cv ?? null, new_cv: !!r.new_cv, action: r.action || '', claims: r.claims || [], audit: r.audit ?? null });
     // A re-record of the same email (a changed draft) adds no second row.
     const repeat = t.emails.some((e) => e.at === (r.at || now.toISOString()));
@@ -235,7 +239,7 @@ export function recordResults({ results = [], sent = [], threads = [], opportuni
       Object.assign(t, { opportunity: file, job_id: `email-${r.thread_id}` });
       touchedOpps.add(file);
     } else if (!repeat && t.opportunity && opps.has(t.opportunity)) {
-      opps.set(t.opportunity, appendStageLog(addRelatedDoc(opps.get(t.opportunity), `../mail/${t.file}`), `| ${day} | mail | ${r.kind}: ${oneLine(r.summary)} (thread \`pipeline/mail/${t.file}\`) |`));
+      opps.set(t.opportunity, appendStageLog(addRelatedDoc(opps.get(t.opportunity), `../mail/${t.file}`), `| ${day} | mail | ${r.kind}${r.match === 'probable' ? ' (probable match)' : ''}: ${oneLine(r.summary)} (thread \`pipeline/mail/${t.file}\`) |`));
       touchedOpps.add(t.opportunity);
     }
     if (r.dice_contact && contacts) {
