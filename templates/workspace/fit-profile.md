@@ -85,7 +85,7 @@ Same formula, these dimensions:
 
 **Shown, never scored.** Record `comp_seen` and `hours_seen` verbatim when the posting states them. Pricing belongs to the proposal stage (`pipeline/proposals/<client-slug>/`).
 
-The floors in `preferences.money` are enforced by the scripts, never by the score or a gate: the prefilter drops a role under a floor before any view, and `npm run triage -- record` forces tier `reject` for one that reaches triage. They apply to individual-contributor roles only: the prefilter judges that by the title (no executive word), triage by `lane: "hands-on"`:
+The floors in `preferences.money` are enforced by the scripts, never by the score or a gate: the prefilter drops a role under a floor as soon as its pay is known (on the Dice card, or on the LinkedIn job page after the view), and `npm run triage -- record` forces tier `reject` for one that reaches triage. They apply to individual-contributor roles only: the prefilter judges that by the title (no executive word), triage by `lane: "hands-on"`:
 
 | Floor | Rule |
 |---|---|

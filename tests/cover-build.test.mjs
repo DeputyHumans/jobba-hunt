@@ -1,5 +1,5 @@
 // The four example letters (tests/fixtures/letters, the examples in docs/tailoring.md) build through
-// `npm run cover` against the synthetic workspace: every check, one page, fonts, the never-claim lint.
+// scripts/build-cover.mjs (npm run cover) against the synthetic workspace: every check, one page, fonts, the never-claim lint.
 // Skipped when the project's Chromium is not downloaded (npm run setup).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

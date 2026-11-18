@@ -102,7 +102,7 @@ export function validateCover(letter, claimIds, { minWords = 100, maxWords = 260
       continue;
     }
     if (!p.text) e.push(`paragraph ${i + 1}: no text`);
-    if (!Array.isArray(p.claims)) e.push(`paragraph ${i + 1}: claims must be an array (empty only for the opening line)`);
+    if (!Array.isArray(p.claims)) e.push(`paragraph ${i + 1}: claims must be an array (empty only for a line that states no fact: an opening, a ramp-up gap, an invitation)`);
     for (const c of p.claims || []) if (!claimIds.has(c)) e.push(`paragraph ${i + 1}: unknown claim ${c}`);
   }
   const all = coverText(letter || { paragraphs: [] });
