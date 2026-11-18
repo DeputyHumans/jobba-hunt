@@ -10,7 +10,7 @@ Each skill is a procedure in `.agents/skills/<name>/SKILL.md`: when it applies, 
 | `.claude/skills/<name>` | A committed relative symlink into `.agents/skills/<name>`, so Claude Code finds every skill |
 | `npm run skills:link` | Rebuilds the symlinks: keeps correct ones, replaces wrong ones, removes links to skills that are gone, never touches a real directory. `--check` reports only (exit 1 when anything is off). `npm run setup` runs it; `npm run doctor` checks it |
 
-**Other harnesses.** `AGENTS.md` is the harness-neutral entry: it points at `CLAUDE.md` for the rules and maps each skill to its commands. A harness that loads skills from `.agents/skills/` finds them directly. One that loads none reads the SKILL.md for the task and follows it. Three features need Claude Code: the self-scheduling loop (ScheduleWakeup), push notifications, and the Monitor that keeps the comment watch running. Elsewhere, run one loop firing by hand or from the harness's own scheduler, and poll `npm run watch -- --once`.
+**Other harnesses.** `AGENTS.md` is the harness-neutral entry: it holds the rules and maps each skill to its commands. A harness that loads skills from `.agents/skills/` finds them directly. One that loads none reads the SKILL.md for the task and follows it. Three features need Claude Code: the self-scheduling loop (ScheduleWakeup), push notifications, and the Monitor that keeps the comment watch running. Elsewhere, run one loop firing by hand or from the harness's own scheduler, and poll `npm run watch -- --once`.
 
 ## Dependency summary
 

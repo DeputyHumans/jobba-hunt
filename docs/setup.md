@@ -86,7 +86,7 @@ It checks Node, git, the npm dependencies, the Chromium download, the bundled fo
 
 ## 6. Open the agent
 
-Open the repo folder in the agent harness. For Claude Code: `claude` in the repo folder. It loads `CLAUDE.md` and the skills through `.claude/skills/`. Another harness starts from `AGENTS.md` (`docs/skills.md`).
+Open the repo folder in the agent harness. For Claude Code: `claude` in the repo folder. It loads `CLAUDE.md`, a one-line import of `AGENTS.md`, and the skills through `.claude/skills/`. Another harness starts from `AGENTS.md`.
 
 **Checkpoint:** the harness lists `hunt-onboard` among its skills (Claude Code: type `/hunt-` and see the list).
 

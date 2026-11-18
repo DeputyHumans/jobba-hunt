@@ -5,7 +5,7 @@ description: "Use when a recruiter sends the operator a curated list of roles an
 
 # /hunt-recruiter <list>
 
-Run from the repo root. Read `CLAUDE.md` first, then the "Targeted CVs" section of `workspace/collateral/cv-map.md`. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set). In commands, `pipeline/recruiter/<list>` resolves against the workspace.
+Run from the repo root. Read `AGENTS.md` first, then the "Targeted CVs" section of `workspace/collateral/cv-map.md`. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set). In commands, `pipeline/recruiter/<list>` resolves against the workspace.
 
 ## The list folder
 `workspace/pipeline/recruiter/<YYYYMMDD-list>/`, one per list. `<list>` is the date plus a neutral topic (`20261110-platform-leads`), never the recruiter's or the firm's name.

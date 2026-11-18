@@ -5,7 +5,7 @@ description: "Use whenever a LinkedIn or Dice query set must change or be verifi
 
 # /hunt-probe <linkedin | dice> <topic>
 
-Run from the repo root. Read `CLAUDE.md` first, then `docs/query-probe-method.md` (the method and the default rules) and the query syntax table in `docs/platforms.md`. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set); `config/` and `data/` in a command resolve there too.
+Run from the repo root. Read `AGENTS.md` first, then `docs/query-probe-method.md` (the method and the default rules) and the query syntax table in `docs/platforms.md`. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set); `config/` and `data/` in a command resolve there too.
 
 | Exit (`npm run probe`) | Meaning | Action |
 |---|---|---|

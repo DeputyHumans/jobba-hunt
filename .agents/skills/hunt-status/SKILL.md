@@ -5,7 +5,7 @@ description: "Use when the operator asks where the hunt stands, what is due, how
 
 # /hunt-status [stage update] [--write]
 
-Run from the repo root. Read `CLAUDE.md` first. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
+Run from the repo root. Read `AGENTS.md` first. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
 
 ## Board
 1. **Read the frontmatter** of every `workspace/pipeline/opportunities/*.md`: `stage`, `tier`, `score`, `applied_on`, `next_action`, `next_action_due`.

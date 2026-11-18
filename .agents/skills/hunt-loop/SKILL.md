@@ -5,7 +5,7 @@ description: "Use when the operator starts the hunt loop (`/loop /hunt-loop`) or
 
 # /hunt-loop
 
-Run from the repo root. Read `CLAUDE.md` first; its rules apply to every step. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set). Pass every file path to a command exactly as an earlier command printed it.
+Run from the repo root. Read `AGENTS.md` first; its rules apply to every step. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set). Pass every file path to a command exactly as an earlier command printed it.
 
 Read once per session, and again after the operator changes them:
 - `workspace/profile/preferences.json`: `schedule` (`tz`, `days`, `tick_start`-`tick_end`, `ask_start`-`ask_end`), `tailoring` (`cv`, `review`).

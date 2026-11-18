@@ -91,7 +91,7 @@ export function nextOpen(ms, hours) {
   return scan(ms, (t) => isOpen(t, hours), 8);
 }
 
-// Abort -> halt. A checkpoint stops everything for 7 days (CLAUDE.md). Any other abort
+// Abort -> halt of that source. A checkpoint or authwall stops it for 7 days (AGENTS.md). Any other abort
 // means "no retry today": halt until the next reset_hour:00 in tz, when the caps reset.
 // Callers pass schedule().reset_hour.
 export function haltUntil(abort, ms, tz, resetHour = 4) {

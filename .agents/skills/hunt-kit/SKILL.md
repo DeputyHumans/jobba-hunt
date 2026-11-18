@@ -5,7 +5,7 @@ description: "Use when the operator decides to pursue a role (an opportunity fil
 
 # /hunt-kit <opportunity file | job id>
 
-Run from the repo root. Read `CLAUDE.md` first. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
+Run from the repo root. Read `AGENTS.md` first. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
 
 ## Preconditions (stop and say which one fails)
 - The opportunity file exists in `workspace/pipeline/opportunities/` at stage `shortlisted`. Given only a job id, create it first, as `/hunt-triage` step 6 does.

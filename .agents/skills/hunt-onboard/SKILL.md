@@ -5,7 +5,7 @@ description: "Use when the operator sets up the hunt for the first time (`/hunt-
 
 # /hunt-onboard [phase]
 
-Run from the repo root. Read `CLAUDE.md` first, then `docs/onboarding.md` (the phase table and the interview topics). The skill runs the conversation and writes the content; `npm run onboard -- <command>` creates, checks and tracks the workspace. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
+Run from the repo root. Read `AGENTS.md` first, then `docs/onboarding.md` (the phase table and the interview topics). The skill runs the conversation and writes the content; `npm run onboard -- <command>` creates, checks and tracks the workspace. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
 
 | Command | Does | Exit |
 |---|---|---|

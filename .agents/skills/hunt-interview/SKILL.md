@@ -5,7 +5,7 @@ description: "Use when the operator has a screening call or interview booked (\"
 
 # /hunt-interview brief|debrief <opportunity file | job id>
 
-Run from the repo root. Read `CLAUDE.md` first. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
+Run from the repo root. Read `AGENTS.md` first. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
 
 ## Inputs
 - The opportunity file in `workspace/pipeline/opportunities/` (stage, research, fit matrix, stage log).

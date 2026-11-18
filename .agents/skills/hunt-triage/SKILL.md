@@ -5,7 +5,7 @@ description: "Use after a LinkedIn or Dice tick or sweep, or when the operator a
 
 # /hunt-triage [tick | calibrate]
 
-Run from the repo root. Read `CLAUDE.md` first. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
+Run from the repo root. Read `AGENTS.md` first. Paths starting `workspace/` are in the workspace (`$JOBBA_HOME` when set).
 
 ## Inputs
 - `workspace/fit-profile.md`: gates, lanes, dimensions, weights, the output schema. The only rubric.

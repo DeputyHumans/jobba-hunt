@@ -5,7 +5,7 @@ description: "Use when a job needs its own CV and cover letter: called by /hunt-
 
 # /hunt-tailor <job id> [edit]
 
-Run from the repo root. Read `CLAUDE.md` first. The workflow is `docs/tailoring.md`; the commands are `npm run tailor -- <command> --job <id>` (`scripts/tailor.mjs`). Every command prints one JSON line. Pass each path exactly as a command printed it.
+Run from the repo root. Read `AGENTS.md` first. The workflow is `docs/tailoring.md`; the commands are `npm run tailor -- <command> --job <id>` (`scripts/tailor.mjs`). Every command prints one JSON line. Pass each path exactly as a command printed it.
 
 | Exit (`npm run tailor`) | Meaning |
 |---|---|

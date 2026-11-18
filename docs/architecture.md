@@ -1,6 +1,6 @@
 # Architecture
 
-How the repository is laid out, how every path and config value is resolved, where state lives, and how scripts talk to agents and tests. The rules agents follow are in `CLAUDE.md`; this file is the mechanism.
+How the repository is laid out, how every path and config value is resolved, where state lives, and how scripts talk to agents and tests. The rules agents follow are in `AGENTS.md`; this file is the mechanism.
 
 ## Two roots
 
