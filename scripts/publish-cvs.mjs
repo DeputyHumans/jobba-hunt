@@ -83,7 +83,8 @@ for (const v of variants) {
   const bad = privacyViolations(withoutPhone(html, wantsPhone(v, person().show_phone_on_cv) ? cvPhone() : null));
   if (bad.length) { results.push({ slug: v.slug, status: 'refused-privacy', bad }); worst = Math.max(worst, 1); continue; }
   const title = `${name} CV · ${v.share}`;
-  const r = await publishTracker({ html, file, cfg: { folder_id: cfg.folder_id, ...(cfg.docs[v.slug] || {}) }, st: st[v.slug] || {}, run: bikeshedRun, title });
+  const noFolder = list ? `${display(LIST_CFG)} has no folder_id` : 'config/cv-bikeshed.json has no folder_id (and config/tracker.json has no bikeshed.folder_id)';
+  const r = await publishTracker({ html, file, cfg: { folder_id: cfg.folder_id, ...(cfg.docs[v.slug] || {}) }, st: st[v.slug] || {}, run: bikeshedRun, title, noFolder });
   if (r.cfg.doc_id) cfg.docs[v.slug] = { doc_id: r.cfg.doc_id, url: r.cfg.url || cfg.docs[v.slug]?.url };
   st[v.slug] = r.st;
   results.push({ slug: v.slug, status: r.status, url: cfg.docs[v.slug]?.url, file: display(file), ...(r.message ? { message: r.message } : {}), ...(r.threads ? { open_comments: r.threads.length } : {}) });

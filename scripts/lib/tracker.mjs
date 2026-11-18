@@ -1048,12 +1048,13 @@ ${head(1, H[0])}<div class="metrics">${metrics}</div>${outcomeBarHtml(m)}</secti
 const classify = (r) => (r.code === 127 ? 'error' : /login|token|sign(ed)? in|unauthori[sz]ed|401/i.test(`${r.stderr}`) ? 'auth' : 'refused');
 const jsonOut = (s) => { const t = String(s || ''); const i = t.indexOf('{'); return JSON.parse(i < 0 ? t : t.slice(i)); };
 
-export async function publishTracker({ html, file, cfg, st, run, title }) {
+// noFolder names the setting a caller reads its folder id from, for the refusal message.
+export async function publishTracker({ html, file, cfg, st, run, title, noFolder = 'config/tracker.json has no bikeshed.folder_id' }) {
   const hash = createHash('sha256').update(html).digest('hex');
   if (cfg.doc_id && st.hash === hash) return { status: 'unchanged', cfg, st };
   if (!cfg.doc_id) {
     // Never at the bikeshed root: a new document goes into the user's private folder.
-    if (!cfg.folder_id) return { status: 'no-folder', message: 'config/tracker.json has no bikeshed.folder_id', cfg, st };
+    if (!cfg.folder_id) return { status: 'no-folder', message: noFolder, cfg, st };
     const r = await run(['publish', file, '--title', title, '--folder', cfg.folder_id, '--json']);
     if (r.code !== 0) return { status: classify(r), message: r.stderr.trim(), cfg, st };
     const out = jsonOut(r.stdout);

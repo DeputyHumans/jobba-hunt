@@ -235,6 +235,9 @@ test('publish: never at the bikeshed root; a first publish without a folder is r
   const run = async () => assert.fail('no call expected');
   const r = await publishTracker({ html: '<a>', file: '/f', cfg: {}, st: {}, run, title: 'T' });
   assert.equal(r.status, 'no-folder');
+  assert.match(r.message, /config\/tracker\.json/);
+  const cv = await publishTracker({ html: '<a>', file: '/f', cfg: {}, st: {}, run, title: 'T', noFolder: 'config/cv-bikeshed.json has no folder_id' });
+  assert.equal(cv.message, 'config/cv-bikeshed.json has no folder_id', 'a caller names its own setting');
 });
 
 test('funnel: a role viewed and dropped afterwards (hybrid found on the page) still counts as kept by the card prefilter', () => {
