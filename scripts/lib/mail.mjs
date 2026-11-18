@@ -145,7 +145,7 @@ export function renderIndex(threads, { outbound = [], notes = '', now = new Date
   return ['---', 'title: Hunt Mail Index', `created: ${created || dayOf(now.toISOString())}`, `updated: ${dayOf(now.toISOString())}`, `owner: ${ownerOf(owner)}`, 'status: Draft', 'tags: [job-hunt, mail, index]',
     'related_docs:', '  - ../opportunities', '---', '', '# Hunt Mail',
     '', 'One file per email thread about the hunt, newest first. A thread file has the same name as its opportunity file. Status `draft` means a card is open on the tracker.',
-    '', '| Date | Firm | Role | Kind | Status | File |', '|---|---|---|---|---|---|', ...rows,
+    '', '| Date | Firm | Subject | Kind | Status | File |', '|---|---|---|---|---|---|', ...rows,
     ...(outbound.length ? ['', '## Outbound', '', 'Intro and outreach emails sent unprompted.', '', ...outbound.map((f) => `- [${f}](outbound/${f})`)] : []),
     ...(notes ? ['', notes] : []), ''].join('\n');
 }

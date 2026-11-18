@@ -13,7 +13,7 @@ related_docs:
 
 One file per email thread about the hunt, newest first. A thread file has the same name as its opportunity file. Status `draft` means a card is open on the tracker.
 
-| Date | Firm | Role | Kind | Status | File |
+| Date | Firm | Subject | Kind | Status | File |
 |---|---|---|---|---|---|
 | 2026-11-02 | Staffco | Re: Platform Lead (contract) | reply | draft | [20261030-staffco-platform-lead.md](20261030-staffco-platform-lead.md) |
 | 2026-11-01 | Hooli | Interview: Staff Engineer | interview | sent | [20261101-hooli-staff-engineer.md](20261101-hooli-staff-engineer.md) |
