@@ -56,6 +56,7 @@ import { configFile, loadConfig, loadOwnConfig, readJsonFile, requireWorkspace, 
 import { ANSWERS_PATH, answers, applicationEmail, preferences, schedule, tz } from './lib/profile.mjs';
 import { notify } from './lib/notify.mjs';
 import { logAction } from './lib/actions-log.mjs';
+import { letterNeedsReview } from './lib/cover.mjs';
 import { openVault } from './lib/adapters/vault.mjs';
 import { STATE_PATH, loadState, saveStateAtomic, sourceState, carryRun } from './lib/state.mjs';
 import { applyGate, recordAttempt, sameCompanyRoles } from './lib/triage.mjs';
@@ -174,6 +175,10 @@ if (coverPdf && !existsSync(coverPdf)) refuse(`cover letter PDF not found: ${dis
 // not the intro note.
 const letterTxt = coverPdf ? join(dirname(coverPdf), 'cover-letter.txt') : null;
 const letterText = letterTxt && existsSync(letterTxt) ? readFileSync(letterTxt, 'utf8').trim() : null;
+// A plan (B) or questions (C) never go out unreviewed: the operator approves the tailored set first.
+const letterJson = coverPdf ? join(dirname(coverPdf), 'cover-letter.json') : null;
+const letterSpec = letterJson && existsSync(letterJson) ? readJson(letterJson) : null;
+if (!dryRun && letterNeedsReview(letterSpec) && !job.application?.docs_approved_at) refuse(`letter approach ${letterSpec.approach} needs the operator's review: approve-docs first`);
 // A dated override the user gave in the session (data/state/cap-overrides.json, today only, in the
 // user's time zone; rate-limiter.mjs allowance): the limit becomes that number, and every load past
 // the standing cap is tagged cap_override. Applications per day honour the same override on every

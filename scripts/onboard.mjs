@@ -25,6 +25,7 @@ import {
 import { deepMerge, readJsonFile, writeJsonAtomic } from './lib/config.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { claimStatuses, explainClaims } from './lib/cv.mjs';
+import { LETTER_APPROACHES } from './lib/cover.mjs';
 
 export const PHASES = ['preflight', 'init', 'ingest', 'claims', 'interview', 'answers', 'calibration', 'access', 'cvs', 'searches', 'ready'];
 const ONB = join(PROFILE_DIR, 'onboarding.json');
@@ -80,6 +81,7 @@ export function validateWorkspace(home = HOME) {
     for (const k of ['tick_start', 'tick_end', 'ask_start', 'ask_end']) if (!/^\d{2}:\d{2}$/.test(prefs.schedule?.[k] || '')) p('profile/preferences.json', `schedule.${k} must be HH:MM`);
     if (!['bikeshed', 'auto'].includes(prefs.tailoring?.review)) p('profile/preferences.json', 'tailoring.review must be bikeshed or auto');
     if (!['per-job', 'archetype'].includes(prefs.tailoring?.cv)) p('profile/preferences.json', 'tailoring.cv must be per-job or archetype');
+    if (!['per-job', ...LETTER_APPROACHES].includes(prefs.tailoring?.letter || 'per-job')) p('profile/preferences.json', 'tailoring.letter must be per-job, A, B, C or D');
     if (!['letter', 'a4'].includes(prefs.cv?.paper || 'letter')) p('profile/preferences.json', 'cv.paper must be letter or a4');
     for (const re of prefs.location?.onsite_metros || []) if (!compiles(re)) p('profile/preferences.json', `location.onsite_metros: bad regex ${re}`);
   }

@@ -2,8 +2,10 @@
 // Cover letter builder. Renders <data>/applications/<job_id>/cover-letter.json into a one-page PDF
 // in the CV's typography (paper from preferences.cv.paper, Letter by default), then checks the
 // PDF itself (scripts/lib/pdf.mjs): one page, named embedded fonts with no Type 3, and the
-// never-claim lint on the text layer. The letter's claims must exist in
-// <workspace>/collateral/claim-bank.md, and it must run 100 to 260 words. The person block is
+// never-claim lint on the text layer. The letter's claims must be usable rows of
+// <workspace>/collateral/claim-bank.md, it must run 100 to 260 words, and it must have its
+// approach's structure (scripts/lib/cover.mjs): the approach preferences.tailoring.letter fixes, or
+// under per-job any approach with approach_why. The person block is
 // profile/person.json with master.json's person fields over it, the same block the CV prints.
 //
 // Usage: node scripts/build-cover.mjs --job <job_id>
@@ -16,7 +18,7 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { claimIdsFromBank, claimStatuses, explainClaims, lintText, cvPerson, inlineFonts, paperOf, sheetCss } from './lib/cv.mjs';
-import { validateCover, renderCoverHtml, coverText, coverWords, coverSheetHtml, coverSlug } from './lib/cover.mjs';
+import { validateCover, renderCoverHtml, coverText, coverWords, coverSheetHtml, coverSlug, LETTER_APPROACHES } from './lib/cover.mjs';
 import { pdfInfo, pdfFonts, fontProblems, pdfText, launchChromium } from './lib/pdf.mjs';
 import { CV_SRC, COLLATERAL_DIR, DATA_DIR, brandFile, display } from './lib/paths.mjs';
 import { requireWorkspace } from './lib/config.mjs';
@@ -38,7 +40,9 @@ const person = cvPerson(profilePerson(), readJson(join(CV_SRC, 'master.json')).p
 const rules = readJson(join(CV_SRC, 'never-claim.json'));
 const bankMd = readFileSync(join(COLLATERAL_DIR, 'claim-bank.md'), 'utf8');
 const claimIds = claimIdsFromBank(bankMd);
-const errs = explainClaims(validateCover(letter, claimIds), claimStatuses(bankMd));
+// preferences.tailoring.letter: per-job (the letter names its approach and why) or a fixed A to D.
+const pick = preferences().tailoring?.letter || 'per-job';
+const errs = explainClaims(validateCover(letter, claimIds, { requireWhy: pick === 'per-job', fixed: LETTER_APPROACHES.includes(pick) ? pick : null }), claimStatuses(bankMd));
 const text = coverText(letter, person);
 const srcLint = lintText(text, rules);
 if (errs.length || srcLint.length) fail('letter checks failed', { errors: errs, lint: srcLint });

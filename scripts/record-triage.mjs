@@ -36,6 +36,7 @@ import { logAction } from './lib/actions-log.mjs';
 import { readPause } from './lib/pause.mjs';
 import { pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, approveTailoredRecord, recordAttempt, autoApplyBlockers, markNotSent, sameCompanyRoles, holdApplication, withdrawApplication, pickCv } from './lib/triage.mjs';
 import { loadCompanyOpts } from './lib/company.mjs';
+import { letterNeedsReview } from './lib/cover.mjs';
 
 const { positional, flags } = parseArgs(process.argv.slice(2));
 const cmd = positional[0];
@@ -211,6 +212,9 @@ if (cmd === 'pending') {
   // (scripts/build-cover.mjs). The dry run reports it too, so the loop sees when the letter is the
   // only thing missing.
   const coverPdf = str(flags['cover-pdf']) || (tailoredLetter && existsSync(tailoredLetter) ? storedPath(tailoredLetter) : null);
+  // A plan (B) or questions (C) never go out unreviewed (lib/cover.mjs letterNeedsReview).
+  const letterSpec = (() => { try { return coverPdf ? JSON.parse(readFileSync(join(dirname(resolveArgPath(coverPdf)), 'cover-letter.json'), 'utf8')) : null; } catch { return null; } })();
+  if (letterNeedsReview(letterSpec) && !j.application?.docs_approved_at && !blockers.some((b) => /waiting for review approval/.test(b))) blockers.push(`letter approach ${letterSpec.approach} needs the operator's review (approve-docs)`);
   if (rule?.cover_letter?.[type] === 'generated') {
     if (!coverPdf) blockers.push('needs a generated cover letter (--cover-pdf, scripts/build-cover.mjs)');
     else if (coverPdf && !fileExists(coverPdf)) blockers.push(`cover letter not found: ${coverPdf}`);

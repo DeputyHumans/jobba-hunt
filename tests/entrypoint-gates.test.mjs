@@ -7,6 +7,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { CODE_ROOT } from '../scripts/lib/paths.mjs';
 
 const FUTURE = '2099-01-01T00:00:00.000Z';
@@ -184,4 +185,76 @@ test('a refused tick still names a next_tick_at past the jitter floor', () => {
   const tpl = JSON.parse(readFileSync(join(CODE_ROOT, 'templates', 'workspace', 'config', 'limits.json'), 'utf8'));
   const floor = Date.parse(last) + tpl.linkedin_jobs.ticks_per_day.jitterMin * 60000;
   assert.ok(Date.parse(r.json.next_tick_at) >= floor + 60000, `next_tick_at ${r.json.next_tick_at} is past the floor`);
+});
+
+// ---------- letter approaches: the pick and the review gate ----------
+
+const fixtureLetter = (f) => JSON.parse(readFileSync(join(CODE_ROOT, 'tests', 'fixtures', 'letters', `${f}.json`), 'utf8'));
+const setPrefs = (ws, tailoring) => {
+  const p = join(ws.home, 'profile', 'preferences.json');
+  const prefs = JSON.parse(readFileSync(p, 'utf8'));
+  writeJson(p, { ...prefs, tailoring: { ...(prefs.tailoring || {}), ...tailoring } });
+};
+// A built tailored set for job 9000000201 whose letter is the given fixture.
+function tailoredSet(ws, f, { approved = false } = {}) {
+  const id = '9000000201';
+  const dir = join(ws.data, 'applications', id);
+  const letter = { ...fixtureLetter(f), job_id: id };
+  writeJson(join(dir, 'cover-letter.json'), letter);
+  for (const name of ['cv.pdf', 'cv.html', 'letter.pdf', 'letter.html']) writeFileSync(join(dir, name), 'x');
+  writeFileSync(join(dir, 'cover-letter.txt'), 'x');
+  const terms = 'Kubernetes\nCI/CD\n';
+  writeFileSync(join(dir, 'jd.terms.txt'), terms);
+  writeJson(join(dir, 'tailor.json'), { job_id: id, company: letter.company, title: letter.role, status: 'built', terms_hash: createHash('sha256').update(terms).digest('hex').slice(0, 16), baseline: { pct: 60 }, rounds: [{ slug: 't', pct: 80 }],
+    docs: { slug: 't', cv: { share: 'staff', share_pdf: `$JOBBA_DATA_DIR/applications/${id}/cv.pdf`, html: `$JOBBA_DATA_DIR/applications/${id}/cv.html` }, letter: { pdf: `$JOBBA_DATA_DIR/applications/${id}/letter.pdf`, html: `$JOBBA_DATA_DIR/applications/${id}/letter.html` } } });
+  const job = { job_id: id, title: letter.role, company: letter.company, status: 'shortlisted', detail: { fetched_at: '2026-11-01T10:00:00Z', description_text: 'A real posting.', apply: { type: 'easy' } },
+    triage: { score: 90, tier: 'A', lane: 'leadership', gates: { G1: 'pass', G2: 'pass', G3: 'pass', G4: 'pass' }, archetype: 'platform-lead', decision: 'pursue' },
+    application: { status: 'approved', approved_at: '2026-11-01T10:00:00Z', attempts: [], cv: `$JOBBA_DATA_DIR/applications/${id}/cv.pdf`, cover_pdf: `$JOBBA_DATA_DIR/applications/${id}/letter.pdf`, ...(approved ? { docs_approved_at: '2026-11-01T11:00:00Z' } : {}) } };
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState({ jobs: { [id]: job } }));
+  return id;
+}
+
+test('build-cover: a fixed tailoring.letter refuses another approach; per-job needs approach_why', () => {
+  const ws = workspace();
+  const dir = join(ws.data, 'applications', '9000000102');
+  writeJson(join(dir, 'cover-letter.json'), fixtureLetter('b-first-two-weeks'));
+  setPrefs(ws, { letter: 'A' });
+  const r = cli(ws, 'build-cover.mjs', '--job', '9000000102');
+  assert.equal(r.code, 1);
+  assert.match(r.json.errors.join(' | '), /tailoring.letter is A/);
+  setPrefs(ws, { letter: 'per-job' });
+  const { approach_why, ...noWhy } = fixtureLetter('b-first-two-weeks');
+  writeJson(join(dir, 'cover-letter.json'), noWhy);
+  assert.match(cli(ws, 'build-cover.mjs', '--job', '9000000102').json.errors.join(' | '), /approach_why/);
+});
+
+test('tailor review: a B or C letter goes to review even under tailoring.review auto; A and D keep the standing decision', () => {
+  const ws = workspace();
+  writeJson(join(ws.home, 'config', 'tracker.json'), { publisher: 'local' });
+  setPrefs(ws, { review: 'auto', letter: 'per-job' });
+  const id = tailoredSet(ws, 'b-first-two-weeks');
+  const b = cli(ws, 'tailor.mjs', 'review', '--job', id);
+  assert.equal(b.code, 0, JSON.stringify(b.json));
+  assert.equal(b.json.review, 'session', 'publisher local: shown to the operator, not auto-approved');
+  assert.match(b.json.reason || '', /approach B/);
+  const ws2 = workspace();
+  setPrefs(ws2, { review: 'auto', letter: 'per-job' });
+  const id2 = tailoredSet(ws2, 'd-lean-ps');
+  const d = cli(ws2, 'tailor.mjs', 'review', '--job', id2);
+  assert.deepEqual([d.code, d.json.review, d.json.approved], [0, 'auto', true]);
+});
+
+test('auto and the runner: an unapproved B or C letter blocks; an approved one does not', () => {
+  const ws = workspace();
+  setPrefs(ws, { review: 'auto', letter: 'per-job' });
+  const id = tailoredSet(ws, 'c-three-questions');
+  const r = cli(ws, 'record-triage.mjs', 'auto', '--id', id, '--dry-run');
+  assert.ok(r.json.blockers.some((b) => /letter approach C needs the operator's review/.test(b)), r.json.blockers.join(' | '));
+  const run = cli(ws, 'apply-job.mjs', '--job', id);
+  assert.equal(run.code, 2);
+  assert.match(run.json.reason, /letter approach C needs the operator's review/);
+  const ok = workspace();
+  setPrefs(ok, { review: 'auto', letter: 'per-job' });
+  const id2 = tailoredSet(ok, 'c-three-questions', { approved: true });
+  assert.ok(!cli(ok, 'record-triage.mjs', 'auto', '--id', id2, '--dry-run').json.blockers.some((b) => /letter approach/.test(b)));
 });

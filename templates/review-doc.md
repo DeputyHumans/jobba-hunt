@@ -16,6 +16,7 @@ tags: [review, tailored-cv, cover-letter]
 | Posting | <url> · job id <id> · fetched <detail.fetched_at> |
 | Channel | <Easy Apply / ATS / site> · auto-apply eligible: <yes, waits only on this approval / no, also needs "Apply"> |
 | Coverage | <x>% of the frozen terms after round <n> of `preferences.tailoring.max_rounds` · best archetype baseline `<slug>`: <y>% |
+| Letter approach | <A requirements map / B first two weeks / C three questions / D lean letter plus P.S.> · why: <approach_why> · <B and C always wait for this review> |
 | Honest gaps | <terms the claims cannot cover; never patched in> |
 | CV document | <bikeshed URL> |
 | Letter document | <bikeshed URL> |
@@ -25,7 +26,7 @@ tags: [review, tailored-cv, cover-letter]
 - [ ] Every line is true as written, and rests on a confirmed claim (`npm run tailor -- status --job <id>` and the draft list the claim IDs).
 - [ ] Nothing overstates a claim (claim bank, Do-not-say column).
 - [ ] The CV names no target company. The letter names it only in its header and greeting.
-- [ ] The letter quotes the posting verbatim, and each answer fits its ask.
+- [ ] The letter approach fits the posting. A quotes the posting verbatim and each answer fits its ask; each step of B rests on work done before; C asks questions a practitioner would ask; the P.S. of D rests on a claim.
 - [ ] The ramp-up line names the real gaps, and only those.
 - [ ] The voice reads as the operator's (`profile/voice.md`).
 - [ ] The CV fits `preferences.cv.pages` pages and the letter one page.
@@ -41,5 +42,6 @@ Comment on the passage itself in either document, or on its title for the whole 
 | A change on a passage ("shorter", "lead with the platform work", "drop this row") | Redrafted from the claim bank, measured, rebuilt, and `review` run again: the same documents are updated. Reply names what changed, then resolve |
 | A change that needs a fact the bank does not hold | The agent asks for the source and the wording. The fact enters the bank as a pending claim, and is used only after the operator confirms it |
 | `use archetype` | The best archetype share CV and a requirements-map letter replace the tailored set |
+| `use approach <A-D>` | The letter is redrafted in that approach, rebuilt, and `review` run again |
 | `skip` | The role is recorded as skip; nothing is sent |
 | A thread with no text yet | Left open: the operator is still typing |

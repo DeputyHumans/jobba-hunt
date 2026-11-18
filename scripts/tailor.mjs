@@ -22,7 +22,8 @@
 //             own private document in the reviews folder (passage comments stay anchored to the real
 //             rendering), records them for the comment watch, and marks the role docs_review
 //             "pending". A rebuilt set updates the same documents and needs a fresh approval. "auto": marks the documents
-//             approved under the standing decision. Publisher "local": review happens in the session.
+//             approved under the standing decision, except a letter of approach B or C, which is always
+//             published for review. Publisher "local": review happens in the session.
 //   status    the job's tailoring record.
 // Exit 0 ok, 1 refused or a check failed, 2 usage, 3 bikeshed refused the update (open in the editor,
 // pending suggestion or a newer base), 4 bikeshed signed out.
@@ -38,6 +39,7 @@ import { loadConfig, readJsonFile, requireWorkspace, writeJsonAtomic } from './l
 import { cvFileBase, preferences } from './lib/profile.mjs';
 import { loadState, saveStateAtomic, STATE_PATH } from './lib/state.mjs';
 import { logAction } from './lib/actions-log.mjs';
+import { letterNeedsReview } from './lib/cover.mjs';
 import { bikeshedRun, isAuthError, parseJsonOut } from './lib/adapters/bikeshed.mjs';
 
 const out = (o) => console.log(JSON.stringify(o));
@@ -226,7 +228,10 @@ async function main() {
       j.application = { ...(j.application || {}), ...fields };
       saveStateAtomic(STATE_PATH, s);
     };
-    if (mode === 'auto') {
+    // A plan (B) or questions (C) always wait for the operator, whatever the standing review mode.
+    const letterSpec = readJsonFile(join(dir, 'cover-letter.json'), null);
+    const reason = mode === 'auto' && letterNeedsReview(letterSpec) ? `letter approach ${letterSpec.approach} always waits for the operator's review` : null;
+    if (mode === 'auto' && !reason) {
       setApp({ docs_review: 'auto', docs_approved_at: now(), docs_note: 'standing decision: tailored documents are sent without review (preferences.tailoring.review auto)' });
       rec.status = 'approved';
       save(rec);
@@ -239,7 +244,7 @@ async function main() {
       setApp({ docs_review: { status: 'pending', url: null, letter_url: null }, docs_approved_at: null, docs_note: null });
       rec.status = 'review';
       save(rec);
-      stop(0, { job_id: id, review: 'session', files: files.map(([k, f]) => ({ kind: k, html: f })), note: 'publisher local: show these files to the operator and record approve-docs on their word' });
+      stop(0, { job_id: id, review: 'session', files: files.map(([k, f]) => ({ kind: k, html: f })), note: 'publisher local: show these files to the operator and record approve-docs on their word', ...(reason ? { reason } : {}) });
     }
     const folder = tracker.bikeshed?.reviews_folder_id || tracker.bikeshed?.folder_id;
     if (!folder) stop(1, { error: 'no bikeshed folder for reviews (config/tracker.json bikeshed.reviews_folder_id): /hunt-onboard access phase creates it' });
@@ -268,7 +273,7 @@ async function main() {
     rec.status = 'review';
     save(rec);
     logAction({ actor: 'agent', action: 'docs.review-published', job_id: id, detail: files.map(([k]) => k).join(' + ') });
-    stop(0, { job_id: id, review: 'bikeshed', docs: entry });
+    stop(0, { job_id: id, review: 'bikeshed', docs: entry, ...(reason ? { reason } : {}) });
   }
 
   if (cmd === 'fallback') {

@@ -67,7 +67,7 @@
     "letter": "per-job",
     "review": "bikeshed",
     "max_rounds": 3,
-    "_why": "cv: per-job (a tailored CV for every application) or archetype. review: bikeshed (each newly tailored CV and letter is published for the user to approve first) or auto (sent without review; a standing decision recorded in decisions.md)."
+    "_why": "cv: per-job (a tailored CV for every application) or archetype. letter: per-job (/hunt-tailor picks the letter approach for each posting, A requirements map, B first two weeks, C three questions or D lean letter plus P.S., and says why) or a fixed A, B, C or D. review: bikeshed (each newly tailored CV and letter is published for the user to approve first) or auto (sent without review; a standing decision recorded in decisions.md). A B or C letter always waits for review."
   },
   "exclusions": {
     "_why": "Excluded stacks, title words and companies live in config/prefilter.json (stack_title_drop, ic_title_drop, company_drop)."
