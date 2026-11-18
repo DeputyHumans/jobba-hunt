@@ -13,13 +13,19 @@
 // page alerts are recorded (they are Phenom's refusals), and native selects are set with no key.
 // A company-site role whose last run recorded its application URL starts there, not on LinkedIn.
 //
-// Gates, in order (each refuses before any browser starts):
+// Gates, in order (1-7 refuse before any browser starts; scripts/lib/triage.mjs applyGate is 1-4;
+// 8, and the ats_apply cap of a company-site run, are checked once the page shows the channel,
+// before any field is filled):
 //   1. The user's decision: a dry run needs "pursue"; a real submit also needs
 //      `record-triage approve` (written right after the user's "Apply" in the session).
-//   2. One submit per job, ever, including an unverified one (a retry could duplicate).
-//   3. The loop halt (halt_until; Dice jobs: the Dice halt) and the daily caps
-//      (linkedin_apply / dice_apply / ats_apply).
-//   4. The channel's `verified` flag in config/apply.json, set only by `verify` after the user
+//   2. The hunt-wide pause (config/pause.json): no real submit while paused.
+//   3. One submit per job, ever, including an unverified one (a retry could duplicate).
+//   4. The per-company limit (config/apply.json companies): no submit once a sibling was sent.
+//   5. The loop halt (halt_until; Dice jobs: the Dice halt), the answer bank and the CV.
+//   6. A letter of approach B or C needs the operator's approval of the tailored set (approve-docs).
+//   7. The daily caps (linkedin_apply / dice_apply / ats_apply, and apply page loads), each with
+//      today's dated override in data/state/cap-overrides.json when the operator gave one.
+//   8. The channel's `verified` flag in config/apply.json, set only by `verify` after the user
 //      checked a headed dry run of that channel. Unverified channels allow --dry-run only.
 //
 // Usage:
@@ -2427,7 +2433,7 @@ async function runLinkedIn() {
   if (/\/(checkpoint|authwall)/.test(page.url()) || await isLoggedOut(page)) {
     const checkpoint = /\/(checkpoint|authwall)/.test(page.url());
     state.halt_until = haltUntil(checkpoint ? 'checkpoint' : 'login-lost', Date.now(), tz(), schedule().reset_hour ?? 4);
-    [code, result] = [1, { outcome: 'error', detail: checkpoint ? 'checkpoint: halted 7 days (runbook §4)' : 'login lost: log in by hand (npm run jobs -- login)' }];
+    [code, result] = [1, { outcome: 'error', detail: checkpoint ? 'checkpoint: halted 7 days (docs/runbook.md "Halts, the pause and cap overrides")' : 'login lost: log in by hand (npm run jobs -- login)' }];
   } else {
     const v = await page.evaluate(collectView, SEL_ARG);
     const apply = applyTypeOf({ label: v.apply_label, href: v.apply_href });

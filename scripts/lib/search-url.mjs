@@ -1,5 +1,5 @@
 // LinkedIn Jobs search URL builder. Pure: no browser, no network.
-// Param codes come from config/searches.json (verified live 2026-10-26, runbook §3), so a
+// Param codes come from config/searches.json (docs/platforms.md "LinkedIn"), so a
 // LinkedIn change is a config edit, not a code change.
 
 function lookup(table, key, kind) {

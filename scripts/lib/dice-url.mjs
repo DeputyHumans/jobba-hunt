@@ -1,6 +1,6 @@
 // Dice job search URL builder. Pure: no browser, no network.
 // Param names come from config/dice-searches.json (filters.* seen live 2026-10-28,
-// runbook "Dice"), so a Dice change is a config edit, not a code change.
+// docs/platforms.md "Dice"), so a Dice change is a config edit, not a code change.
 
 const DAY = 86400;
 
@@ -26,7 +26,7 @@ function lookup(table, key, kind) {
 }
 
 export function buildDiceUrl(cfg, query, { tprSeconds, page = 0 }) {
-  if (unsafeDiceQuery(query.keywords)) throw new Error(`Dice query "${query.keywords}" joins quoted phrases with OR: Dice answers 403 (runbook "Dice")`);
+  if (unsafeDiceQuery(query.keywords)) throw new Error(`Dice query "${query.keywords}" joins quoted phrases with OR: Dice answers 403 (docs/platforms.md "Query syntax")`);
   const u = new URL(query.base_url || cfg.base_url);
   u.searchParams.set('q', query.keywords);
   u.searchParams.set('countryCode', cfg.country || 'US');

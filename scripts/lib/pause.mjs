@@ -1,7 +1,8 @@
 // The hunt-wide pause: <workspace>/config/pause.json {paused, reason, since, by}. While paused,
-// a live tick views nothing (it reads like closed hours and asks to come back in an hour),
-// auto-apply stops and the runner refuses real submits. Dry runs stay allowed. No file, or
-// paused false, means not paused. Only the user sets or lifts it.
+// a live tick views nothing (exit 4; it reads like closed hours and asks to come back in an hour),
+// sweeps, live probes and the reader CLIs' searches and views refuse, auto-apply stops and the
+// runner refuses real submits. Dry runs, the inbox scan and the tracker still run. No file, or
+// paused false, means not paused. Only the user sets or lifts it (AGENTS.md "Platform safety").
 import { existsSync, readFileSync } from 'node:fs';
 import { configFile } from './config.mjs';
 

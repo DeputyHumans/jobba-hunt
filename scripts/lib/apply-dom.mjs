@@ -2,7 +2,7 @@
 // so each function is self-contained (no imports, no closures over module scope).
 // Selectors are semantic (roles, labels, input types), not LinkedIn class names: the
 // Easy Apply modal and the ATS forms share one collector. Status: ? until a --headed
-// dry run per channel confirms it (runbook §3).
+// dry run per channel confirms it (AGENTS.md "Platform safety", verified channels).
 
 // Marks the form root with data-hunt-root. Easy Apply: the visible dialog that looks like
 // an application step. ATS: the form holding a file input or a submit control, else body.

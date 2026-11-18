@@ -159,6 +159,6 @@ logAction({ action: 'tick.done', source: 'linkedin', ref: display(snapPath), det
 
 log(`\n${pick.id}: ${summary.searches} search, ${summary.new} new, ${summary.views} viewed, ${summary.pending_triage} pending triage | guards: ${run.abort || 'none'}${run.budgetExhausted ? ' | budget exhausted' : ''}`);
 log(`snapshot -> ${display(snapPath)}`);
-if (run.abort === 'checkpoint') log('!! STOP. Halted 7 days. Log in by hand in a real terminal: npm run jobs -- login. Then halve the caps in config/limits.json (docs/runbook.md §4).');
-else if (run.abort) log(`!! ABORTED (${run.abort}). Halted until ${state.halt_until}. See docs/runbook.md §4.`);
+if (run.abort === 'checkpoint') log('!! STOP. Halted 7 days. Log in by hand in a real terminal: npm run jobs -- login. Then halve the caps in config/limits.json (docs/runbook.md "Halts, the pause and cap overrides").');
+else if (run.abort) log(`!! ABORTED (${run.abort}). Halted until ${state.halt_until}. See docs/runbook.md "Guards and actions".`);
 finish(run.abort ? 1 : 0, { success: !run.abort, aborted: run.abort, halt_until: state.halt_until, budget_exhausted: run.budgetExhausted, summary, viewed, snapshot: display(snapPath) });

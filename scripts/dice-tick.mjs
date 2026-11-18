@@ -193,6 +193,6 @@ logAction({ action: sweep ? 'sweep.done' : 'tick.done', source: 'dice', ref: dis
 
 log(`\ndice ${pick.id}: ${summary.searches} search, ${summary.new} new, ${summary.views} viewed, ${summary.pending_triage} pending triage | guards: ${run.abort || 'none'}${run.budgetExhausted ? ' | budget exhausted' : ''}`);
 log(`snapshot -> ${display(snapPath)}`);
-if (run.abort === 'checkpoint') log('!! STOP DICE. Halted 7 days. Log in by hand: npm run dice -- login (runbook "Dice").');
+if (run.abort === 'checkpoint') log('!! STOP DICE. Halted 7 days. Log in by hand: npm run dice -- login (docs/runbook.md "Dice").');
 else if (run.abort) log(`!! DICE ABORTED (${run.abort}). Dice halted until ${loop.halt_until}. LinkedIn is unaffected.`);
 finish(run.abort ? 1 : 0, { success: !run.abort, aborted: run.abort, halt_until: loop.halt_until, budget_exhausted: run.budgetExhausted, summary, viewed, snapshot: display(snapPath) });

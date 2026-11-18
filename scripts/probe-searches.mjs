@@ -223,6 +223,6 @@ try {
 
 logAction({ action: 'probe.run', source: result.source, ref: display(outPath), detail: { name: probe.name, searches: result.searches.length, views: result.views.length, aborted: result.aborted || null, into_state: intoState } });
 log(`\n${result.searches.length} searches, ${result.views.length} views | guards: ${result.aborted || 'none'}\nprobe -> ${display(outPath)}`);
-if (result.aborted === 'checkpoint' || result.aborted === 'login-lost') log('!! STOP. Same rules as a sweep abort: see docs/runbook.md §4.');
+if (result.aborted === 'checkpoint' || result.aborted === 'login-lost') log('!! STOP. Same rules as a sweep abort: see docs/runbook.md "Guards and actions".');
 out({ success: !result.aborted, aborted: result.aborted, searches: result.searches.length, views: result.views.length, file: display(outPath) });
 process.exit(result.aborted ? 1 : 0);

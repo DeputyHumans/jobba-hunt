@@ -161,7 +161,8 @@ logAction({ action: 'sweep.done', source: 'linkedin', ref: display(snapPath), de
 
 log(`\n${summary.searches} searches, ${summary.ids_seen} ids (${summary.new} new), ${summary.survivors} survivors, ${summary.views} viewed, ${summary.pending_triage} pending triage | guards: ${abort || 'none'}${budgetExhausted ? ' | budget exhausted' : ''}`);
 log(`snapshot -> ${display(snapPath)}`);
-if (abort === 'checkpoint' || abort === 'login-lost') log('!! STOP. Do not sweep for 7 days after a checkpoint. Log in by hand in a real terminal: npm run jobs -- login. Then halve the caps. See docs/runbook.md.');
-else if (abort) log(`!! ABORTED (${abort}). No retry today. Debug with a --headed single search tomorrow; see docs/runbook.md.`);
+if (abort === 'checkpoint') log('!! STOP. LinkedIn is halted 7 days after a checkpoint. Log in by hand in a real terminal: npm run jobs -- login. Then halve the caps. See docs/runbook.md "Guards and actions".');
+else if (abort === 'login-lost') log('!! STOP. LinkedIn is halted until the next reset. Log in by hand in a real terminal: npm run jobs -- login. See docs/runbook.md "Guards and actions".');
+else if (abort) log(`!! ABORTED (${abort}). No retry today. Debug with a --headed single search after the reset; see docs/runbook.md "Guards and actions".`);
 out({ success: !abort, aborted: abort, budget_exhausted: budgetExhausted, summary, snapshot: display(snapPath) });
 process.exit(abort ? 1 : 0);
