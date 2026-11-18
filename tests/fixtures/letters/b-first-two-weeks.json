@@ -1,0 +1,21 @@
+{
+  "job_id": "9000000102",
+  "approach": "B",
+  "approach_why": "An interim leadership role: the buyer pays for a plan, so the letter opens with one.",
+  "company": "Vandelay Industries",
+  "role": "Interim VP of Engineering",
+  "ref": "Remote (US) · job 9000000102",
+  "date": "November 18, 2026",
+  "greeting": "Hello Vandelay Industries team,",
+  "paragraphs": [
+    { "text": "If I joined as your interim VP of Engineering, this is how I would start.", "claims": [] },
+    { "ordered": true, "list": [
+      { "text": "Map how code reaches production for every team and remove the manual steps, as I did when I cut release lead time at Acme from 10 days to under one day.", "claims": ["C04"] },
+      { "text": "Set service level objectives and error budgets with each team lead, the approach that brought the incident rate at Globex down 45%.", "claims": ["C11"] },
+      { "text": "Agree a quarterly plan and its goals with product leadership, the way I have run planning before.", "claims": ["C26"] }
+    ] },
+    { "text": "I have led this work at scale. I grew Acme engineering from 12 to 45 engineers across six teams, and at Globex I led four managers and 60 engineers.", "claims": ["C03", "C08"] },
+    { "text": "Happy to walk through the plan on a call.", "claims": [] }
+  ],
+  "closing": "Best regards,"
+}

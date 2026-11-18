@@ -1,0 +1,39 @@
+{
+  "job_id": "9000000104",
+  "approach": "D",
+  "approach_why": "The posting names fewer than three asks a map could quote, so a short letter carries the record.",
+  "company": "Vandelay Industries",
+  "role": "VP of Engineering",
+  "ref": "Remote (US) · job 9000000104",
+  "date": "November 18, 2026",
+  "greeting": "Hello Vandelay Industries team,",
+  "paragraphs": [
+    {
+      "text": "I'm applying for the VP of Engineering role.",
+      "claims": []
+    },
+    {
+      "text": "I have been Head of Engineering at Acme Corp since 2023, reporting to the CEO. In that time I grew the team from 12 to 45 engineers across six teams and cut release lead time from 10 days to under one day.",
+      "claims": [
+        "C02",
+        "C03",
+        "C04"
+      ]
+    },
+    {
+      "text": "Before that I was Director of Engineering at Globex, with four managers and 60 engineers. I built the interview loop that hired 35 engineers in 18 months, and I mentored eight engineers into management or staff roles.",
+      "claims": [
+        "C08",
+        "C12",
+        "C22"
+      ]
+    },
+    {
+      "ps": "I also report DORA metrics and engineering health to the board, and I am happy to share how I set that up.",
+      "claims": [
+        "C29"
+      ]
+    }
+  ],
+  "closing": "Best regards,"
+}

@@ -55,3 +55,17 @@ header { padding-bottom: 9pt; margin-bottom: 0; }
 .map .ask::after { content: '\201D'; }
 .map .answer { font-size: 10.2pt; line-height: 1.5; color: var(--text); }
 .letter p.rampup { font-size: 9.6pt; color: var(--muted); margin-top: -2pt; }
+
+/* Approach B: a numbered plan. Approach C: questions. Both sit in the letter's own measure, with
+   the numbers and marks in the muted ink so the steps read first. */
+/* template.css gives every li the CV's hanging bullet (text-indent -10pt, no marker): undone here. */
+.letter ol.plan, .letter ul.questions { margin: 0 0 11pt; padding-left: 18pt; }
+.letter ol.plan { list-style: decimal outside; }
+.letter ul.questions { list-style: disc outside; }
+.letter ol.plan li, .letter ul.questions li { margin: 0 0 4pt; padding-left: 3pt; text-indent: 0; }
+.letter ol.plan li::marker { color: var(--muted); font-weight: 700; font-size: 9.6pt; }
+.letter ul.questions li::marker { color: var(--muted); }
+
+/* Approach D: the P.S. after the signature, in the letter's body size. */
+.sign .ps { margin: 14pt 0 0; }
+.sign .ps .ps-label { font-weight: 700; color: var(--ink); }

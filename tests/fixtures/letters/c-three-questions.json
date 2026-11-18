@@ -1,0 +1,21 @@
+{
+  "job_id": "9000000103",
+  "approach": "C",
+  "approach_why": "A product company with a technical hiring manager: questions a practitioner would ask show the fit faster than a list.",
+  "company": "Vandelay Industries",
+  "role": "VP of Engineering",
+  "ref": "Remote (US) · job 9000000103",
+  "date": "November 18, 2026",
+  "greeting": "Hello Vandelay Industries team,",
+  "paragraphs": [
+    { "text": "Three things I would want to understand first about your platform:", "claims": [] },
+    { "ordered": false, "list": [
+      { "text": "Which deploys still need a person to press a button, and why?", "claims": [] },
+      { "text": "When a service fails at night, how long until the right engineer knows?", "claims": [] },
+      { "text": "Do product teams own their services in production, or does one team own them all?", "claims": [] }
+    ] },
+    { "text": "I have had to answer these myself. At Acme I cut release lead time from 10 days to under one day with trunk-based delivery and CI/CD. At Globex the incident rate came down 45% after SLOs, error budgets and a reworked on-call, and I moved 140 services from on-premises hosting to AWS and Kubernetes.", "claims": ["C04", "C11", "C09"] },
+    { "text": "Happy to compare notes on a call.", "claims": [] }
+  ],
+  "closing": "Best regards,"
+}

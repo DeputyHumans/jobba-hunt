@@ -1,0 +1,22 @@
+{
+  "job_id": "9000000101",
+  "approach": "A",
+  "approach_why": "A recruiter screens this posting against its list of requirements, so the map answers each line.",
+  "company": "Vandelay Industries",
+  "role": "VP of Engineering",
+  "ref": "Remote (US) · job 9000000101",
+  "date": "November 18, 2026",
+  "greeting": "Hello Vandelay Industries team,",
+  "paragraphs": [
+    { "text": "Your posting lists what this role has to do. Here is what I bring to each part.", "claims": [] },
+    { "map": [
+      { "ask": "Scale an engineering organization through rapid growth", "answer": "I grew Acme engineering from 12 to 45 engineers across six teams.", "claims": ["C03"] },
+      { "ask": "Improve delivery speed and reliability", "answer": "I cut release lead time at Acme from 10 days to under one day with trunk-based delivery and CI/CD.", "claims": ["C04"] },
+      { "ask": "Own security and compliance programs", "answer": "I led the SOC 2 Type II program at Acme to a clean first audit.", "claims": ["C05"] },
+      { "ask": "Hire and develop engineering leaders", "answer": "I built a structured interview loop at Globex that hired 35 engineers in 18 months, and I mentored eight engineers into management or staff roles.", "claims": ["C12", "C22"] }
+    ] },
+    { "text": "Where I would ramp up: payments. My platform work so far has been in B2B software, not card processing.", "claims": [], "kind": "rampup" },
+    { "text": "Happy to go through any row on a call.", "claims": [] }
+  ],
+  "closing": "Best regards,"
+}
