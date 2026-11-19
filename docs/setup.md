@@ -1,6 +1,6 @@
 # Setup
 
-From a clean machine to a ready workspace, on macOS, Debian/Ubuntu or Fedora. Each step ends with a checkpoint: do not go on until it passes. The rules every step follows are in `AGENTS.md`.
+From a clean machine to a ready workspace, on macOS, Debian/Ubuntu or Fedora. Run the steps in order. Each step ends with a checkpoint: do not go on until it passes. The rules every step follows are in `AGENTS.md`.
 
 Paths: repo-relative (`scripts/...`, `bin/...`) or workspace-relative (`workspace/...`, the default workspace location; `JOBBA_HOME` moves it).
 
@@ -8,39 +8,42 @@ Paths: repo-relative (`scripts/...`, `bin/...`) or workspace-relative (`workspac
 
 | Class | Item | Notes |
 |---|---|---|
-| Required | Node.js 22.13 or newer | The minimum is `package.json` `engines.node` (pdfjs-dist needs 22.13). `.nvmrc` says 22. Step 1 |
-| Required | git | Step 2 |
+| Required | git | Step 1. On macOS it comes with Apple's Command Line Tools (about 1.3 GB) |
+| Required | Node.js 22.13 or newer | The minimum is `package.json` `engines.node` (pdfjs-dist needs 22.13). `.nvmrc` says 22. Step 2 |
+| Required | An agent harness: Claude Code, or another that reads `AGENTS.md` | Step 6. Claude Code needs macOS 13 or newer and a paid Claude plan or a Console account |
 | Required | macOS, or a Linux desktop session with a display | Logins, first dry runs and bot checks happen in a visible browser window. A headless server cannot do them |
-| Required | About 0.5 GB of disk | The bundled Chromium (about 350 MB) and `node_modules` (about 150 MB), measured on macOS |
+| Required | About 0.5 GB of disk | The bundled Chromium (about 350 MB) and `node_modules` (about 150 MB), measured on macOS. Plus the Command Line Tools on a new Mac |
 | Bundled | Chromium (CloakBrowser), playwright-core, the bikeshed CLI, the Google Workspace CLI (`gws`), pdf-lib, pdfjs-dist, docx, marked, OFL fonts | Installed into this folder by `./bin/bootstrap`. Nothing is installed globally |
 | Optional | 1Password CLI (`op`) | Vault adapter `op` (step 11) |
 | Optional | Python 3.8+ (`python3`, or `uv run`) | `authentic-prose`'s optional `scripts/metrics.py` (stdlib only) |
 | Optional | A mail connector in the agent harness | Mail adapter `bridge` (step 10) |
 | Optional | firecrawl or Perplexity tools in the harness | Richer company research in `/hunt-kit`. Without them it uses the harness's own web search and fetch |
 
-## 1. Install Node
+## 1. Install git
 
-Pick one route. nvm and fnm read `.nvmrc` (22) from the repo folder and install the newest 22.x.
+| OS | Command |
+|---|---|
+| macOS | `xcode-select --install`. A dialog opens: click Install, accept the license and wait until it finishes. The Command Line Tools also bring `python3` (the optional row above) |
+| Debian/Ubuntu | `sudo apt-get install -y git` |
+| Fedora | `sudo dnf install -y git` |
+
+On macOS, install the Command Line Tools before nvm: nvm's installer fails without them.
+
+**Checkpoint:** `git --version` prints a version.
+
+## 2. Install Node
+
+Pick one route. On a new Mac, use nvm.
 
 | OS | Route | Commands |
 |---|---|---|
-| Any | nvm | Install nvm from https://github.com/nvm-sh/nvm, open a new shell, then in the repo folder: `nvm install && nvm use` |
-| Any | fnm | Install fnm from https://github.com/Schniz/fnm, then in the repo folder: `fnm install && fnm use` |
-| macOS | Homebrew | `brew install node@22`. The formula is keg-only: add it to `PATH` as brew's output says |
+| Any | nvm | `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.41.0/install.sh \| bash`, open a new shell, then `nvm install 22`. On macOS, run `touch $HOME/.zshrc` first: a new account has none, and the installer only edits a profile that exists. nvm makes the first version it installs the default for new shells |
+| Any | fnm | Install fnm and its shell setup line from https://github.com/Schniz/fnm, open a new shell, then `fnm install 22 && fnm default 22` |
+| macOS | Homebrew, when it is already installed | `brew install node@22`. The formula is keg-only: add it to `PATH` as brew's output says |
 | Debian/Ubuntu | NodeSource | `curl -fsSL https://deb.nodesource.com/setup_22.x \| sudo -E bash - && sudo apt-get install -y nodejs` |
 | Fedora | dnf | `sudo dnf install -y nodejs`. Check the version below: a release may ship Node older than 22.13 |
 
 **Checkpoint:** `node -v` prints v22.13.0 or newer, and `npm -v` prints a version.
-
-## 2. Install git
-
-| OS | Command |
-|---|---|
-| macOS | `xcode-select --install` |
-| Debian/Ubuntu | `sudo apt-get install -y git` |
-| Fedora | `sudo dnf install -y git` |
-
-**Checkpoint:** `git --version` prints a version.
 
 ## 3. Clone
 
@@ -65,7 +68,7 @@ What it does, in order:
 3. Runs `npm ci` (dependencies into `node_modules/`).
 4. Runs `node scripts/setup.mjs` (the same as `npm run setup`). A setup failure stops bootstrap here.
    - Checks the npm dependencies and the bikeshed and gws CLIs.
-   - Downloads the CloakBrowser Chromium into `.cache/cloakbrowser`, never the home folder (`npm run setup -- --skip-browser` skips it).
+   - Downloads the CloakBrowser Chromium into `.cache/cloakbrowser`, never the home folder: 140 MB, about 350 MB on disk (`npm run setup -- --skip-browser` skips it). The CloakBrowser banner it prints offers a key: the project needs none.
    - Links the skills: each `.claude/skills/<name>` is a relative symlink into `.agents/skills/<name>`.
    - Sets `git config core.hooksPath .githooks`. The pre-commit hook runs `check:portable` and `check:pii` on staged files.
    - On Linux, probes Chromium's shared libraries, `notify-send` and a display. When any library is missing, it prints the full Debian/Ubuntu and Fedora install lines ("Linux notes" below).
@@ -87,11 +90,26 @@ It checks Node (against `package.json` `engines.node`), git, the npm dependencie
 
 **Checkpoint:** exit 0, no `FAIL` rows. `warn` and `info` rows are allowed.
 
-## 6. Open the agent
+## 6. Install and open the agent
 
-Open the repo folder in the agent harness. For Claude Code: `claude` in the repo folder. It loads `CLAUDE.md`, a one-line import of `AGENTS.md`, and the skills through `.claude/skills/`. Another harness starts from `AGENTS.md`.
+Claude Code runs every skill, and the loop's self-scheduling, notifications and comment watch need it (`AGENTS.md` "Skills"). Install it with the native installer:
 
-**Checkpoint:** the harness lists `hunt-onboard` among its skills (Claude Code: type `/hunt-` and see the list).
+```sh
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+The installer puts `claude` in `$HOME/.local/bin` and does not add that folder to `PATH`. Add it to the shell profile, then open a new shell:
+
+| Shell | Command |
+|---|---|
+| zsh (the macOS default) | `echo 'export PATH="$HOME/.local/bin:$PATH"' >> $HOME/.zshrc` |
+| bash | `echo 'export PATH="$HOME/.local/bin:$PATH"' >> $HOME/.bashrc` |
+
+Claude Code needs macOS 13 or newer and a Pro, Max, Ultra, Team, Enterprise or Console account. The free Claude plan does not include it. Details: https://code.claude.com/docs/en/setup.
+
+Then run `claude` in the repo folder. The first start signs in through the browser and asks whether you trust the folder. It loads `CLAUDE.md`, a one-line import of `AGENTS.md`, and the skills through `.claude/skills/`. Another harness: install it from its own docs and start it from `AGENTS.md`.
+
+**Checkpoint:** `claude --version` prints a version, and the harness lists `hunt-onboard` among its skills (Claude Code: type `/hunt-` and see the list).
 
 ## 7. Onboard
 
@@ -269,7 +287,7 @@ npm run doctor
 
 ## A second host
 
-1. Clone the repo and run `./bin/bootstrap` (steps 1-5).
+1. Install git, Node and the agent, clone the repo and run `./bin/bootstrap` (steps 1-6).
 2. Bring the workspace: `git clone` the private workspace repository into `workspace/` (made with `npm run onboard -- git-init`), or copy the folder. Elsewhere on disk: point `JOBBA_HOME` at it.
 3. Sign in again. The workspace repository leaves out the browser sessions (`data/browser/`) and `.secrets/`. Repeat steps 8, 9 and 10 as needed.
 4. **One machine runs the loop.** Two loops would double the traffic on the same accounts against caps meant for one, and their job state and limiter logs would drift apart.

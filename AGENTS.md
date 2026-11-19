@@ -178,7 +178,9 @@ All commands above are `npm run <command>` unless written with `node`.
 
 | Dependency | Class | Install |
 |---|---|---|
-| Node 22.13+, npm packages, Chromium, bikeshed and gws CLIs, fonts | Bundled | `./bin/bootstrap` (`docs/setup.md`) |
+| git, Node 22.13+ | Host | `docs/setup.md` "Install git", "Install Node" |
+| Claude Code, or another agent harness | Host | `docs/setup.md` "Install and open the agent" |
+| npm packages, Chromium, bikeshed and gws CLIs, fonts | Bundled | `./bin/bootstrap` (`docs/setup.md` "Bootstrap") |
 | Signed-in browser profiles | Per workspace | `npm run jobs -- login`, `npm run dice -- login`, by hand in a real terminal |
 | bikeshed sign-in | Per workspace | `npm run bikeshed -- login` |
 | Mail adapter | Optional | `docs/adapters.md` |
