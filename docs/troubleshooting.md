@@ -2,6 +2,18 @@
 
 Symptom, cause, fix. The rules are in `AGENTS.md`. Guard-by-guard actions, halts, the pause and cap overrides are in `docs/runbook.md` "Guards and actions" and "Halts, the pause and cap overrides"; selectors and site quirks in `docs/platforms.md`. Paths: repo-relative (`scripts/...`) or workspace-relative (`config/`, `data/`, `profile/`, `collateral/`).
 
+## Install
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `bootstrap: git is missing` | No git on the host | `docs/setup.md` "Install git" |
+| macOS: a dialog asks to install the command line developer tools, or `xcrun: error: invalid active developer path` | The Command Line Tools are missing, or an OS upgrade removed them | `xcode-select --install` |
+| `nvm: command not found` right after the nvm installer | macOS: no `$HOME/.zshrc` for the installer to edit, or the shell was not reopened | `touch $HOME/.zshrc`, run the nvm installer again, open a new shell |
+| Bootstrap prints `Node.js is missing` and exits 1 | No `node` on `PATH` | Install Node (`docs/setup.md` "Install Node"), open a new shell, run `./bin/bootstrap` again |
+| `bootstrap: Node v<x> is too old` | Node is below `package.json` `engines.node` (22.13.0) | `nvm install 22 && nvm use 22`, then `./bin/bootstrap` again |
+| `Chromium download failed` in setup | The CloakBrowser download broke off | Check the connection, then run `./bin/bootstrap` again |
+| `zsh: command not found: claude` | The Claude Code installer does not put `$HOME/.local/bin` on `PATH` | `docs/setup.md` "Install and open the agent": the profile line, then a new shell |
+
 ## Halts and checkpoints
 
 | Symptom | Cause | Fix |
