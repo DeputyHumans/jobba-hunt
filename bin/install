@@ -134,10 +134,12 @@ main() {
 
   say ""
   say "Installed. Next:"
-  say "  1. Open a new Terminal window (it loads Node and Claude Code onto PATH)."
-  say "  2. Run: cd \"$dir\" && claude"
-  say "     The first start signs you in to Claude in the browser."
-  say "  3. In Claude Code, type: /hunt-onboard"
+  say "  1. Install Google Chrome (https://www.google.com/chrome/) and the Claude in Chrome extension"
+  say "     (https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn); sign in to it with your Claude account."
+  say "  2. Open a new Terminal window (it loads Node and Claude Code onto PATH)."
+  say "  3. Run: cd \"$dir\" && claude --chrome"
+  say "     The first start signs you in to Claude. Then type /chrome and choose Enabled by default."
+  say "  4. In Claude Code, type: /hunt-onboard"
   say "Full guide: $DOCS_URL"
 }
 

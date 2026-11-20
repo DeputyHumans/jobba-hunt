@@ -113,6 +113,17 @@ Then draft every `<fill>` in `workspace/fit-profile.md` from the answers and the
      3. They run `npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly` in their own terminal.
      4. Check: both doctor gws rows are ok, and `npm run -s mail -- pending --dry-run` exits 0.
    - **None:** no inbox scan; mailed codes at apply time hand the role to the operator.
+3a. **Browser driver** (AskUserQuestion, recommended first):
+   - "Claude in Chrome (default)": the operator's own Chrome, driven by the agent. It needs a paid Claude plan signed in with `/login`.
+   - "CloakBrowser": the bundled Chromium, driven by the scripts.
+
+   Write `workspace/config/browser.json` `driver`, and a `profile/decisions.md` row for CloakBrowser.
+   - **chrome:**
+     1. The operator installs Google Chrome (https://www.google.com/chrome/) and the extension (https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn), and signs in to it with the same claude.ai account.
+     2. They restart with `claude --chrome`, then `/chrome` and choose "Enabled by default".
+     3. They sign in to LinkedIn (https://www.linkedin.com/login) and Dice (https://www.dice.com/dashboard/login) in that Chrome.
+     4. Confirm each sign-in with `npm run -s browser -- start jobs -- whoami` and `npm run -s browser -- start dice -- whoami`, served per the hunt-browser skill: exit 10 with `result.loggedIn: true`.
+   - **cloakbrowser:** the terminal logins described above.
 3. **bikeshed** (default publisher; the operator may choose `publisher: local` instead: no comments and no review documents).
    - The operator runs `npm run bikeshed -- login` in their own terminal.
    - Create the folders: `npm run -s bikeshed -- mkdir "Job hunt" --json`, then `npm run -s bikeshed -- mkdir "Reviews" --parent <hunt folder id> --json` and `npm run -s bikeshed -- mkdir "Letters" --parent <hunt folder id> --json`. Read each id from the JSON, or from `npm run -s bikeshed -- folders --json`. Check with `npm run -s bikeshed -- folder <hunt folder id>` that only the operator can read it.

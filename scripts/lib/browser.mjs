@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import { DATA_DIR } from './paths.mjs';
 
 export const DRIVERS = ['chrome', 'cloakbrowser'];
-const DEFAULT = 'cloakbrowser';
+const DEFAULT = 'chrome';
 
 // --driver beats JOBBA_BROWSER_DRIVER (tests), which beats config/browser.json.
 export function browserDriver({ flags = {}, cfg = {}, env = process.env } = {}) {

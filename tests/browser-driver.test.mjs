@@ -9,7 +9,7 @@ test('the flag beats the environment, which beats the config; the default is the
   assert.equal(browserDriver({ cfg: { driver: 'chrome' } }), 'chrome');
   assert.equal(browserDriver({ cfg: { driver: 'chrome' }, env: { JOBBA_BROWSER_DRIVER: 'cloakbrowser' } }), 'cloakbrowser');
   assert.equal(browserDriver({ flags: { driver: 'chrome' }, cfg: { driver: 'cloakbrowser' }, env: { JOBBA_BROWSER_DRIVER: 'cloakbrowser' } }), 'chrome');
-  assert.equal(browserDriver({ cfg: {} }), 'cloakbrowser');
+  assert.equal(browserDriver({ cfg: {} }), 'chrome');
   assert.throws(() => browserDriver({ flags: { driver: 'firefox' } }), /driver must be chrome or cloakbrowser/);
   assert.throws(() => browserDriver({ cfg: { driver: true } }), /driver must be chrome or cloakbrowser/);
 });

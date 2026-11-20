@@ -20,7 +20,7 @@ Tests for the runner's handling of site markup: `tests/apply-forms.test.mjs`, `t
 
 ## Browser drivers
 
-Two drivers do the page work (`config/browser.json` `driver`, `docs/architecture.md` "Config"): `cloakbrowser`, the bundled Chromium the scripts drive through playwright-core, and `chrome`, the operator's own Chrome driven by the agent through the Claude in Chrome extension. The selector statuses below were confirmed under `cloakbrowser`; under `chrome` every selector starts at `?`.
+Two drivers do the page work (`config/browser.json` `driver`, `docs/architecture.md` "Config"): `chrome`, the default, the operator's own Chrome driven by the agent through the Claude in Chrome extension, and `cloakbrowser`, the bundled Chromium the scripts drive through playwright-core. The selector statuses below were confirmed under `cloakbrowser`; under `chrome` every selector starts at `?`.
 
 ### Claude in Chrome tool facts (checked 2026-11-20 on local fixture pages)
 
@@ -39,6 +39,24 @@ Measured against `tests/fixtures` served on 127.0.0.1, with and without a strict
 | `navigate` | Returns after the page reached `readyState` `complete` | A probe runs right after it |
 
 Not checked: JavaScript dialogs (an `alert` blocks the extension until a person dismisses it, so none was triggered), hidden (`display:none`) file inputs, Chrome tools inside a subagent, and any real site.
+
+### Applying under the chrome driver (`scripts/lib/apply-chrome.mjs`)
+
+Every gate of the runner still applies, then:
+1. The page reads its form (`markRoot` and `collectForm`) and the runner plans the fill (`planFill`). A question the bank cannot answer stops the run (exit 4), the AI-applicant question included (exit 5).
+2. The page fills native inputs, textareas, selects, checkboxes and radios itself (`chromeFill`). Uploads (`file_upload`), typeaheads and custom menus go to the agent, one request each.
+3. The form is read again to check the fill.
+
+A dry run stops before Submit and discards the application. A real submit writes `submit_pending` first, asks for one press of the named button, and reads the confirmation from the page itself (`confirmationIn`). Each channel submits for real only once `verified_chrome` holds it.
+
+| Channel | Under chrome |
+|---|---|
+| `easy` (LinkedIn Easy Apply) | The step loop in the dialog, after the agent clicks Easy Apply |
+| `dice-easy` | The step loop on the page, after the agent clicks Easy apply |
+| greenhouse, lever, ashby, workable, appcast, paycor, paylocity, rippling, `site:<host>` | The step loop on the company site the agent opened from Apply (or the recorded `ats_url`) |
+| workday, icims, walmart, a Phenom flow | Handed off with `driver_hint: cloakbrowser`: their multi-stage flows need the cloakbrowser driver's own steps |
+| A mailed security code after Submit | Handed off: the operator enters it in Chrome |
+| A CAPTCHA, a sign-in, a new account | Handed off; never solved, never created |
 
 ## Query syntax
 

@@ -158,12 +158,13 @@ The procedures live in `.agents/skills/<name>/SKILL.md`: when each one applies, 
 - Claude Code finds them through the `.claude/skills/` symlinks. `npm run skills:link` rebuilds them; `-- --check` reports only.
 - A harness that loads no skills reads the SKILL.md for the task and follows it.
 
-Three features need Claude Code: the self-scheduling loop (ScheduleWakeup), push notifications, and the Monitor that keeps the comment watch running. Elsewhere, run one loop firing by hand or from your own scheduler, and poll `npm run watch -- --once`.
+Four features need Claude Code: the self-scheduling loop (ScheduleWakeup), push notifications, the Monitor that keeps the comment watch running, and the default browser driver (Claude in Chrome; elsewhere set `config/browser.json` `driver: "cloakbrowser"`). Elsewhere, run one loop firing by hand or from your own scheduler, and poll `npm run watch -- --once`.
 
 | Skill | What it does | Commands it runs | Needs |
 |---|---|---|---|
 | `hunt-onboard` | Builds a ready workspace, phase by phase, resumable (`docs/setup.md` "Onboard") | `setup`, `doctor [-- --preflight]`, `onboard -- init / status / mark / ingest / validate / git-init / mail-guard / gws-client`, `jobs -- whoami`, `dice -- whoami`, `bikeshed -- login / folders / folder / mkdir`, `gws -- auth login / status`, `mail -- pending --dry-run`, `apply -- learn / check-answers / verify`, `apply -- --job <id> --dry-run --headed`, `tailor -- prepare … build`, `cv -- --all`, `cv-publish`, `tracker -- --publish`, `probe -- --mark-verified`. The operator runs `jobs -- login` and `dice -- login` by hand | The operator at the keyboard |
 | `hunt-loop` | One firing: both ticks, triage, tailoring, the auto-apply rule, questions, applies, the inbox, the tracker, the next wakeup | `tick`, `dice-tick`, `triage -- auto / decide / approve / approve-docs / hold / withdraw / list / applied / confirm / not-sent`, `tailor -- status / fallback`, `cv -- --match`, `cover -- --job`, `apply -- --job` (and `learn`, `verify`, `recover`), `mail -- pending / record / close`, `tracker -- --publish`, `watch [-- --once]`, `bikeshed -- reply / resolve`, `log -- --since`; on the operator's word only, `jobs -- clear-halt`, `dice -- clear-halt` | Claude Code for ScheduleWakeup, PushNotification and Monitor; elsewhere one firing by hand |
+| `hunt-browser` | Under the chrome driver: starts a browser command through the bridge and serves each page request with Claude in Chrome (`docs/adapters.md` "Browser bridge") | `browser -- start / next / done / status` | Claude Code with Claude in Chrome (`claude --chrome`) |
 | `hunt-triage` | Scores viewed roles, records them (the script computes the tier), writes the digest; `calibrate` checks the rubric | `triage -- pending / record / list / decide / hold`, `node scripts/check-calibration.mjs --file <results>` | None |
 | `hunt-tailor` | A CV and letter for one job, measured, built, routed to review (`docs/tailoring.md`) | `tailor -- prepare / freeze / measure / build / fallback / review / status --job <id>`, `cv -- --variant`, `triage -- approve-docs`, `bikeshed -- reply / resolve` | `authentic-prose`; bikeshed for review mode `bikeshed` |
 | `hunt-kit` | Company research, fit matrix, CV pick, intro note and checklist in the opportunity file. Never applies | `cv -- --match`, `cv -- --variant`, `tailor -- status`, `triage -- applied` | Web search and fetch |
@@ -180,6 +181,7 @@ All commands above are `npm run <command>` unless written with `node`.
 |---|---|---|
 | git, Node 22.13+ | Host | `docs/setup.md` "Install git", "Install Node" |
 | Claude Code, or another agent harness | Host | `docs/setup.md` "Install and open the agent" |
+| Google Chrome and the Claude in Chrome extension (the default browser driver) | Host | `docs/setup.md` "Install and open the agent"; https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn |
 | npm packages, Chromium, bikeshed and gws CLIs, fonts | Bundled | `./bin/bootstrap` (`docs/setup.md` "Bootstrap") |
 | Signed-in browser profiles | Per workspace | `npm run jobs -- login`, `npm run dice -- login`, by hand in a real terminal |
 | bikeshed sign-in | Per workspace | `npm run bikeshed -- login` |

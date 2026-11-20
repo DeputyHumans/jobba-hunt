@@ -1,4 +1,4 @@
 {
-  "_comment": "The browser driver. cloakbrowser: the bundled CloakBrowser Chromium, driven by the scripts (sign in with npm run jobs -- login and npm run dice -- login). chrome: your own Google Chrome through the Claude in Chrome extension, driven by the agent while the scripts keep every gate and record. --driver on a command overrides it for that run. Caps, halts and the pause are shared by both. A channel is verified per driver (config/apply.json verified, verified_chrome).",
-  "driver": "cloakbrowser"
+  "_comment": "The browser driver. chrome (default): your own Google Chrome through the Claude in Chrome extension, driven by the agent while the scripts keep every gate and record (claude --chrome; sign in to LinkedIn and Dice in that Chrome, then npm run -s browser -- start jobs -- whoami). cloakbrowser: the bundled CloakBrowser Chromium, driven by the scripts (npm run jobs -- login, npm run dice -- login). --driver on a command overrides it for that run. Caps, halts and the pause are shared by both. A channel is verified per driver (config/apply.json verified, verified_chrome).",
+  "driver": "chrome"
 }

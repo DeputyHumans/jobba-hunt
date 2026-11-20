@@ -108,7 +108,7 @@ It is idempotent: re-run it after a pull, a Node upgrade or a failed download.
 npm run doctor -- --preflight
 ```
 
-It checks Node (against `package.json` `engines.node`), git, the npm dependencies (marked included), the Chromium download, the bundled fonts, the skill links, the git hook, the bikeshed and gws CLIs, the display and `notify-send` (Linux), the optional tools (`op`, `python3`) and path portability. Each row that is not `ok` prints its fix. The doctor applies nothing.
+It checks Node (against `package.json` `engines.node`), git, the browser driver with Google Chrome and the Claude in Chrome connection (a missing one fails only under the driver that needs it), the npm dependencies (marked included), the Chromium download, the bundled fonts, the skill links, the git hook, the bikeshed and gws CLIs, the display and `notify-send` (Linux), the optional `python3` and path portability. Each row that is not `ok` prints its fix. The doctor applies nothing.
 
 **Checkpoint:** exit 0, no `FAIL` rows. `warn` and `info` rows are allowed.
 
@@ -205,6 +205,7 @@ What `templates/workspace/` ships, before the operator changes anything:
 | Auto-apply | Off (`config/apply.json` `auto_apply.enabled: false`) |
 | Per-company limit | 1 (`config/apply.json` `companies.limit`) |
 | The pause | Off (`config/pause.json` `paused: false`) |
+| Browser driver | `chrome`: Claude in Chrome (`config/browser.json`); `cloakbrowser` on the operator's choice |
 | Tailoring | `preferences.tailoring`: `cv` `per-job`, `letter` `per-job`, `review` `bikeshed` |
 | Caps | As shipped in `templates/workspace/config/limits.json` |
 | ATS accounts | Never created by the runner; a sign-in or sign-up page goes to the operator |

@@ -11,6 +11,18 @@ Read once per session, and again after the operator changes them:
 - `workspace/profile/preferences.json`: `schedule` (`tz`, `days`, `tick_start`-`tick_end`, `ask_start`-`ask_end`), `tailoring` (`cv`, `letter`, `review`).
 - `workspace/config/apply.json` `auto_apply` and `companies`, `workspace/config/mail.json` `adapter`, `workspace/config/tracker.json` (`publisher`, `watch`).
 
+## The browser driver
+`workspace/config/browser.json` `driver` (default `chrome`). Under `chrome`:
+- Every browser command runs through the hunt-browser skill: `npm run -s browser -- start <command> -- <args>`, served to its end. Then read its `exit` and `result` exactly as the tables below read that command's own exit code and JSON.
+- That covers ticks, applies, `jobs`/`dice` `whoami`, `search` and `view`.
+- Under `cloakbrowser` run the commands directly, as written below.
+- At the start of a firing, check the connection (hunt-browser "Before the first request of a firing"). Not connected: run the inbox and the tracker only, and take the next firing from `npm run -s tick -- --dry-run`.
+- Chrome-driver exits:
+  - Exit 3 with `browser: unavailable`: no halt; the next firing tries again.
+  - Exit 2 `cap: chrome-session-unconfirmed`: PushNotification asking the operator to sign in to that board in Chrome. Then run `npm run -s browser -- start jobs -- whoami` (or `dice -- whoami`) once they say they did.
+  - Exit 5 `driver_hint: cloakbrowser`: the channel needs the cloakbrowser driver. Re-run it with `--driver cloakbrowser` only on the operator's word.
+- A checkpoint or login-lost under chrome: the operator signs in again in their Chrome, never in a terminal.
+
 ## Start and stop
 - **Start:** `/loop /hunt-loop` (dynamic mode, no interval). The session stays open and the machine awake.
 - **Stop:** the operator says stop, or both sources are halted for more than a day (steps 1 and 1b). Do not call ScheduleWakeup again, and stop the watch Monitor.

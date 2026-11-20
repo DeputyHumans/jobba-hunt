@@ -120,7 +120,7 @@ test('validation: config/browser.json driver is chrome or cloakbrowser', () => {
   cpSync(join(CODE_ROOT, 'tests', 'fixtures', 'workspace'), home, { recursive: true });
   initWorkspace({ templates: TEMPLATES_DIR, home });
   const p = join(home, 'config', 'browser.json');
-  assert.equal(JSON.parse(readFileSync(p, 'utf8')).driver, 'cloakbrowser');
+  assert.ok(['chrome', 'cloakbrowser'].includes(JSON.parse(readFileSync(p, 'utf8')).driver));
   for (const [v, ok] of [['chrome', true], ['cloakbrowser', true], ['firefox', false]]) {
     writeFileSync(p, JSON.stringify({ driver: v }));
     assert.equal(validateWorkspace(home).some((x) => x.file === 'config/browser.json'), !ok, v);

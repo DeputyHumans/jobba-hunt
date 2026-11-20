@@ -65,6 +65,7 @@ The full rules are in [AGENTS.md](AGENTS.md). In short:
 | Required | git | macOS: `xcode-select --install` (Apple's Command Line Tools, before nvm). Linux: your package manager |
 | Required | Node.js 22.13 or newer (`package.json` `engines`; `.nvmrc` says 22) | [nvm](https://github.com/nvm-sh/nvm) (on a new Mac, `touch $HOME/.zshrc` first), [fnm](https://github.com/Schniz/fnm), Homebrew, or your OS package manager. Exact lines: [docs/setup.md](docs/setup.md) step 2 |
 | Required | Claude Code, or another agent harness that reads `AGENTS.md` | `curl -fsSL https://claude.ai/install.sh \| bash`, then add `$HOME/.local/bin` to `PATH` ([docs](https://code.claude.com/docs/en/setup)). Needs a paid Claude plan (Pro, Max, Ultra, Team or Enterprise) or a Console account. The claude.ai connectors, such as Gmail, load only with a paid plan signed in through `/login` |
+| Required | Google Chrome and the [Claude in Chrome extension](https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn), for the default browser driver | Start Claude Code with `claude --chrome`. The bundled CloakBrowser driver is the alternative (`config/browser.json`) |
 | Required | macOS, or a Linux desktop with a display | Logins and first dry runs happen in a visible browser window |
 | Required | About 0.5 GB of disk | The bundled Chromium (about 350 MB) and `node_modules` (about 150 MB), measured on macOS. A new Mac also needs about 1.3 GB for the Command Line Tools |
 | Bundled | Chromium (CloakBrowser), playwright-core, bikeshed CLI, Google Workspace CLI, pdf-lib, pdfjs-dist, docx, marked, fonts | `./bin/bootstrap` installs them into this folder |
@@ -189,7 +190,7 @@ Clone, `./bin/bootstrap`, then bring your workspace: copy the folder, or `git cl
 - You are responsible for every application, answer and document sent in your name. The tool submits only what you approved, and only claims you confirmed.
 - jobba-hunt is not affiliated with or endorsed by LinkedIn, Dice, Anthropic, Google, CloakHQ, Walmart or any applicant tracking system vendor.
 - Anthropic's [terms](https://www.anthropic.com/legal/consumer-terms) and [usage policy](https://www.anthropic.com/legal/aup) apply to Claude Code and the agents that run it.
-- The bundled browser is a third-party Chromium build, CloakBrowser, made to behave like a regular browser with human-like input. It is under its own [license](https://github.com/CloakHQ/CloakBrowser/blob/main/BINARY-LICENSE.md), which forbids redistribution and automated account creation.
+- The default driver works in your own Chrome through Claude in Chrome, under Anthropic's terms. The optional CloakBrowser driver is a third-party Chromium build made to behave like a regular browser with human-like input. It is under its own [license](https://github.com/CloakHQ/CloakBrowser/blob/main/BINARY-LICENSE.md), which forbids redistribution and automated account creation.
 
 ## Security and contributing
 
