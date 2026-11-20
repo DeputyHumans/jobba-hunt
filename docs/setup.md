@@ -200,7 +200,7 @@ What `templates/workspace/` ships, before the operator changes anything:
 
 | Setting | Value |
 |---|---|
-| Channels | Every channel unverified (`config/apply.json` `verified`) |
+| Channels | Every channel unverified, for both browser drivers (`config/apply.json` `verified`, `verified_chrome`) |
 | Query sets | `verified: false` in `config/searches.json` and `config/dice-searches.json`: ticks refuse until a probe verifies them |
 | Auto-apply | Off (`config/apply.json` `auto_apply.enabled: false`) |
 | Per-company limit | 1 (`config/apply.json` `companies.limit`) |

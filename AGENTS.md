@@ -56,7 +56,7 @@ This file is the entry point and the operating rules for every coding agent: Cla
   - a role the operator answered "Apply" to in the session;
   - a role that `npm run triage -- auto --id <id>` approved under the standing auto-apply rule (`config/apply.json` `auto_apply`, off until the operator opts in).
 - **Only an unambiguous yes counts as Apply.** Unclear free text is recorded as `pursue` and asked again.
-- **Verified channels only.** A channel submits for real only after the operator checked its headed dry run (`npm run apply -- verify --channel <name> --evidence <dir>`). Never hand-edit `verified`. A channel's `submit_labels` entry is added only after that channel's headed dry run, under the same rule.
+- **Verified channels only.** A channel submits for real only after the operator checked its headed dry run (`npm run apply -- verify --channel <name> --evidence <dir>`). Verification is per browser driver: `verified` for CloakBrowser, `verified_chrome` for Claude in Chrome, each from a dry run under that driver. Never hand-edit either. A channel's `submit_labels` entry is added only after that channel's headed dry run, under the same rule.
 - **Never solve a CAPTCHA or bot wall.** A headed company-site run waits for the operator to clear it (`bot_check_wait_minutes`). Otherwise the role is handed off without blocking the loop: a push notification plus a tracker card.
 - **AI-applicant question.** A form asking whether an AI, a bot or an agent applies on someone's behalf is never answered and never learned. The runner hands the role over (exit 5, reason `ai-applicant-question`) and the operator submits it by hand. Never answer it "No".
 - **A prefilled screening answer is not an answer** (`prefilled-unvetted`). The runner asks.

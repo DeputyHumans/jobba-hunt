@@ -353,3 +353,20 @@ test('apply: a pending submit refuses every run (exit 2); apply -- recover recor
   assert.equal(saved.submit_pending, undefined);
   assert.equal(cli(ws, 'apply-job.mjs', 'recover', '--job', id).code, 2, 'nothing pending: refused');
 });
+
+test('apply -- verify writes the channel for the driver of the checked run: verified or verified_chrome', () => {
+  const ws = workspace();
+  const run = (name, r) => { const d = join(ws.data, 'applications', '9000000001', name); writeJson(join(d, 'result.json'), { job_id: '9000000001', dry_run: true, outcome: 'dry-run-complete', channel: 'greenhouse', ...r }); return d; };
+  const own = () => JSON.parse(readFileSync(join(ws.home, 'config', 'apply.json'), 'utf8'));
+  const chrome = run('a-dry-run', { driver: 'chrome', headed: true });
+  assert.equal(cli(ws, 'apply-job.mjs', 'verify', '--channel', 'greenhouse', '--evidence', chrome).code, 0);
+  assert.equal(own().verified_chrome.greenhouse, true);
+  assert.notEqual(own().verified?.greenhouse, true, 'a chrome run never verifies the cloakbrowser channel');
+  assert.ok(own().verified_chrome_log.greenhouse.evidence);
+  const headless = run('b-dry-run', { headed: false });
+  assert.equal(cli(ws, 'apply-job.mjs', 'verify', '--channel', 'greenhouse', '--evidence', headless).code, 2);
+  const cloak = run('c-dry-run', { headed: true });
+  assert.equal(cli(ws, 'apply-job.mjs', 'verify', '--channel', 'greenhouse', '--evidence', cloak, '--driver', 'chrome').code, 2, 'a driver flag that disagrees with the run refuses');
+  assert.equal(cli(ws, 'apply-job.mjs', 'verify', '--channel', 'greenhouse', '--evidence', cloak).code, 0);
+  assert.equal(own().verified.greenhouse, true);
+});

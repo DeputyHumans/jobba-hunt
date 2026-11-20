@@ -63,6 +63,7 @@ import { notify } from './lib/notify.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { letterNeedsReview } from './lib/cover.mjs';
 import { STATE_PATH, loadState, saveStateAtomic, sourceState, carryRun } from './lib/state.mjs';
+import { DRIVERS, channelVerified, verifiedKey } from './lib/browser.mjs';
 import { applyGate, recordAttempt, sameCompanyRoles, markSubmitPending, recoverPending } from './lib/triage.mjs';
 import { loadCompanyOpts } from './lib/company.mjs';
 import { readPause } from './lib/pause.mjs';
@@ -109,10 +110,11 @@ if (positional[0] === 'learn') {
   out({ success: true, learned: bank.learned.length });
   process.exit(0);
 }
-// verify: a channel submits for real only after the user checked a headed dry run of it. This sets
-// verified[<channel>] and verified_log[<channel>] in the workspace config/apply.json (the file is
-// never hand-edited), and refuses unless --evidence holds that run's result.json: a complete dry
-// run of the same channel, run headed.
+// verify: a channel submits for real only after the user checked a headed dry run of it, per browser
+// driver. This sets verified[<channel>] and verified_log[<channel>] (cloakbrowser), or verified_chrome
+// and verified_chrome_log (chrome), in the workspace config/apply.json (never hand-edited), and refuses
+// unless --evidence holds that run's result.json: a complete dry run of the same channel, run headed
+// (a chrome run is always in a visible window). --driver, when given, must match the run's driver.
 if (positional[0] === 'verify') {
   const stop = (error) => { log(`REFUSED: ${error}`); out({ success: false, refused: true, error }); process.exit(2); };
   try { requireWorkspace(); } catch (err) { stop(err.message); }
@@ -127,13 +129,17 @@ if (positional[0] === 'verify') {
   if (!r) stop(`no run result in ${display(dir)}: verify needs the result.json of a dry run of ${name}`);
   if (r.dry_run !== true || r.outcome !== 'dry-run-complete') stop(`${display(dir)} is not a complete dry run (dry_run ${r.dry_run}, outcome ${r.outcome})`);
   if (r.channel !== name) stop(`${display(dir)} is a dry run of channel ${r.channel || 'unknown'}, not ${name}`);
-  if (r.headed === false) stop(`${display(dir)} is a headless dry run: check a headed one (--dry-run --headed) before verifying ${name}`);
+  const driver = r.driver || 'cloakbrowser';
+  if (!DRIVERS.includes(driver)) stop(`${display(dir)} names an unknown browser driver (${driver})`);
+  if (typeof flags.driver === 'string' && flags.driver !== driver) stop(`${display(dir)} is a ${driver} dry run, not ${flags.driver}`);
+  if (driver === 'cloakbrowser' && r.headed === false) stop(`${display(dir)} is a headless dry run: check a headed one (--dry-run --headed) before verifying ${name}`);
+  const key = verifiedKey(driver);
   const own = existsSync(configFile('apply.json')) ? loadOwnConfig('apply.json') : loadConfig('apply.json');
-  own.verified = { ...(own.verified || {}), [name]: true };
-  own.verified_log = { ...(own.verified_log || {}), [name]: { date: localDate(), evidence: display(dir), job_id: r.job_id ?? null } };
+  own[key] = { ...(own[key] || {}), [name]: true };
+  own[`${key}_log`] = { ...(own[`${key}_log`] || {}), [name]: { date: localDate(), evidence: display(dir), job_id: r.job_id ?? null } };
   saveConfig('apply.json', own);
-  logAction({ actor: 'user', action: 'channel.verified', source: name, job_id: r.job_id ?? null, detail: { evidence: display(dir) }, ref: display(dir) });
-  out({ success: true, channel: name, verified: true, evidence: display(dir) });
+  logAction({ actor: 'user', action: 'channel.verified', source: name, job_id: r.job_id ?? null, detail: { evidence: display(dir), driver }, ref: display(dir) });
+  out({ success: true, channel: name, driver, verified: true, evidence: display(dir) });
   process.exit(0);
 }
 
@@ -156,6 +162,8 @@ if (positional[0] === 'recover') {
 const id = String(flags.job || '');
 const dryRun = !!flags['dry-run'];
 const cfg = loadConfig('apply.json');
+// The driver of this runner's page work: the CloakBrowser path below. The chrome path passes 'chrome'.
+const DRIVER = 'cloakbrowser';
 const state = loadState(STATE_PATH);
 const loadedHalts = { halt_until: state.halt_until ?? null, dice_halt_until: state.sources?.dice?.halt_until ?? null };
 const job = state.jobs[id];
@@ -258,7 +266,7 @@ function finish(code, result) {
   if (result.ats_url) fresh.jobs[id].application.ats_url = result.ats_url;
   saveStateAtomic(STATE_PATH, fresh);
   // `headed` is what `verify` checks: only a headed dry run verifies a channel.
-  writeFileSync(join(outDir, 'result.json'), JSON.stringify({ job_id: id, dry_run: dryRun, headed: !!flags.headed, ...result }, null, 2));
+  writeFileSync(join(outDir, 'result.json'), JSON.stringify({ job_id: id, dry_run: dryRun, headed: !!flags.headed, driver: DRIVER, ...result }, null, 2));
   logOutcome(code, result);
   log(`${result.outcome}${result.detail ? `: ${typeof result.detail === 'string' ? result.detail : JSON.stringify(result.detail)}` : ''}\nscreenshots -> ${display(outDir)}`);
   out({ success: code === 0, job_id: id, dry_run: dryRun, ...result, dir: display(outDir) });
@@ -632,7 +640,7 @@ async function discardEasyApply(page) {
 
 async function easyApply(page) {
   const channel = 'easy';
-  if (!dryRun && !cfg.verified?.easy) return [2, { outcome: 'refused', channel, detail: unverified(channel) }];
+  if (!dryRun && !channelVerified(cfg, 'easy', DRIVER)) return [2, { outcome: 'refused', channel, detail: unverified(channel) }];
   const apps = appsCap('linkedin_apply');
   if (!dryRun && !apps.ok) return [2, { outcome: 'refused', channel, detail: 'linkedin_apply applications_per_day cap reached' }];
   await page.getByRole('button', { name: /easy apply/i }).first().click();
@@ -810,7 +818,7 @@ async function checkDiceProfileResume(page) {
 // Leaving the wizard before Submit sends nothing: closing the browser is the discard.
 async function diceEasyApply(page, apply) {
   const channel = 'dice-easy';
-  if (!dryRun && !cfg.verified?.[channel]) return [2, { outcome: 'refused', channel, detail: unverified(channel) }];
+  if (!dryRun && !channelVerified(cfg, channel, DRIVER)) return [2, { outcome: 'refused', channel, detail: unverified(channel) }];
   const apps = appsCap('dice_apply');
   if (!dryRun && !apps.ok) return [2, { outcome: 'refused', channel, detail: 'dice_apply applications_per_day cap reached' }];
   await page.goto(apply.url, { waitUntil: 'domcontentloaded' });
@@ -1091,7 +1099,7 @@ async function atsApply(site) {
     || (!!document.querySelector('input[type="email"], input[name*="email" i]') && [...document.querySelectorAll('input, select, textarea')].filter((e) => e.type !== 'hidden').length >= 4)).catch(() => false))) ats = siteChannel(url);
   reachedAts = url;
   if (!ats) { await screenshot(site, 'external'); return [5, { outcome: 'manual', channel: 'unknown', ats_url: url, detail: 'unsupported application site' }]; }
-  if (!dryRun && !cfg.verified?.[ats]) return [2, { outcome: 'refused', channel: ats, ats_url: url, detail: unverified(ats) }];
+  if (!dryRun && !channelVerified(cfg, ats, DRIVER)) return [2, { outcome: 'refused', channel: ats, ats_url: url, detail: unverified(ats) }];
   const atsApps = allowance('ats_apply', 'applications_per_day');
   if (!dryRun && !atsApps.ok) return [2, { outcome: 'refused', channel: ats, ats_url: url, detail: 'ats_apply applications_per_day cap reached' }];
   atsMeta = atsApps.meta;

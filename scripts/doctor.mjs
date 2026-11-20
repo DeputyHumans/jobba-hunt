@@ -147,8 +147,11 @@ if (!preflight) {
     if (existsSync(join(CONFIG_DIR, 'vault.json'))) add('apply', 'info', 'config/vault.json is no longer used (the runner never creates accounts or types passwords)', 'delete config/vault.json');
 
     const apply = readJson(join(CONFIG_DIR, 'apply.json')) || {};
-    const verified = Object.entries(apply.verified || {}).filter(([, v]) => v).map(([k]) => k);
-    add('apply', 'info', verified.length ? `verified channels: ${verified.join(', ')}` : 'no channel verified yet (each first apply is a headed dry run you check)');
+    const on = (key) => Object.entries(apply[key] || {}).filter(([, v]) => v === true).map(([k]) => k);
+    for (const [key, driver] of [['verified', 'cloakbrowser'], ['verified_chrome', 'chrome']]) {
+      const v = on(key);
+      add('apply', 'info', v.length ? `verified channels (${driver}): ${v.join(', ')}` : `no channel verified for ${driver} yet (each first apply is a headed dry run you check)`);
+    }
     add('apply', 'info', `auto-apply ${apply.auto_apply?.enabled ? `on (score >= ${apply.auto_apply.min_score})` : 'off'}; tailored-document review: ${prefs.tailoring?.review || 'bikeshed'}`);
 
     const ob = readJson(join(PROFILE_DIR, 'onboarding.json'));

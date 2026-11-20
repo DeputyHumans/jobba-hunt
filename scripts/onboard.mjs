@@ -129,7 +129,7 @@ export function validateWorkspace(home = HOME) {
     if (s && !Array.isArray(s.queries)) p(`config/${f}`, 'queries must be a list');
   }
   const apply = j('config/apply.json');
-  for (const [k, v] of Object.entries(apply?.verified || {})) if (typeof v !== 'boolean') p('config/apply.json', `verified.${k} must be true or false`);
+  for (const key of ['verified', 'verified_chrome']) for (const [k, v] of Object.entries(apply?.[key] || {})) if (typeof v !== 'boolean') p('config/apply.json', `${key}.${k} must be true or false`);
   const browser = j('config/browser.json');
   if (browser && browser.driver !== undefined && !DRIVERS.includes(browser.driver)) p('config/browser.json', 'driver must be chrome or cloakbrowser');
   if (apply?.accounts?.create === true) p('config/apply.json', 'accounts.create: automated ATS account creation is retired (the runner never creates an account or types a password); remove the accounts block');

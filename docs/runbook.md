@@ -171,7 +171,7 @@ Start with `/loop /hunt-loop` in a session that stays open, on a machine that st
 | `fit-profile.md` | Calibration passes |
 | Caps or pacing | Lower any time. Raise only on the operator's explicit word, with a `profile/decisions.md` row (before, after, the operator's words) |
 | `config/apply.json` `auto_apply` or `companies`, `preferences.tailoring` | The operator's word, with a `profile/decisions.md` row |
-| Channel verification | Only `npm run apply -- verify --channel <name> --evidence <run dir>`, after the operator checked that headed dry run |
+| Channel verification | Only `npm run apply -- verify --channel <name> --evidence <run dir>`, after the operator checked that headed dry run. It writes `verified` or `verified_chrome`, by the driver that ran it |
 | CloakBrowser version | Pinned in `package.json` (`cloakbrowser`); the wrapper version fixes the Chromium build (`scripts/cloak-core.mjs`). After a change, `npm run setup` installs the matching build |
 
 ## Guards and actions

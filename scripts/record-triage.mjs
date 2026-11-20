@@ -31,6 +31,7 @@ import { parseArgs, out, fail } from './cloak-core.mjs';
 import { STATE_PATH, loadState, saveStateAtomic } from './lib/state.mjs';
 import { CODE_ROOT, CV_OUT, CV_SRC, DATA_DIR, SCRIPTS_DIR, display, resolveArgPath } from './lib/paths.mjs';
 import { loadConfig } from './lib/config.mjs';
+import { browserDriver, channelVerified } from './lib/browser.mjs';
 import { cvFileBase, preferences } from './lib/profile.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { readPause } from './lib/pause.mjs';
@@ -205,7 +206,7 @@ if (cmd === 'pending') {
   // A company-site role ("external") is resolved to its ATS only at submit time; the runner
   // submits only on a verified ATS (config/apply.json verified) and hands anything else to the user.
   const type = j.detail?.apply?.type;
-  const blockers = autoApplyBlockers(j, rule, { coverage, cvExists: !!cvAbs && existsSync(cvAbs), verified: type === 'external' ? true : !!cfg.verified?.[type], pause: readPause(), sameCompany: siblingsOf(id) });
+  const blockers = autoApplyBlockers(j, rule, { coverage, cvExists: !!cvAbs && existsSync(cvAbs), verified: type === 'external' ? true : channelVerified(cfg, type, browserDriver({ cfg: loadConfig('browser.json') })), pause: readPause(), sameCompany: siblingsOf(id) });
   blockers.push(...extra);
   if (rule && rule.enabled !== true && !blockers.some((b) => b.startsWith('auto-apply is off'))) blockers.unshift('auto-apply is off (config/apply.json auto_apply.enabled)');
   // A channel whose rule says "generated" goes out only with a claims-only cover letter PDF
