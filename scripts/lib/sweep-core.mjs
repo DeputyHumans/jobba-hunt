@@ -7,6 +7,7 @@
 // rate limiter, so the same core runs LinkedIn, Dice and the tests.
 
 import { buildSearchUrl } from './search-url.mjs';
+import { BrowserUnavailableError } from './bridge.mjs';
 import { prefilterJob } from './prefilter.mjs';
 import { evaluateSearch, evaluateView } from './guards.mjs';
 import { STATE_PATH, saveStateAtomic, upsertCards, setPrefilter, setDetail, viewCandidates, touchedIds, markQueryRun } from './state.mjs';
@@ -39,6 +40,15 @@ export function createRun({ page, state, cfg, P, runId, log, suspectStreak = 0, 
     try {
       r = await io.searchJobs(page, url);
     } catch (err) {
+      // The chrome driver's browser stopped answering: the run ends, no guard reads the page, and
+      // the load counts only if the agent made it.
+      if (err instanceof BrowserUnavailableError) {
+        if (err.loaded) recordPost(platform, 'searches_per_day', { runId, query: p.id, page: pageIdx });
+        run.abort = 'browser-unavailable';
+        run.browserError = err.why;
+        log(`         browser unavailable: ${err.why}`);
+        return null;
+      }
       r = { status: 'suspect', cards: [], error: err.message.slice(0, 200), url };
     }
     recordPost(platform, 'searches_per_day', { runId, query: p.id, page: pageIdx });
@@ -94,7 +104,16 @@ export function createRun({ page, state, cfg, P, runId, log, suspectStreak = 0, 
       await sleep(jitter(cfg.pacing.view_gap_ms));
       const id = queue[i];
       let v;
-      try { v = await io.viewJob(page, id); } catch (err) { v = { status: 'unreadable', error: err.message.slice(0, 200) }; }
+      try { v = await io.viewJob(page, id); } catch (err) {
+        if (err instanceof BrowserUnavailableError) {
+          if (err.loaded) recordPost(platform, 'job_views_per_day', { runId, jobId: id });
+          run.abort = 'browser-unavailable';
+          run.browserError = err.why;
+          log(`[view] ${id} browser unavailable: ${err.why}`);
+          break;
+        }
+        v = { status: 'unreadable', error: err.message.slice(0, 200) };
+      }
       recordPost(platform, 'job_views_per_day', { runId, jobId: id });
       const g = evaluateView(v, { unreadableStreak });
       unreadableStreak = g.unreadableStreak;

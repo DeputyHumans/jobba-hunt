@@ -112,3 +112,23 @@ test('page 2 for any query when at least new_share_for_next of page 1 is new; no
   await b.run.searchQuery(gi);
   assert.equal(urls.length, 1);
 });
+
+test('a lost browser (chrome driver) ends the run as browser-unavailable, never halts, and counts a load only if it happened', async () => {
+  const { BrowserUnavailableError } = await import('../scripts/lib/bridge.mjs');
+  const { haltsSource } = await import('../scripts/lib/tick-plan.mjs');
+  const searches = () => limiter.getUsageSummary().linkedin_jobs?.searches_per_day?.count ?? 0;
+  const before = searches();
+  const { state, run } = harness({ search: () => { throw new BrowserUnavailableError('no response to rq-1', { loaded: false }); }, view: () => ({ status: 'ok' }) });
+  const r = await run.searchQuery(item);
+  assert.equal(r, null);
+  assert.equal(run.abort, 'browser-unavailable');
+  assert.match(run.browserError, /no response/);
+  assert.equal(haltsSource(run.abort), false);
+  assert.equal(searches(), before, 'no load happened: nothing counted');
+  assert.equal(state.query_runs['fractional-leaders'], undefined, 'the window does not move');
+  assert.equal(run.perQuery.length, 0, 'no guard read a page');
+  const loaded = harness({ search: () => { throw new BrowserUnavailableError('integrity: hash mismatch', { loaded: true }); }, view: () => ({ status: 'ok' }) });
+  await loaded.run.searchQuery(item);
+  assert.equal(loaded.run.abort, 'browser-unavailable');
+  assert.equal(searches(), before + 1, 'the load the agent made counts');
+});

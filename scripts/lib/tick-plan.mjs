@@ -104,9 +104,10 @@ export function isHalted(state, ms) {
   return !!state.halt_until && ms < Date.parse(state.halt_until);
 }
 
-// A guard abort in any browser run (tick, sweep, probe, the runner) halts that source; a run's own
-// budget stop (cap-reached) is not a signal from the platform and halts nothing.
-export const haltsSource = (abort) => !!abort && abort !== 'cap-reached';
+// A guard abort in any browser run (tick, sweep, probe, the runner) halts that source. A run's own
+// budget stop (cap-reached) and a lost browser under the chrome driver (browser-unavailable: the
+// agent's Chrome stopped answering) are no signal from the platform and halt nothing.
+export const haltsSource = (abort) => !!abort && abort !== 'cap-reached' && abort !== 'browser-unavailable';
 
 // What stops a browser run outside the loop ticks (a sweep, a probe, a reader CLI search or
 // view): the source's halt first, then the hunt-wide pause (config/pause.json). `halt` is the
