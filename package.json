@@ -5,6 +5,15 @@
   "type": "module",
   "description": "An agentic job hunt that runs from one folder: paced read-only job-board sweeps, rubric triage, CVs and cover letters tailored per job from a claim bank, approve-then-apply automation, a read-only inbox scan and a live applications dashboard.",
   "license": "Apache-2.0",
+  "author": "Deputy Humans",
+  "homepage": "https://github.com/DeputyHumans/jobba-hunt#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DeputyHumans/jobba-hunt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DeputyHumans/jobba-hunt/issues"
+  },
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "doctor": "node scripts/doctor.mjs",
