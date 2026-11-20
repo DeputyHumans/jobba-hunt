@@ -6,7 +6,10 @@
 // The synthetic test persona (a JOBBA_HOME inside tests/, or any workspace holding a .synthetic
 // marker, such as the test runner's temporary copy) is never a source of terms.
 //
-//   node scripts/check-pii.mjs [--staged] [--json]
+// --history scans every blob ever committed on any ref (deleted files included) and every commit
+// message instead of today's files: the gate before a repository is made public.
+//
+//   node scripts/check-pii.mjs [--staged | --history] [--json]
 // Exit 0 clean (or no workspace), 1 hits found.
 
 import { execFileSync } from 'node:child_process';
@@ -52,6 +55,44 @@ export function scan(files, terms, readFile) {
   return hits;
 }
 
+// Every blob reachable from any ref, with the first path it was seen at, plus every commit message.
+export function historyEntries(repoDir) {
+  const git = (args, input) => execFileSync('git', args, { cwd: repoDir, input, maxBuffer: 1 << 30 });
+  const paths = new Map();
+  for (const line of git(['rev-list', '--all', '--objects']).toString('utf8').split('\n')) {
+    const sp = line.indexOf(' ');
+    if (sp > 0 && !paths.has(line.slice(0, sp))) paths.set(line.slice(0, sp), line.slice(sp + 1));
+  }
+  const entries = [];
+  const wanted = [...paths].filter(([, path]) => path && !BINARY.has(extname(path).toLowerCase())).map(([sha]) => sha);
+  if (wanted.length) {
+    const out = git(['cat-file', '--batch'], `${wanted.join('\n')}\n`);
+    for (let i = 0; i < out.length;) {
+      const nl = out.indexOf(10, i);
+      const [sha, type, size] = out.toString('utf8', i, nl).split(' ');
+      if (type === 'missing' || size === undefined) { i = nl + 1; continue; }
+      const start = nl + 1, end = start + Number(size);
+      const body = out.subarray(start, end);
+      i = end + 1;
+      if (type === 'blob' && !body.includes(0)) entries.push({ kind: 'blob', file: paths.get(sha), text: body.toString('utf8') });
+    }
+  }
+  const log = git(['log', '--all', '--format=%H%x1f%B%x1e']).toString('utf8');
+  for (const rec of log.split('\x1e')) {
+    const sep = rec.indexOf('\x1f');
+    if (sep < 0) continue;
+    entries.push({ kind: 'message', file: `commit ${rec.slice(0, sep).trim().slice(0, 7)}`, text: rec.slice(sep + 1) });
+  }
+  return entries;
+}
+
+export function scanHistory(repoDir, terms, entries = historyEntries(repoDir)) {
+  const hits = scan(entries.map((_, k) => k), terms, (k) => entries[k].text);
+  const seen = new Set();
+  return hits.map((h) => ({ kind: entries[h.file].kind, file: entries[h.file].file, line: h.line, term: h.term }))
+    .filter((h) => { const key = `${h.kind}|${h.file}|${h.line}|${h.term}`; return !seen.has(key) && seen.add(key); });
+}
+
 function main() {
   const json = process.argv.includes('--json');
   const synthetic = !relative(join(CODE_ROOT, 'tests'), HOME).startsWith('..') || existsSync(join(HOME, '.synthetic'));
@@ -67,6 +108,17 @@ function main() {
     master: read(join(COLLATERAL_DIR, 'cv', 'master.json')) || {},
     extra: existsSync(extraPath) ? readFileSync(extraPath, 'utf8').split('\n').map((s) => s.trim()).filter((s) => s && !s.startsWith('#')) : [],
   });
+  if (process.argv.includes('--history')) {
+    const entries = historyEntries(CODE_ROOT);
+    const hits = scanHistory(CODE_ROOT, terms, entries);
+    const blobs = entries.filter((e) => e.kind === 'blob').length, commits = entries.length - blobs;
+    if (json) console.log(JSON.stringify({ ok: hits.length === 0, history: true, terms: terms.length, blobs, commits, hits: hits.map((h) => ({ ...h, term: `${h.term.slice(0, 2)}…` })) }));
+    else if (hits.length) {
+      for (const h of hits) console.log(`${h.file}:${h.line}  personal value from the workspace in history (${h.term.slice(0, 2)}…)`);
+      console.log(`\ncheck:pii --history: ${hits.length} hit(s). Rewrite the history before publishing.`);
+    } else console.log(`check:pii --history: ok (${terms.length} terms, ${blobs} blobs, ${commits} commits)`);
+    process.exit(hits.length ? 1 : 0);
+  }
   const args = process.argv.includes('--staged') ? ['diff', '--cached', '--name-only', '--diff-filter=ACMR'] : ['ls-files', '-co', '--exclude-standard'];
   const files = execFileSync('git', args, { cwd: CODE_ROOT, encoding: 'utf8' }).split('\n').filter(Boolean)
     .filter((f) => !BINARY.has(extname(f).toLowerCase()) && !f.startsWith('workspace/'));
