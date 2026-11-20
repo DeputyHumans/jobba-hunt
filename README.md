@@ -175,6 +175,19 @@ Clone, `./bin/bootstrap`, then bring your workspace: copy the folder, or `git cl
 | Chromium will not start on Linux | Missing shared libraries | `npm run setup` prints the install lines |
 | A CV build fails on fonts | Text fell back to a font outside the bundled set | Remove the character. `npm run doctor` checks `brand/fonts` |
 
+## Terms and responsibility
+
+- jobba-hunt is provided as is, under the Apache License 2.0, with no warranty. You run it on your own accounts, at your own risk.
+- LinkedIn's [User Agreement](https://www.linkedin.com/legal/user-agreement) and Dice's [Terms and Conditions](https://www.dice.com/about/terms-and-conditions) restrict automated access. Whether you use this tool on them is your decision. Pacing and daily caps lower the load and the risk. They do not make automation permitted, and a board can restrict your account.
+- You are responsible for every application, answer and document sent in your name. The tool submits only what you approved, and only claims you confirmed.
+- jobba-hunt is not affiliated with or endorsed by LinkedIn, Dice, Anthropic, Google, CloakHQ, Walmart or any applicant tracking system vendor.
+- Anthropic's [terms](https://www.anthropic.com/legal/consumer-terms) and [usage policy](https://www.anthropic.com/legal/aup) apply to Claude Code and the agents that run it.
+- The bundled browser is a third-party Chromium build, CloakBrowser, made to behave like a regular browser with human-like input. It is under its own [license](https://github.com/CloakHQ/CloakBrowser/blob/main/BINARY-LICENSE.md), which forbids redistribution and automated account creation.
+
+## Security and contributing
+
+Report vulnerabilities privately ([SECURITY.md](SECURITY.md)). Contributions: [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for bundled third-party material.
+Copyright 2026 Deputy Humans. Apache License 2.0: see [LICENSE](LICENSE), and [NOTICE](NOTICE) for the third-party material.
