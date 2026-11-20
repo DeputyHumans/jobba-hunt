@@ -1,0 +1,144 @@
+#!/bin/sh
+# One-line installer for a Mac with nothing on it (no git, no Node, no Homebrew):
+#
+#   curl -fsSL https://raw.githubusercontent.com/DeputyHumans/jobba-hunt/main/bin/install | sh
+#
+# In order, skipping anything already there:
+#   1. Apple's Command Line Tools (git). The install dialog is Apple's; this waits for it to finish.
+#   2. The shell profile ($HOME/.zshrc, or $HOME/.bash_profile for bash), created if missing.
+#   3. Node 22 through nvm (the nvm installer edits that profile).
+#   4. Claude Code (native installer) and its $HOME/.local/bin on PATH.
+#   5. The project: cloned over HTTPS into $JOBBA_DIR (default $HOME/jobba-hunt), or fast-forwarded.
+#   6. ./bin/bootstrap (npm packages, the browser download, skills, git hook, preflight checks).
+# No sudo, no Homebrew, nothing installed outside your home folder.
+#
+# Settings (environment): JOBBA_DIR, JOBBA_REPO, JOBBA_REF (default main), JOBBA_POLL_SECONDS (10),
+# JOBBA_CLT_TIMEOUT_MINUTES (60).
+# Exit codes: 0 done; 1 a step failed (the message names the fix: fix it, then run this again);
+# 2 unsupported host (not macOS, macOS older than 13, or run as root).
+#
+# Everything runs inside main(), called on the last line, so a download cut short runs nothing.
+
+NVM_VERSION=v0.41.0
+NODE_MIN=22.13.0
+MACOS_MIN=13.0
+DOCS_URL=https://github.com/DeputyHumans/jobba-hunt/blob/main/docs/setup.md
+
+say() { printf '%s\n' "$*"; }
+die() { printf '\ninstall: %s\n' "$1" >&2; exit "${2:-1}"; }
+
+# 0 when dotted version $1 >= $2 (major.minor.patch).
+version_ge() {
+  awk -v a="$1" -v b="$2" 'BEGIN { split(a, x, "."); split(b, y, ".");
+    for (i = 1; i <= 3; i++) { if ((x[i] + 0) > (y[i] + 0)) exit 0; if ((x[i] + 0) < (y[i] + 0)) exit 1 } exit 0 }'
+}
+
+# The Command Line Tools are in place when their folder holds a real git. Apple's /usr/bin/git is
+# only a stub until then: running it opens the install dialog, so it is never called to check.
+clt_git() { d=$(xcode-select -p 2>/dev/null) && [ -x "$d/usr/bin/git" ] && printf '%s\n' "$d/usr/bin/git"; }
+find_git() {
+  clt_git && return 0
+  g=$(command -v git 2>/dev/null) && [ "$g" != /usr/bin/git ] && printf '%s\n' "$g"
+}
+
+node_ok() { command -v node >/dev/null 2>&1 && version_ge "$(node -p process.versions.node 2>/dev/null || echo 0)" "$NODE_MIN"; }
+
+main() {
+  set -eu
+  repo=${JOBBA_REPO:-https://github.com/DeputyHumans/jobba-hunt.git}
+  ref=${JOBBA_REF:-main}
+  poll=${JOBBA_POLL_SECONDS:-10}
+  limit=$(( ${JOBBA_CLT_TIMEOUT_MINUTES:-60} * 60 ))
+
+  # Host
+  [ "$(uname -s)" = Darwin ] || { say "This installer is for macOS. On Linux, follow $DOCS_URL"; exit 2; }
+  macos=$(sw_vers -productVersion)
+  version_ge "$macos" "$MACOS_MIN" || { say "macOS $macos is too old: Claude Code needs macOS $MACOS_MIN or newer."; exit 2; }
+  [ "$(id -u)" != 0 ] || { say "Run this as your own user, without sudo."; exit 2; }
+  say "jobba-hunt installer, macOS $macos"
+
+  # 1. Command Line Tools (git)
+  if ! GIT=$(find_git); then
+    say ""
+    say "1/6 Installing Apple's Command Line Tools (git)."
+    say "    A dialog opens: click Install, accept the license, and wait. This can take several minutes."
+    xcode-select --install >/dev/null 2>&1 || true
+    waited=0
+    until GIT=$(find_git); do
+      [ "$waited" -lt "$limit" ] || die "the Command Line Tools did not finish installing. Finish the install (no dialog? run: xcode-select --install), then run this installer again."
+      sleep "$poll"
+      waited=$((waited + poll))
+      [ $((waited % 300)) -ge "$poll" ] || say "    still waiting for the Command Line Tools ($((waited / 60)) min). No dialog? Run: xcode-select --install"
+    done
+  fi
+  say "1/6 git: $GIT"
+
+  # 2. Shell profile
+  case "${SHELL:-/bin/zsh}" in
+    */bash) profile="$HOME/.bash_profile" ;;
+    *) profile="${ZDOTDIR:-$HOME}/.zshrc" ;;
+  esac
+  touch "$profile"
+  say "2/6 shell profile: $profile"
+
+  # 3. Node 22 through nvm
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if ! node_ok; then
+    if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+      say "3/6 Installing nvm $NVM_VERSION"
+      curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/$NVM_VERSION/install.sh" | PROFILE="$profile" bash \
+        || die "the nvm installer failed. Check the connection, then run this installer again."
+    fi
+    say "3/6 Installing Node 22"
+    # nvm.sh is not written for errexit or nounset: both stay off while it loads and runs.
+    set +eu
+    . "$NVM_DIR/nvm.sh"
+    nvm install 22 || die "nvm install 22 failed. Check the connection, then run this installer again."
+    nvm alias default 22 >/dev/null 2>&1
+    set -eu
+    node_ok || die "Node $NODE_MIN or newer is still not on PATH after nvm install 22. Open a new Terminal window and run this installer again."
+  fi
+  say "3/6 Node $(node -p process.versions.node)"
+
+  # 4. Claude Code
+  if ! command -v claude >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/claude" ]; then
+    say "4/6 Installing Claude Code"
+    curl -fsSL https://claude.ai/install.sh | bash || die "the Claude Code installer failed. Check the connection, then run this installer again."
+  fi
+  if [ -x "$HOME/.local/bin/claude" ]; then
+    case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) PATH="$HOME/.local/bin:$PATH"; export PATH ;; esac
+    grep -qs '\.local/bin' "$profile" || printf '\n%s\n' 'export PATH="$HOME/.local/bin:$PATH"' >> "$profile"
+  fi
+  command -v claude >/dev/null 2>&1 || die "Claude Code is not on PATH after its installer. Open a new Terminal window and run this installer again."
+  say "4/6 Claude Code: $(command -v claude)"
+
+  # 5. The project. Run from inside a checkout, that checkout is the one set up.
+  dir=${JOBBA_DIR:-}
+  if [ -z "$dir" ] && [ -f "$0" ] && [ -x "$(dirname "$0")/bootstrap" ]; then dir=$(cd "$(dirname "$0")/.." && pwd); fi
+  dir=${dir:-$HOME/jobba-hunt}
+  GIT_TERMINAL_PROMPT=0
+  export GIT_TERMINAL_PROMPT
+  if [ -d "$dir/.git" ]; then
+    grep -qs '"name": "jobba-hunt"' "$dir/package.json" || die "$dir is a git checkout of something else. Set JOBBA_DIR to another folder, then run this again."
+    "$GIT" -C "$dir" pull --ff-only >/dev/null 2>&1 || say "    could not fast-forward $dir: setting up what is there"
+  elif [ -e "$dir" ] && [ -n "$(ls -A "$dir" 2>/dev/null)" ]; then
+    die "$dir exists and is not a jobba-hunt checkout. Move it, or set JOBBA_DIR to another folder, then run this again."
+  else
+    "$GIT" clone --branch "$ref" "$repo" "$dir" || die "git clone of $repo failed. Check the connection, then run this again."
+  fi
+  say "5/6 project: $dir"
+
+  # 6. Bootstrap
+  say "6/6 Bootstrap"
+  (cd "$dir" && ./bin/bootstrap) || die "bootstrap stopped: read its message above, fix it, then run this installer again."
+
+  say ""
+  say "Installed. Next:"
+  say "  1. Open a new Terminal window (it loads Node and Claude Code onto PATH)."
+  say "  2. Run: cd \"$dir\" && claude"
+  say "     The first start signs you in to Claude in the browser."
+  say "  3. In Claude Code, type: /hunt-onboard"
+  say "Full guide: $DOCS_URL"
+}
+
+main "$@"

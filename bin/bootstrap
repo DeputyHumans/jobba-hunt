@@ -1,6 +1,7 @@
 #!/bin/sh
 # First run on a fresh machine: checks the host, installs the npm dependencies into this folder,
-# runs the setup pass and the preflight checks. Idempotent: re-run it any time.
+# runs the setup pass and the preflight checks. Idempotent: re-run it any time. bin/install (the
+# one-line macOS installer) runs it after cloning.
 # It never installs system packages; when something is missing it prints the command to run.
 #
 #   ./bin/bootstrap

@@ -6,6 +6,9 @@ Symptom, cause, fix. The rules are in `AGENTS.md`. Guard-by-guard actions, halts
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| `bin/install` exits 2 | Not macOS, macOS older than 13, or run as root | On Linux follow `docs/setup.md` from step 1. Never run the installer with sudo |
+| `install: the Command Line Tools did not finish installing` | The Apple dialog was closed or the download stalled | Run `xcode-select --install`, let it finish, then run the installer line again |
+| `install: <folder> exists and is not a jobba-hunt checkout` | `JOBBA_DIR` (default `$HOME/jobba-hunt`) holds other files | Move them, or pass another `JOBBA_DIR`. The installer never deletes a folder |
 | `bootstrap: git is missing` | No git on the host | `docs/setup.md` "Install git" |
 | macOS: a dialog asks to install the command line developer tools, or `xcrun: error: invalid active developer path` | The Command Line Tools are missing, or an OS upgrade removed them | `xcode-select --install` |
 | `nvm: command not found` right after the nvm installer | macOS: no `$HOME/.zshrc` for the installer to edit, or the shell was not reopened | `touch $HOME/.zshrc`, run the nvm installer again, open a new shell |

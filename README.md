@@ -76,7 +76,15 @@ Nothing is installed globally. The Chromium download, CLI credentials and your w
 
 ## Quickstart
 
-With git, Node and Claude Code installed ([docs/setup.md](docs/setup.md) steps 1, 2 and 6):
+On a Mac with nothing installed, not even git, one line sets up everything:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/DeputyHumans/jobba-hunt/main/bin/install | sh
+```
+
+It installs Apple's Command Line Tools (git), Node 22 through nvm and Claude Code, clones the project into `$HOME/jobba-hunt` and runs `./bin/bootstrap`. Nothing needs sudo or Homebrew. Read it before you run it: [bin/install](bin/install). Then open a new Terminal window and run `cd "$HOME/jobba-hunt" && claude`.
+
+By hand, or on Linux, with git, Node and Claude Code installed first ([docs/setup.md](docs/setup.md) steps 1, 2 and 6):
 
 ```sh
 git clone https://github.com/DeputyHumans/jobba-hunt.git

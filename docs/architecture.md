@@ -14,6 +14,7 @@ How the repository is laid out, how every path and config value is resolved, whe
 ```
 README.md  AGENTS.md  LICENSE  NOTICE  package.json  package-lock.json  .nvmrc
 CLAUDE.md                     the one line @AGENTS.md: Claude Code's import stub
+bin/install                   POSIX sh one-line macOS installer: Command Line Tools, nvm and Node 22, Claude Code, clone, then bin/bootstrap
 bin/bootstrap                 POSIX sh first run: host check, Node against package.json engines, npm ci, setup, doctor --preflight
 .githooks/pre-commit          check:portable and check:pii on staged files
 .agents/skills/<name>/        canonical skills

@@ -18,6 +18,29 @@ Paths: repo-relative (`scripts/...`, `bin/...`) or workspace-relative (`workspac
 | Optional | A mail connector in the agent harness | Mail adapter `bridge` (step 10) |
 | Optional | firecrawl or Perplexity tools in the harness | Richer company research in `/hunt-kit`. Without them it uses the harness's own web search and fetch |
 
+## One-line install (macOS)
+
+On macOS 13 or newer, one command does steps 1 to 4 and installs the agent (step 6). The Mac needs nothing installed first, not even git:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/DeputyHumans/jobba-hunt/main/bin/install | sh
+```
+
+| What `bin/install` does | Skipped when |
+|---|---|
+| Apple's Command Line Tools (git): opens Apple's install dialog and waits up to 60 minutes for it | A real git is installed |
+| Creates the shell profile (`$HOME/.zshrc`, or `$HOME/.bash_profile` for bash) | It exists |
+| nvm v0.41.0, then `nvm install 22` | Node 22.13 or newer is on `PATH` |
+| Claude Code (native installer), and `$HOME/.local/bin` on `PATH` in the profile | `claude` is on `PATH` |
+| Clones the project over HTTPS into `$HOME/jobba-hunt` | The folder is already a checkout: it is fast-forwarded |
+| `./bin/bootstrap` | Never |
+
+- **Settings:** `JOBBA_DIR` (another folder), `JOBBA_REF` (another branch), `JOBBA_CLT_TIMEOUT_MINUTES` (default 60). Pass them to `sh`: `curl -fsSL … | JOBBA_DIR="$HOME/code/jobba-hunt" sh`.
+- **Exit codes:** 0 done; 1 a step failed (the message names the fix: fix it and run the line again); 2 not macOS, macOS older than 13, or run as root.
+- It never uses sudo or Homebrew and installs nothing outside your home folder. It is safe to run again.
+
+**Checkpoint:** it ends with "Installed. Next:". Open a new Terminal window, then go on with step 5.
+
 ## 1. Install git
 
 | OS | Command |
