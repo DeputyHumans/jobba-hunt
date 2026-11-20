@@ -171,7 +171,7 @@ Three features need Claude Code: the self-scheduling loop (ScheduleWakeup), push
 | `hunt-probe` | Tests candidate queries against rules written first, writes the report, then changes the query set | `probe -- --file <probe> [--dry-run] [--headed]`, `probe-report -- <files>`, `probe -- --mark-verified <result>`, `jobs -- limits`, `dice -- limits`, `node scripts/replay-capture.mjs` | A signed-in browser profile; page loads count against the caps |
 | `hunt-interview` | A brief before a call and a debrief after it, facts with URLs, claims only | `brief -- <brief.md> [--glossary <json>] [--out <html>] [--write-claims]`, `bikeshed -- publish / update` | Web search and fetch |
 | `hunt-recruiter` | One tailored CV per role on a recruiter's list, plus an index page. Never a direct apply | `cv -- --dir <list>/cv --all`, `cv -- --match <jd> --terms <terms> --dir <list>/cv --candidate <slug>`, `cv-publish -- --dir <list>/cv`, `recruiter-pages -- --dir <list> --publish`, `bikeshed -- mkdir` | bikeshed (publisher `local` writes the pages only) |
-| `authentic-prose`, `humanizing-prose` (vendored) | Revise outbound drafts to the operator's voice without adding facts | None. Optional: `python3 .agents/skills/authentic-prose/scripts/metrics.py <file>` | Python 3.8+ for the optional script |
+| `authentic-prose`, `humanizing-prose` (first-party) | Revise outbound drafts to the operator's voice without adding facts | None. Optional: `python3 .agents/skills/authentic-prose/scripts/metrics.py <file>` | Python 3.8+ for the optional script |
 | `bs-publish`, `bs-comment`, `bs-folder`, `bs-share` (vendored) | Publish, comment on, file and share bikeshed documents | `npm run bikeshed -- <args>` only | A bikeshed sign-in |
 
 All commands above are `npm run <command>` unless written with `node`.
@@ -192,6 +192,6 @@ All commands above are `npm run <command>` unless written with `node`.
 
 - `npm test` runs every test against a temporary copy of the synthetic workspace (`tests/fixtures/workspace/`), with browser launches blocked (`JOBBA_NO_BROWSER`). Keep it green.
 - `npm run check:portable` and `npm run check:pii` must pass. The pre-commit hook runs both on staged files.
-- Never add personal data, host paths or real employer data to the repo. Tests use the synthetic persona: Jordan Example, Acme Corp and friends.
+- Never add personal data, host paths or anything from the operator's own hunt to the repo: their employers, clients, applications, recruiters or mail. Integrations with public career sites (careers.walmart.com, for example) are fine. Tests use the synthetic persona: Jordan Example, Acme Corp and friends.
 - A change in behavior updates the doc, skill and template that describe it in the same change.
 - Commits are conventional (`type(scope): subject`), one logical change each, staged file by file (`docs/acf/git/commit-conventions.md`).
