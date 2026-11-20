@@ -89,7 +89,9 @@ test('chromiumPath: CHROME_PATH wins, a missing override fails, an empty cache s
   const saved = process.env.CLOAKBROWSER_CACHE_DIR;
   process.env.CLOAKBROWSER_CACHE_DIR = empty; // binaryInfo() reads the cache dir from the environment
   try {
-    await assert.rejects(chromiumPath({ env: { CLOAKBROWSER_CACHE_DIR: empty } }), /no Chromium binary found.*run npm run setup/);
+    await assert.rejects(chromiumPath({ env: { CLOAKBROWSER_CACHE_DIR: empty }, systemCandidates: [] }), /no Chromium binary found.*run npm run setup/);
+    // No CloakBrowser build: an installed Google Chrome renders instead (the chrome driver's hosts).
+    assert.equal(await chromiumPath({ env: { CLOAKBROWSER_CACHE_DIR: empty }, systemCandidates: [join(dir, 'missing-chrome'), fake] }), fake);
   } finally {
     process.env.CLOAKBROWSER_CACHE_DIR = saved;
   }

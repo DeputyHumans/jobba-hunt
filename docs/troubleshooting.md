@@ -129,7 +129,7 @@ Symptom, cause, fix. The rules are in `AGENTS.md`. Guard-by-guard actions, halts
 | Symptom | Cause | Fix |
 |---|---|---|
 | `npm run setup` warns "Chromium libraries missing" (Linux) | Shared libraries Chromium links against are absent | Run the `apt-get` or `dnf` line setup prints (`docs/setup.md` "Linux notes") |
-| A CV or letter build exits 1, "no Chromium binary found" | The CloakBrowser binary was not downloaded | `npm run setup`. `CHROME_PATH` points at another Chromium if needed |
+| A CV or letter build exits 1, "no Chromium binary found" | No CloakBrowser build was downloaded and no Google Chrome is installed | Install Google Chrome (the renderer falls back to it), or `npm run setup`. `CHROME_PATH` points at another Chromium if needed |
 | A custom script hangs on `page.setContent` | The bundled Chromium build never finishes `page.setContent` | Write the HTML to a file and `page.goto()` its file URL, as `scripts/lib/pdf.mjs` does for every render |
 | Build fails with `fonts: Type 3 font embedded`, `unnamed ... font` or `font ... not embedded` | Text fell back to a font outside the bundled set (emoji, rare symbols), or a workspace brand override names a font that is not in `brand/fonts` | Remove the character from the source, or add the font file next to the override. `npm run doctor` fails when `brand/fonts` holds fewer than 4 font files: restore it from git |
 | Build fails on the page count or a sheet overflow | Content longer than `preferences.cv.pages` | Drop or shorten bullets in the variant. Never hand-edit a rendered file |

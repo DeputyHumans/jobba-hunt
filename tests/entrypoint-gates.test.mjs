@@ -370,3 +370,16 @@ test('apply -- verify writes the channel for the driver of the checked run: veri
   assert.equal(cli(ws, 'apply-job.mjs', 'verify', '--channel', 'greenhouse', '--evidence', cloak).code, 0);
   assert.equal(own().verified.greenhouse, true);
 });
+
+test('doctor: the browser rows follow the configured driver', () => {
+  const ws = workspace();
+  writeJson(join(ws.home, 'config', 'browser.json'), { driver: 'chrome' });
+  const r = spawnSync(process.execPath, [join(CODE_ROOT, 'scripts', 'doctor.mjs'), '--offline', '--json'], {
+    cwd: CODE_ROOT, encoding: 'utf8', timeout: 120000, env: { ...process.env, JOBBA_HOME: ws.home, JOBBA_DATA_DIR: ws.data },
+  });
+  const rows = JSON.parse(r.stdout.trim().split('\n').pop()).rows;
+  assert.ok(rows.some((x) => x.group === 'browser' && x.item === 'driver: chrome'), JSON.stringify(rows.filter((x) => x.group === 'browser')));
+  assert.ok(rows.some((x) => x.group === 'browser' && /checked by the agent at each firing/.test(x.item)));
+  const cloak = rows.find((x) => /CloakBrowser Chromium not downloaded|Chromium .* in \.cache\/cloakbrowser/.test(x.item));
+  if (cloak && /not downloaded/.test(cloak.item)) assert.equal(cloak.status, 'info', 'under chrome a missing CloakBrowser build never fails');
+});

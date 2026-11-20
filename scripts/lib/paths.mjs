@@ -6,6 +6,7 @@
 // given on the command line resolves against CODE_ROOT first, then HOME (resolveArgPath).
 
 import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -81,4 +82,24 @@ export function toolBin(name) {
   const env = process.env[`JOBBA_${name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_BIN`];
   if (env) return env;
   return join(BIN_DIR, name);
+}
+
+// An installed Google Chrome (or Chromium), for rendering documents when no CloakBrowser build is
+// there (lib/pdf.mjs). macOS: the app in /Applications or the user's own Applications folder.
+export function systemChromeCandidates() {
+  if (process.platform === 'darwin') {
+    const app = 'Google Chrome.app/Contents/MacOS/Google Chrome';
+    return [join('/Applications', app), join(homedir(), 'Applications', app)];
+  }
+  return ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/snap/bin/chromium'];
+}
+
+// Where Claude Code installs its connection to the Claude in Chrome extension (a native messaging
+// host manifest), per browser. Present once `claude --chrome` ran with the extension installed.
+export function nativeHostFiles() {
+  const name = 'com.anthropic.claude_code_browser_extension.json';
+  const roots = process.platform === 'darwin'
+    ? ['Google/Chrome', 'Microsoft Edge', 'Chromium', 'BraveSoftware/Brave-Browser'].map((b) => join(homedir(), 'Library', 'Application Support', b))
+    : ['google-chrome', 'chromium', 'microsoft-edge', 'BraveSoftware/Brave-Browser'].map((b) => join(homedir(), '.config', b));
+  return roots.map((r) => join(r, 'NativeMessagingHosts', name));
 }

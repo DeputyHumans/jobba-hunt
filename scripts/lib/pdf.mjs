@@ -17,6 +17,7 @@
 // page's text opens with its first content line, as pdftotext's did.
 
 import './env.mjs';
+import { systemChromeCandidates } from './paths.mjs';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRef } from 'pdf-lib';
 
@@ -183,9 +184,19 @@ const newerFirst = (p, q) => {
 
 // The binary that renders documents. CHROME_PATH overrides; then CLOAKBROWSER_BINARY_PATH; then
 // the CloakBrowser build pinned by CLOAKBROWSER_VERSION, else the newest one installed in
-// CLOAKBROWSER_CACHE_DIR (set to <repo>/.cache/cloakbrowser by env.mjs). Never a system browser.
+// CLOAKBROWSER_CACHE_DIR (set to <repo>/.cache/cloakbrowser by env.mjs); last, an installed Google
+// Chrome (paths.mjs systemChromeCandidates: the chrome driver's hosts may have no CloakBrowser build).
+// A CloakBrowser build, when present, still wins, so documents render as before.
 // cloakbrowser's binaryInfo() reads the cache dir from process.env, so env here only selects.
-export async function chromiumPath({ env = process.env } = {}) {
+export async function chromiumPath({ env = process.env, systemCandidates = systemChromeCandidates() } = {}) {
+  try { return await cloakOrOverride(env); } catch (err) {
+    if (!(err instanceof ChromiumMissingError) || /CHROME_PATH|CLOAKBROWSER_BINARY_PATH/.test(err.message)) throw err;
+    const system = systemCandidates.find((p) => existsSync(p));
+    if (system) return system;
+    throw err;
+  }
+}
+async function cloakOrOverride(env) {
   for (const k of ['CHROME_PATH', 'CLOAKBROWSER_BINARY_PATH']) {
     if (!env[k]) continue;
     if (!existsSync(env[k])) throw new ChromiumMissingError(`${k} points at a missing file`);

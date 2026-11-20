@@ -17,8 +17,9 @@ import { platform } from 'node:os';
 import { MIN_NODE, nodeOk } from './lib/node-version.mjs';
 import { claimIdsFromBank } from './lib/cv.mjs';
 import { guardRules } from './lib/mail-guard.mjs';
+import { browserDriver } from './lib/browser.mjs';
 import {
-  BIN_DIR, BRAND_DIR, CLAUDE_LOCAL_SETTINGS, CODE_ROOT, COLLATERAL_DIR, CONFIG_DIR, DATA_DIR, HOME, PROFILE_DIR, SECRETS_DIR, display, workspaceExists,
+  BIN_DIR, BRAND_DIR, CLAUDE_LOCAL_SETTINGS, CODE_ROOT, nativeHostFiles, systemChromeCandidates, COLLATERAL_DIR, CONFIG_DIR, DATA_DIR, HOME, PROFILE_DIR, SECRETS_DIR, display, workspaceExists,
 } from './lib/paths.mjs';
 
 const args = new Set(process.argv.slice(2));
@@ -38,12 +39,21 @@ const deps = ['cloakbrowser', 'playwright-core', 'bikeshed-now', '@googleworkspa
 const missingDeps = deps.filter((d) => !existsSync(join(CODE_ROOT, 'node_modules', d, 'package.json')));
 add('install', missingDeps.length ? 'FAIL' : 'ok', missingDeps.length ? `npm dependencies missing: ${missingDeps.join(', ')}` : 'npm dependencies', 'npm ci');
 
+// The browser driver (config/browser.json; cloakbrowser before onboarding): it decides which
+// browser rows fail.
+const driver = (() => { try { return browserDriver({ cfg: readJson(join(CONFIG_DIR, 'browser.json')) || {} }); } catch { return 'cloakbrowser'; } })();
+add('browser', 'ok', `driver: ${driver}`);
+const sysChrome = systemChromeCandidates().find((p) => existsSync(p));
+add('browser', sysChrome ? 'ok' : driver === 'chrome' ? 'FAIL' : 'info', sysChrome ? 'Google Chrome installed' : 'Google Chrome not found', 'install it: https://www.google.com/chrome/');
+const nativeHost = nativeHostFiles().find((p) => existsSync(p));
+add('browser', nativeHost ? 'ok' : driver === 'chrome' ? 'warn' : 'info', nativeHost ? 'Claude in Chrome connection installed' : 'Claude in Chrome connection not installed', 'add the extension (https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn), then run claude --chrome once');
+if (driver === 'chrome') add('browser', 'info', 'the extension sign-in, the plan and the site permissions are checked by the agent at each firing (tabs_context_mcp), not here');
 let chromium = null;
 try {
   const { binaryInfo } = await import('cloakbrowser');
   const info = binaryInfo(process.env.CLOAKBROWSER_VERSION || undefined);
   chromium = info?.installed ? info : null;
-  add('install', chromium ? 'ok' : 'FAIL', chromium ? `Chromium ${info.version} in .cache/cloakbrowser` : 'Chromium not downloaded', 'npm run setup');
+  add('install', chromium ? 'ok' : driver === 'cloakbrowser' ? 'FAIL' : 'info', chromium ? `Chromium ${info.version} in .cache/cloakbrowser` : `CloakBrowser Chromium not downloaded${driver === 'chrome' ? ' (only the cloakbrowser driver needs it)' : ''}`, 'npm run setup -- --with-cloakbrowser');
 } catch (err) {
   add('install', 'FAIL', `Chromium check failed: ${String(err.message).split('\n')[0]}`, 'npm ci && npm run setup');
 }
