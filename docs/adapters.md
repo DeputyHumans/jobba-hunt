@@ -1,6 +1,6 @@
 # Adapters
 
-The three pluggable edges of the system: mail, publisher and notifications. Each is picked in workspace config, has one contract in `scripts/lib/adapters/` (notifications in `scripts/lib/notify.mjs`), and runs with its credentials inside the project folder. Paths: repo-relative (`scripts/...`) or workspace-relative (`config/`, `data/`, `.secrets/`).
+The pluggable edges of the system: mail, publisher, notifications, and the chrome driver's browser bridge. Each is picked in workspace config, has one contract in `scripts/lib/adapters/` (notifications in `scripts/lib/notify.mjs`), and runs with its credentials inside the project folder. Paths: repo-relative (`scripts/...`) or workspace-relative (`config/`, `data/`, `.secrets/`).
 
 ## In-folder isolation
 
@@ -64,6 +64,42 @@ A mailed security code, a sign-in code or an account verification link: `fetchRe
 | `hunt_senders`, `subject_strong`, `subject_words`, `security` | Hunt signals |
 | `never_open` (`domains`, `senders`) | Never opened, whatever the signal |
 | `noise` (`senders`, `subjects`) | Dropped after the header read |
+
+## Browser bridge (chrome driver)
+
+Under the chrome driver (`config/browser.json` `driver: "chrome"`), a command that needs a page runs in the background under `npm run browser -- start <command> -- <args>`. It keeps every gate, cap, plan and record; the agent does each page action with the Claude in Chrome tools. Contract: `scripts/lib/bridge.mjs`; the agent's procedure: the hunt-browser skill. Why it works this way: `docs/platforms.md` "Claude in Chrome tool facts".
+
+| Request `kind` | The agent does | Then |
+|---|---|---|
+| `load` | Navigates to `url`, then runs the page script (below) | `npm run -s browser -- done --id <id> --url <tab URL> --next` |
+| `eval` | Runs the page script on the page already open | The same |
+| `act` | One action with its own judgment: click a named control, pick an option, upload a file, open or close a tab (`act`, `summary`) | `done --id <id> --next`, or `done --id <id> --failed "<what happened>" --next` |
+
+**The page script:** each `load` and `eval` request names a bundle file (`script`) and a `respond_to` file, and lists its `steps`:
+1. Plant the loader input.
+2. `find` it and `file_upload` the bundle.
+3. Read the bundle.
+4. Evaluate it, before any `await`, so a strict CSP allows it.
+5. Run it.
+6. Copy `get_page_text` from `JOBBA-ENVELOPE` to `JOBBA-END` into `respond_to`.
+7. Clear it.
+
+The agent never writes page code and never interprets page data.
+
+**The checks** (`readEnvelope` in `scripts/lib/page-script.mjs`): the request's id and nonce, the page's host, and the SHA-256 the page computed over its own result. A copy that changed one character fails. It is read once more on the same page (no new navigation); a second failure ends the run.
+
+**Ends of a run:**
+- A request with no acknowledgement within its time, a failed one, or a second integrity failure end the command with `BrowserUnavailableError`. That exits 3 and never halts a source.
+- A `load` counts against the page-load caps once acknowledged.
+
+**Files** (`data/bridge/`): `active.json` (one run at a time), `runs/<run>.json`, `.log` and `.exit.json`, `requests/<id>.json` and `.js`, `responses/<id>.txt` and `.done.json`. Served request files are deleted.
+
+| `npm run browser` | Exit |
+|---|---|
+| `start <command> [-- <args>]` | As `next`; 3 when another run holds the bridge |
+| `next [--timeout <s>]` | 0 a request (`request`); 10 the command finished (`exit`, `result`: that command's own exit code and JSON); 3 nothing yet |
+| `done --id <id> [--url] [--screenshot] [--failed "<why>"] [--next]` | 1 when a load or eval has no envelope in `respond_to`; with `--next`, as `next` |
+| `status` | 0 |
 
 ## Publisher (`config/tracker.json` `publisher`)
 

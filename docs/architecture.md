@@ -22,6 +22,7 @@ bin/bootstrap                 POSIX sh first run: host check, Node against packa
 .claude/settings.json         allows npm run, npm test and node scripts/; denies shell timeout and gws auth export (it prints decrypted credentials); Bash timeouts
 scripts/                      entrypoints: one per npm script, plus check-calibration.mjs and replay-capture.mjs (run with node)
 scripts/cloak-core.mjs        browser launch, profile locks, argument parsing, out() and fail()
+scripts/browser.mjs           the agent's side (npm run browser) of the chrome driver's bridge (docs/adapters.md "Browser bridge")
 scripts/rate-limiter.mjs      the daily caps and the limiter log
 scripts/lib/                  libraries (below)
 scripts/lib/adapters/         mail, publish, bikeshed (docs/adapters.md)
@@ -43,7 +44,8 @@ workspace/                    gitignored: the operator's workspace
 | Search, prefilter, triage | `search-url.mjs`, `dice-url.mjs`, `extract.mjs`, `dice-extract.mjs`, `prefilter.mjs`, `guards.mjs`, `sweep-core.mjs`, `tick-plan.mjs`, `window.mjs`, `probe-metrics.mjs`, `triage.mjs`, `company.mjs` (the per-company limit), `rate.mjs` (posted pay) |
 | CVs, letters, briefs | `cv.mjs`, `cv-pages.mjs`, `pdf.mjs`, `docx.mjs`, `docx-text.mjs`, `cover.mjs`, `letters.mjs`, `brief.mjs` (interview briefs, through marked), `brand-mark.mjs` |
 | Apply runner | `apply-forms.mjs`, `apply-dom.mjs`, `apply-click.mjs`, `no-bg-jit.mjs` |
-| Mail | `mail.mjs`, `mail-scan.mjs` |
+| Mail | `mail.mjs`, `mail-scan.mjs`, `mail-guard.mjs` (the Gmail connector's deny rules) |
+| Browser drivers | `browser.mjs` (the driver choice, verification per driver), `bridge.mjs` (the chrome driver's request and response files), `page-script.mjs` (page script bundles and the result envelope) |
 | Pages and notifications | `tracker.mjs`, `recruiter-pages.mjs`, `notify.mjs` |
 
 ## Workspace layout

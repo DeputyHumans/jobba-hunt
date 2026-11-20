@@ -29,6 +29,7 @@
     "watch": "node scripts/tracker-watch.mjs",
     "jobs": "node scripts/linkedin-jobs.mjs",
     "dice": "node scripts/dice-jobs.mjs",
+    "browser": "node scripts/browser.mjs",
     "triage": "node scripts/record-triage.mjs",
     "probe": "node scripts/probe-searches.mjs",
     "probe-report": "node scripts/probe-report.mjs",

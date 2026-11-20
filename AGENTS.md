@@ -43,7 +43,7 @@ This file is the entry point and the operating rules for every coding agent: Cla
 ## Command contract
 
 - Run every command from the repo root.
-- Every pipeline command prints one JSON object as its last stdout line and documents its exit codes in its script header. The pipeline commands are tick, dice-tick, sweep, jobs, dice, triage, tailor, cv, cover, cv-publish, apply, mail, tracker, watch, probe, onboard and brief.
+- Every pipeline command prints one JSON object as its last stdout line and documents its exit codes in its script header. The pipeline commands are tick, dice-tick, sweep, jobs, dice, triage, tailor, cv, cover, cv-publish, apply, mail, tracker, watch, probe, onboard, brief and browser.
 - Exceptions:
   - `doctor`, `check:pii`, `check:portable` and `log` print text or a table unless given `--json`.
   - `setup` prints text.
