@@ -3,10 +3,10 @@
 //   --preflight   host and install only (before onboarding): Node, deps, Chromium, fonts, skills,
 //                 hooks, display, optional tools, path portability
 //   (default)     preflight plus the workspace: profile, claims, CVs, searches, sessions, mail,
-//                 dashboard, vault, channels, onboarding progress
+//                 dashboard, channels, onboarding progress
 //   --offline     never touches the network (skips the bikeshed sign-in probe)
 //   --json        one JSON object instead of the table
-// It never opens a job board, never sends anything and never unlocks a vault.
+// It never opens a job board and never sends anything.
 // Exit 0 when nothing is FAIL (warnings allowed), 1 otherwise.
 
 import './lib/env.mjs';
@@ -66,7 +66,6 @@ if (platform() === 'linux') {
   add('host', disp ? 'ok' : 'warn', disp ? 'desktop display' : 'no display: headed logins, dry runs and bot checks need one', 'run from a desktop session');
   add('host', has('notify-send') ? 'ok' : 'warn', 'notify-send', 'sudo apt-get install -y libnotify-bin');
 }
-add('optional', has('op') ? 'ok' : 'info', has('op') ? '1Password CLI (op) found' : '1Password CLI not installed (only needed for vault adapter op)', '');
 add('optional', has('python3') ? 'ok' : 'info', has('python3') ? 'python3 found (authentic-prose metrics.py)' : 'python3 not found (optional: authentic-prose metrics.py)', '');
 
 const portable = run(process.execPath, [join(CODE_ROOT, 'scripts', 'check-portable.mjs'), '--json'], { cwd: CODE_ROOT });
@@ -129,11 +128,8 @@ if (!preflight) {
       }
     } else add('dashboard', 'ok', `publisher: ${tracker.publisher} (no comment watch)`);
 
-    const vault = readJson(join(CONFIG_DIR, 'vault.json')) || { adapter: 'none' };
-    // The op binary the vault adapter runs: JOBBA_OP_BIN, else vault.json op.bin, else op on PATH.
-    const opBin = process.env.JOBBA_OP_BIN || vault.op?.bin || 'op';
-    const opFound = opBin.includes('/') ? existsSync(opBin) : has(opBin);
-    add('vault', vault.adapter === 'op' && !opFound ? 'FAIL' : 'ok', `vault adapter: ${vault.adapter}${vault.adapter === 'op' ? ` (${opBin})` : ''}`, vault.adapter === 'op' ? 'install the 1Password CLI, set JOBBA_OP_BIN or vault.json op.bin, or set adapter none' : '');
+    // Automated ATS account creation is retired: a vault config left from an older install is unused.
+    if (existsSync(join(CONFIG_DIR, 'vault.json'))) add('apply', 'info', 'config/vault.json is no longer used (the runner never creates accounts or types passwords)', 'delete config/vault.json');
 
     const apply = readJson(join(CONFIG_DIR, 'apply.json')) || {};
     const verified = Object.entries(apply.verified || {}).filter(([, v]) => v).map(([k]) => k);

@@ -68,7 +68,6 @@ The full rules are in [AGENTS.md](AGENTS.md). In short:
 | Required | macOS, or a Linux desktop with a display | Logins and first dry runs happen in a visible browser window |
 | Required | About 0.5 GB of disk | The bundled Chromium (about 350 MB) and `node_modules` (about 150 MB), measured on macOS. A new Mac also needs about 1.3 GB for the Command Line Tools |
 | Bundled | Chromium (CloakBrowser), playwright-core, bikeshed CLI, Google Workspace CLI, pdf-lib, pdfjs-dist, docx, marked, fonts | `./bin/bootstrap` installs them into this folder |
-| Optional | 1Password CLI (`op`) | Lets the runner create ATS accounts with generated passwords. [Install](https://developer.1password.com/docs/cli/get-started/) |
 | Optional | Python 3.8+ | Only for `authentic-prose`'s optional metrics script (stdlib only). System `python3`, or `uv run` |
 | Optional | A Gmail connector in your agent | The `bridge` mail adapter, instead of the bundled Google Workspace CLI |
 | Optional | firecrawl or Perplexity tools in your agent | Richer company research. Without them, research uses the agent's built-in web search |
@@ -127,7 +126,7 @@ workspace/            gitignored, created by onboarding
   sources/            your original CVs, letters and exports, with their extracted text
   collateral/         claim bank, master CV, CV variants, intro and screening templates
   config/             searches, prefilter, caps, apply channels and the per-company limit,
-                      the pause, mail, dashboard, vault
+                      the pause, mail, dashboard
   docs/               profile kits, probe reports
   pipeline/           opportunities, digests, mail threads, interviews, recruiter lists, proposals
   data/               job state, browser profiles, applications, rendered CVs, action log

@@ -15,7 +15,7 @@ Everything personal lives in the workspace: `workspace/` in the repo, gitignored
 | Original CVs, letters, profile exports | `sources/` |
 | Claims, CV model, variants, answers, kits | `collateral/`, `docs/kits/`, `fit-profile.md` |
 | Opportunities, mail threads, interview briefs, recruiter lists, proposals | `pipeline/` |
-| Mailbox address, never-open domains, tracker doc ids, vault account | `config/` |
+| Mailbox address, never-open domains, tracker doc ids | `config/` |
 | Browser sessions, captures, application screenshots and filled-field records, mail exports, state, logs | `data/` |
 | Sign-ins: bikeshed (`xdg/`), gws (`gws/`, `gws-home/`), `.env` | `.secrets/` |
 
@@ -30,14 +30,13 @@ Each apply run folder (`data/applications/<id>/<stamp>-dry-run` or `-submit`) ho
 | bikeshed CLI | `.secrets/xdg/` (or `BIKESHED_TOKEN` in `.secrets/.env`) | Every call runs the pinned CLI from `node_modules/.bin` with `XDG_CONFIG_HOME` pointed into the workspace (`scripts/lib/env.mjs` `childEnv`) |
 | gws CLI | `.secrets/gws/` (OAuth client and tokens, file keyring) | Every call gets an in-folder `HOME`, `XDG_CONFIG_HOME` and `CLOUDSDK_CONFIG` under `.secrets/gws-home/`, and the host credential variables (`GOOGLE_APPLICATION_CREDENTIALS` and the CLI's own token variables) are removed. Host gcloud or application-default credentials are never read |
 | Browser sessions | `data/browser/<platform>/` | CloakBrowser profiles inside the workspace; the binary in the repo's `.cache/` |
-| 1Password | The operator's own vault | Read and written only through `op`, with the account, vault and tag in `config/vault.json` |
 
 Sign in only through the wrappers: `npm run bikeshed -- login` and `npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly` (`scripts/tool.mjs`). A global install or a bare `npx`/`npm exec` would store the credentials in the home folder, outside the workspace, where no script looks, and would share them with every other tool on the host. Steps: `docs/setup.md` "bikeshed sign-in" and "Mail adapter".
 
 ## What never leaves the workspace
 
 - No workspace file is committed to the repository, copied into `tests/fixtures/`, or pasted into an issue, a pull request or a request to an outside service.
-- Passwords exist only in the vault (`config/vault.json`, adapter `op`). Never on argv, in `data/`, in logs or in screenshots.
+- The runner never creates, types or stores a password. ATS sign-ins are the operator's, by hand.
 - The action log (`data/log/actions.jsonl`) holds short values only: never bodies, answers, addresses or passwords.
 - EEO answers default to `decline` and change only on the operator's explicit word (`profile/decisions.md`).
 - The floors in `preferences.money` never appear on the tracker.
@@ -89,7 +88,7 @@ The rules are in `AGENTS.md` "Mail (any adapter)". How the code holds them:
 
 - **Read-only, one mailbox** (`config/mail.json` `me`). A write verb is refused in code before any process starts (`docs/adapters.md` "Mail"). The operator sends every reply.
 - **Headers first.** The script decides from the headers alone which bodies to open. `never_open` beats every signal.
-- **No links.** The one exception: the sign-up verification link of an ATS account the runner just created, on that ATS's own host, within minutes of sign-up.
+- **No links.** The one exception: the link an ATS mails to verify the application email during an apply run (iCIMS), on that ATS's own host, within minutes.
 - **Codes.** An apply-time code is read only from the newest matching mail since the request.
 - **Drafts** carry claims only, `[RATE]` for any rate and `[TIMES]` for call times.
 - **Storage.** Raw bodies stay under `data/mail/`. Bridge request and response files are deleted once read. `pipeline/mail/` holds summaries, drafts and the operator's own sent text.

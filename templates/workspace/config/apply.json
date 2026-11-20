@@ -34,10 +34,6 @@
     "aliases": {},
     "_why": "limit: the most live applications (approved or sent, including opportunity files at applied or later) per company; null turns the rule off. A pursue or approve past it is refused and names the siblings, auto-apply is blocked, and the runner never submits past a sent one. agencies: recruiter or staffing posters that count only as the end client the triage names (end_client); with no client named, only the same agency role posted again counts. aliases: {\"Brand name\": \"Legal name\"} for one company under two names."
   },
-  "accounts": {
-    "create": false,
-    "_why": "ATS account creation needs a vault adapter (config/vault.json) and the user's opt-in. Without both, an account portal is handed to the user."
-  },
   "pacing": {
     "field_gap_ms": [
       350,

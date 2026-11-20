@@ -121,6 +121,7 @@ export function validateWorkspace(home = HOME) {
   }
   const apply = j('config/apply.json');
   for (const [k, v] of Object.entries(apply?.verified || {})) if (typeof v !== 'boolean') p('config/apply.json', `verified.${k} must be true or false`);
+  if (apply?.accounts?.create === true) p('config/apply.json', 'accounts.create: automated ATS account creation is retired (the runner never creates an account or types a password); remove the accounts block');
   const limits = j('config/limits.json');
   for (const [plat, acts] of Object.entries(limits || {})) {
     if (plat.startsWith('_')) continue;

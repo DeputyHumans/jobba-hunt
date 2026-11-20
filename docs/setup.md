@@ -14,7 +14,6 @@ Paths: repo-relative (`scripts/...`, `bin/...`) or workspace-relative (`workspac
 | Required | macOS, or a Linux desktop session with a display | Logins, first dry runs and bot checks happen in a visible browser window. A headless server cannot do them |
 | Required | About 0.5 GB of disk | The bundled Chromium (about 350 MB) and `node_modules` (about 150 MB), measured on macOS. Plus the Command Line Tools on a new Mac |
 | Bundled | Chromium (CloakBrowser), playwright-core, the bikeshed CLI, the Google Workspace CLI (`gws`), pdf-lib, pdfjs-dist, docx, marked, OFL fonts | Installed into this folder by `./bin/bootstrap`. Nothing is installed globally |
-| Optional | 1Password CLI (`op`) | Vault adapter `op` (step 11) |
 | Optional | Python 3.8+ (`python3`, or `uv run`) | `authentic-prose`'s optional `scripts/metrics.py` (stdlib only) |
 | Optional | A mail connector in the agent harness | Mail adapter `bridge` (step 10) |
 | Optional | firecrawl or Perplexity tools in the harness | Richer company research in `/hunt-kit`. Without them it uses the harness's own web search and fetch |
@@ -146,7 +145,7 @@ An unknown command prints the usage and exits 2.
 | 4 | Interview (`interview`) | Questions in rounds of at most 4 ("Interview topics" below) | The topics below | `profile/person.json`, `profile/preferences.json`, `profile/answers.json`, `fit-profile.md`, `config/prefilter.json`, `config/apply.json`, `profile/decisions.md` |
 | 5 | Answers (`answers`) | Q01-Q21 drafted from claims through `authentic-prose`. `npm run apply -- check-answers` lists the answer-bank values still empty | Confirm each answer | `collateral/screening-answers.md`, `profile/answers.json` (single values, and `learned` through `npm run apply -- learn`) |
 | 6 | Calibration (`calibration`) | 5-15 roles with known verdicts; a blind `/hunt-triage calibrate` must pass `scripts/check-calibration.mjs` | The roles and the expected verdict for each | `data/calibration.json` |
-| 7 | Access (`access`) | Steps 8 to 11 of this file: LinkedIn and Dice logins by hand in a real terminal, then `whoami`; the mail adapter; `npm run bikeshed -- login`, then the private folder, its `Reviews` and `Letters` subfolders and the tracker document; the vault | Each sign-in; the mail adapter, publisher and vault choices | `config/mail.json`; `config/tracker.json` (`bikeshed.folder_id`, `reviews_folder_id`, `letters_folder_id`, then `doc_id` and `url` from the first publish); `config/cv-bikeshed.json` `folder_id`; `config/vault.json`; `config/apply.json` `accounts` |
+| 7 | Access (`access`) | Steps 8 to 11 of this file: LinkedIn and Dice logins by hand in a real terminal, then `whoami`; the mail adapter; `npm run bikeshed -- login`, then the private folder, its `Reviews` and `Letters` subfolders and the tracker document; ATS accounts | Each sign-in; the mail adapter and publisher choices | `config/mail.json`; `config/tracker.json` (`bikeshed.folder_id`, `reviews_folder_id`, `letters_folder_id`, then `doc_id` and `url` from the first publish); `config/cv-bikeshed.json` `folder_id` |
 | 8 | Baseline CVs (`cvs`) | Archetype variants from `master.json`, built with `npm run cv -- --all` and published with `npm run cv-publish`. Then one `/hunt-tailor` rehearsal against a calibration posting, never sent | Approve each render (in bikeshed) | `collateral/cv/variants/`, `collateral/cv-map.md`, `config/cv-bikeshed.json` `docs`, `data/out/cv/` |
 | 9 | Searches (`searches`) | Candidate queries per lane, then `/hunt-probe` for each platform the operator uses. `verified: true` comes only from a probe (`npm run probe -- --mark-verified`) | Judgment calls the probe report flags | `config/searches.json`, `config/dice-searches.json`, `config/probes/`, a report in `workspace/docs/probes/` |
 | 10 | Ready (`ready`) | `npm run onboard -- validate` exits 0 and `npm run doctor` shows no `FAIL` rows | Nothing | `profile/onboarding.json` complete. Tells the operator to start `/loop /hunt-loop`, and that each channel's first application is a headed dry run they check |
@@ -169,7 +168,7 @@ An unknown command prints the usage and exits 2.
 | Auto-apply: off, or on with thresholds and channels | Off | `config/apply.json` `auto_apply` (`enabled`, `min_score`, `channels`, `min_cv_coverage`, `cover_letter`, `cv_pool`); a `decisions.md` row when switched on |
 | The per-company limit | `limit` 1, no agencies, no aliases | `config/apply.json` `companies` (`limit`, `agencies`, `aliases`); a `decisions.md` row for a change |
 
-The mail adapter, the publisher and the vault are asked in the Access phase, not here.
+The mail adapter and the publisher are asked in the Access phase, not here.
 
 ### Fresh-install posture
 
@@ -184,7 +183,7 @@ What `templates/workspace/` ships, before the operator changes anything:
 | The pause | Off (`config/pause.json` `paused: false`) |
 | Tailoring | `preferences.tailoring`: `cv` `per-job`, `letter` `per-job`, `review` `bikeshed` |
 | Caps | As shipped in `templates/workspace/config/limits.json` |
-| ATS accounts | Off (`config/apply.json` `accounts.create: false`, `config/vault.json` `adapter: "none"`) |
+| ATS accounts | Never created by the runner; a sign-in or sign-up page goes to the operator |
 | Mail | Adapter `none` |
 | Publisher | `bikeshed` (`config/tracker.json` `publisher`) |
 | EEO answers | `decline` |
@@ -266,16 +265,17 @@ No inbox scan. Mailed codes at apply time hand the role to the operator.
 
 **Checkpoint:** `npm run doctor` shows `mail adapter: none`.
 
-## 11. Vault
+## 11. ATS accounts
 
-`workspace/config/vault.json` `adapter`.
+The runner never creates an ATS account, never types a password and never stores one. A Workday or iCIMS portal that asks for a sign-in, a new account or an email verification hands the role to you (exit 5, with the `ats_url`).
 
-| Adapter | Setup | Effect |
-|---|---|---|
-| `none` (default) | Nothing | No ATS account is ever created; account portals go to the operator |
-| `op` | Install the 1Password CLI (https://developer.1password.com/docs/cli/get-started/) and sign it in. Set `op.account`, `op.vault` and `op.tag` in `vault.json` (empty account or vault: op's own default). `op.bin` names the binary when `op` is not on `PATH` (`JOBBA_OP_BIN` overrides it). Set `accounts.create: true` in `workspace/config/apply.json` only on the operator's opt-in, with a `decisions.md` row | The runner creates ATS accounts with passwords op generates, stored before the sign-up form is sent |
+1. Run the apply in a headed window: `npm run apply -- --job <id> --dry-run --headed`.
+2. Sign in, or create the account, by hand in that window. The browser profile keeps the session.
+3. Run the apply again.
 
-**Checkpoint:** `npm run doctor` shows the vault row `ok`. The doctor looks for `op` on `PATH`.
+A `config/vault.json` left from an older install is unused: delete it. `npm run onboard -- validate` refuses `config/apply.json` `accounts.create: true`.
+
+**Checkpoint:** none.
 
 ## 12. Ready
 

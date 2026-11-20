@@ -27,7 +27,7 @@ Recruiters and hiring teams answer applications by email. Each loop firing reads
 ## Non-goals
 
 - Sending, replying, creating drafts in the mailbox, marking read, labeling, archiving or deleting mail.
-- Opening a link in an email, filling a form it links to, or fetching a posting it links to outside a tick. AGENTS.md "Mail" names the one exception: "the sign-up verification link from the ATS the runner just created an account on, within minutes". The apply runner opens it, never the scan.
+- Opening a link in an email, filling a form it links to, or fetching a posting it links to outside a tick. AGENTS.md "Mail" names the one exception: "the verification link an ATS mails to confirm the application email during an apply run (iCIMS), on that ATS's own host, within minutes". The apply runner opens it, never the scan.
 - Any mailbox other than the one the adapter reads.
 - Calendar reads or writes. Interview drafts carry `[TIMES]`; the operator books.
 

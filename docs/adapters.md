@@ -1,6 +1,6 @@
 # Adapters
 
-The four pluggable edges of the system: mail, vault, publisher and notifications. Each is picked in workspace config, has one contract in `scripts/lib/adapters/` (notifications in `scripts/lib/notify.mjs`), and runs with its credentials inside the project folder. Paths: repo-relative (`scripts/...`) or workspace-relative (`config/`, `data/`, `.secrets/`).
+The three pluggable edges of the system: mail, publisher and notifications. Each is picked in workspace config, has one contract in `scripts/lib/adapters/` (notifications in `scripts/lib/notify.mjs`), and runs with its credentials inside the project folder. Paths: repo-relative (`scripts/...`) or workspace-relative (`config/`, `data/`, `.secrets/`).
 
 ## In-folder isolation
 
@@ -64,17 +64,6 @@ A mailed security code, a sign-in code or an account verification link: `fetchRe
 | `hunt_senders`, `subject_strong`, `subject_words`, `security` | Hunt signals |
 | `never_open` (`domains`, `senders`) | Never opened, whatever the signal |
 | `noise` (`senders`, `subjects`) | Dropped after the header read |
-
-## Vault (`config/vault.json` `adapter`)
-
-For ATS candidate accounts (Workday, iCIMS and other portals). The apply runner creates an account only when the vault is unlocked and `config/apply.json` `accounts.create` is true.
-
-| Adapter | Behaviour |
-|---|---|
-| `none` (default) | `unlocked()` is false, `findLogin()` finds nothing, `createLogin()` and `loginPassword()` throw `VaultDisabledError`. Account portals go to the operator |
-| `op` | The 1Password CLI: `JOBBA_OP_BIN`, else `op.bin` in `config/vault.json`, else `op` on `PATH`. `op.account`, `op.vault` and `op.tag` (default `jobba-hunt`) come from config; empty account or vault means op's own default. op generates the password itself (`--generate-password`), so it is never on argv. It is stored and read back before a sign-up form is sent. A locked or signed-out vault creates nothing |
-
-**Contract** (`scripts/lib/adapters/vault.mjs`): `openVault({ cfg })` returns `{ kind, unlocked(), findLogin(title), loginPassword(id), createLogin({ title, url, username, notes }) }`, `kind` `op` or `none`. Item titles name the portal and host (for example `Workday <host>`). Passwords never enter the repo, `data/`, logs or screenshots.
 
 ## Publisher (`config/tracker.json` `publisher`)
 

@@ -76,3 +76,16 @@ test('validation: tailoring.letter is per-job or one of the approaches A to D', 
   }
 });
 
+
+test('validation: automated ATS account creation is retired, so accounts.create true is a problem', () => {
+  const home = mkdtempSync(join(tmpdir(), 'jobba-ws-'));
+  cpSync(join(CODE_ROOT, 'tests', 'fixtures', 'workspace'), home, { recursive: true });
+  initWorkspace({ templates: TEMPLATES_DIR, home });
+  const p = join(home, 'config', 'apply.json');
+  const apply = JSON.parse(readFileSync(p, 'utf8'));
+  assert.equal(apply.accounts, undefined, 'the template ships no accounts block');
+  for (const [create, flagged] of [[true, true], [false, false]]) {
+    writeFileSync(p, JSON.stringify({ ...apply, accounts: { create } }));
+    assert.equal(validateWorkspace(home).some((x) => x.file === 'config/apply.json' && /account creation is retired/.test(x.msg)), flagged, String(create));
+  }
+});

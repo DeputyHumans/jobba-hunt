@@ -27,7 +27,7 @@ An unknown command exits 2.
 ## Rules for every phase
 - **Questions:** AskUserQuestion, at most 4 questions per call. Put the conservative default first and label it "(default)". Paths, wording and free text are asked in plain chat.
 - **Write as you go:** write each answer to its file before the next call, so an interruption loses nothing.
-- **Conservative defaults:** auto-apply off; tailoring `cv: per-job`, `letter: per-job`, `review: bikeshed`; every EEO answer `decline`; caps as shipped in `config/limits.json`; the per-company limit at 1; account creation off; every channel unverified.
+- **Conservative defaults:** auto-apply off; tailoring `cv: per-job`, `letter: per-job`, `review: bikeshed`; every EEO answer `decline`; caps as shipped in `config/limits.json`; the per-company limit at 1; every channel unverified. The runner never creates ATS accounts.
 - **Standing decisions:** any answer that sets a policy (auto-apply and its keys, review `auto`, a fixed letter approach, the company limit, agencies or aliases, an EEO value other than `decline`, a cap, scope) gets a row in `workspace/profile/decisions.md`: the date, the decision, the operator's own words, what it changed.
 - **Facts:** only from the operator's sources or the operator's words. Only Claims-table rows with status `user-confirmed`, `public` or `CV` are usable; the builds and `validate` refuse any other and name its status.
 - **Credentials:** never typed, asked for or read by the agent. Logins happen by hand, in the operator's own terminal.
@@ -104,7 +104,7 @@ Then draft every `<fill>` in `workspace/fit-profile.md` from the answers and the
    - Create the folders: `npm run -s bikeshed -- mkdir "Job hunt" --json`, then `npm run -s bikeshed -- mkdir "Reviews" --parent <hunt folder id> --json` and `npm run -s bikeshed -- mkdir "Letters" --parent <hunt folder id> --json`. Read each id from the JSON, or from `npm run -s bikeshed -- folders --json`. Check with `npm run -s bikeshed -- folder <hunt folder id>` that only the operator can read it.
    - Write `workspace/config/tracker.json` `bikeshed.folder_id`, `reviews_folder_id`, `letters_folder_id`, and `workspace/config/cv-bikeshed.json` `folder_id` (the hunt folder).
    - Run `npm run -s tracker -- --publish`. It creates the tracker document and records `doc_id` and `url`. Exit 2: not signed in. Exit 1: read the error (a privacy-guard hit means private data reached the page: fix the source, never the guard).
-4. **Vault** (AskUserQuestion: "none (default)", "op"). For `op`: the operator installs and signs in to the 1Password CLI themselves; write `workspace/config/vault.json` `adapter: "op"` and the `op.account`, `op.vault`, `op.tag` they name (empty means op's own default). `config/apply.json` `accounts.create` becomes true only on the operator's explicit opt-in, with a decisions row. Never unlock the vault or read a password.
+4. **ATS accounts:** tell the operator the runner never creates an account or types a password. A Workday or iCIMS sign-in or sign-up comes to them as a hand-off; they sign in by hand in a headed run (`docs/setup.md` "11. ATS accounts"). A `workspace/config/vault.json` from an older install is unused: offer to delete it.
 
 ## Phase 8: Baseline CVs (`cvs`)
 1. Pick 2 to 4 archetypes from the lanes and target titles. Slugs name a role, never a company.

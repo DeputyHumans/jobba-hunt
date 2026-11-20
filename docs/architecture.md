@@ -23,7 +23,7 @@ scripts/                      entrypoints: one per npm script, plus check-calibr
 scripts/cloak-core.mjs        browser launch, profile locks, argument parsing, out() and fail()
 scripts/rate-limiter.mjs      the daily caps and the limiter log
 scripts/lib/                  libraries (below)
-scripts/lib/adapters/         mail, vault, publish, bikeshed (docs/adapters.md)
+scripts/lib/adapters/         mail, publish, bikeshed (docs/adapters.md)
 brand/                        tracker.css, recruiter-pages.css, brief.css, cv/template.css, cv/cover.css, OFL fonts and licences
 templates/workspace/          the blank workspace that onboarding copies
 templates/*.md                process templates (opportunity, digest, probe report, interview brief and debrief, review doc)
@@ -52,7 +52,7 @@ profile/      person.json  preferences.json  answers.json  voice.md  decisions.m
 .secrets/     xdg/ (bikeshed)  gws/  gws-home/  .env
 sources/      the operator's original CVs, letters, exports, and their extracted .txt
 collateral/   claim-bank.md  cv-map.md  intro-templates.md  screening-answers.md  cv/{master.json, never-claim.json, variants/}
-config/       searches.json  dice-searches.json  prefilter.json  apply.json  mail.json  tracker.json  vault.json  limits.json
+config/       searches.json  dice-searches.json  prefilter.json  apply.json  mail.json  tracker.json  limits.json
               cv-bikeshed.json  pause.json  probes/
 docs/         kits/ (profile kits)  probes/ (probe reports)
 fit-profile.md

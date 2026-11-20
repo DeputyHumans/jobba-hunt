@@ -1316,7 +1316,7 @@ test('framed(): inside the portal iframe, lookups and evaluate stay in the frame
   }
 });
 
-test('iCIMS account and code steps (synthetic, unseen live): two password boxes are a new account, tagged for the 1Password fill; a one-time-code box is the verification and a postal code box is not; the badge is no bot check', { skip }, async () => {
+test('iCIMS account and code steps (synthetic, unseen live): two password boxes are a new account (a hand-off); a one-time-code box is the verification and a postal code box is not; the badge is no bot check', { skip }, async () => {
   const a = await icimsSnap('synthetic-icims-account.html', async (page) => {
     const p = await page.evaluate(icimsPage);
     const pw = await page.locator(ICIMS_SEL.password).count();
