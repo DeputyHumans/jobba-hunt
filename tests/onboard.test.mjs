@@ -89,3 +89,28 @@ test('validation: automated ATS account creation is retired, so accounts.create 
     assert.equal(validateWorkspace(home).some((x) => x.file === 'config/apply.json' && /account creation is retired/.test(x.msg)), flagged, String(create));
   }
 });
+
+test('gws-client installs a Desktop OAuth client JSON with mode 0600 and never prints the secret', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { statSync, mkdirSync } = await import('node:fs');
+  const home = mkdtempSync(join(tmpdir(), 'jobba-ws-'));
+  const dl = join(home, 'Downloads'); mkdirSync(dl);
+  const secret = 'synthetic-client-secret-0000';
+  const good = join(dl, 'client.json');
+  writeFileSync(good, JSON.stringify({ installed: { client_id: '1234-abc.apps.googleusercontent.com', client_secret: secret, redirect_uris: ['http://localhost'] } }));
+  const web = join(dl, 'web.json');
+  writeFileSync(web, JSON.stringify({ web: { client_id: '1234-abc.apps.googleusercontent.com', client_secret: secret } }));
+  const run = (...a) => spawnSync(process.execPath, [join(CODE_ROOT, 'scripts', 'onboard.mjs'), 'gws-client', ...a], { encoding: 'utf8', env: { ...process.env, JOBBA_HOME: home } });
+  const r = run('--file', good);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.doesNotMatch(r.stdout + r.stderr, new RegExp(secret));
+  const dest = join(home, '.secrets', 'gws', 'client_secret.json');
+  assert.equal(JSON.parse(readFileSync(dest, 'utf8')).installed.client_secret, secret);
+  assert.equal(statSync(dest).mode & 0o777, 0o600);
+  const w = run('--file', web);
+  assert.equal(w.status, 1);
+  assert.match(w.stdout, /not-desktop-client/);
+  assert.doesNotMatch(w.stdout + w.stderr, new RegExp(secret));
+  assert.equal(run().status, 2);
+  assert.equal(run('--file', join(dl, 'missing.json')).status, 1);
+});

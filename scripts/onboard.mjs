@@ -16,15 +16,18 @@
 //                              (bridge adapter). --tools: the live tool names the harness lists; any
 //                              that is not a read is denied too. Exit 1 when none of the reads is listed
 //   mail-guard --deny <a,b>    the same file, for any other connector: the tools named
+//   gws-client --file <path>   install a downloaded Google OAuth client (type Desktop app) as
+//                              workspace/.secrets/gws/client_secret.json, mode 0600, for the gws
+//                              mail adapter. Never prints the secret. Exit 1 on a web client or a bad file
 // Exit 0 ok, 1 refused or invalid, 2 usage.
 
 import './lib/env.mjs';
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  CODE_ROOT, HOME, PROFILE_DIR, SOURCES_DIR, TEMPLATES_DIR, display, resolveArgPath, CLAUDE_LOCAL_SETTINGS,
+  CODE_ROOT, HOME, PROFILE_DIR, SOURCES_DIR, TEMPLATES_DIR, display, resolveArgPath, CLAUDE_LOCAL_SETTINGS, SECRETS_DIR,
 } from './lib/paths.mjs';
 import { deepMerge, readJsonFile, writeJsonAtomic } from './lib/config.mjs';
 import { logAction } from './lib/actions-log.mjs';
@@ -214,8 +217,21 @@ async function main() {
     mkdirSync(dirname(CLAUDE_LOCAL_SETTINGS), { recursive: true });
     writeFileSync(CLAUDE_LOCAL_SETTINGS, `${JSON.stringify(cfg, null, 2)}\n`);
     out({ success: true, ...report, denied: cfg.permissions.deny.length, file: relative(CODE_ROOT, CLAUDE_LOCAL_SETTINGS) || CLAUDE_LOCAL_SETTINGS });
+  } else if (cmd === 'gws-client') {
+    if (!flag('file')) { out({ success: false, error: 'usage: gws-client --file <downloaded client JSON>' }); process.exit(2); }
+    const src = resolveArgPath(flag('file'));
+    let j;
+    try { j = JSON.parse(readFileSync(src, 'utf8')); } catch (e) { out({ success: false, error: `cannot read ${flag('file')} as JSON: ${e.code || 'invalid JSON'}` }); process.exit(1); }
+    if (!j.installed) { out({ success: false, error: `not-desktop-client: the file holds a "${Object.keys(j)[0] || 'unknown'}" client; create a client of type Desktop app and download its JSON` }); process.exit(1); }
+    if (!/\.apps\.googleusercontent\.com$/.test(j.installed.client_id || '') || typeof j.installed.client_secret !== 'string') { out({ success: false, error: 'the Desktop client JSON has no client_id ending in .apps.googleusercontent.com or no client_secret' }); process.exit(1); }
+    const dir = join(SECRETS_DIR, 'gws');
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const dest = join(dir, 'client_secret.json');
+    writeFileSync(dest, readFileSync(src), { mode: 0o600 });
+    chmodSync(dest, 0o600);
+    out({ success: true, file: display(dest), next: 'npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly (in your own terminal)' });
   } else {
-    console.log('usage: npm run onboard -- init | status | mark --phase <p> | ingest --file <f> | validate | git-init | mail-guard --connector gmail | mail-guard --deny <tools>');
+    console.log('usage: npm run onboard -- init | status | mark --phase <p> | ingest --file <f> | validate | git-init | mail-guard --connector gmail | mail-guard --deny <tools> | gws-client --file <json>');
     process.exit(2);
   }
 }

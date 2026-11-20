@@ -22,7 +22,7 @@ Read-only, whatever the adapter (`AGENTS.md` "Mail (any adapter)"). Used by the 
 
 | Adapter | Reads through | Credentials |
 |---|---|---|
-| `gws` | The bundled Google Workspace CLI: `JOBBA_GWS_BIN`, else `gws.bin` in `config/mail.json`, else `node_modules/.bin/gws`. `list` and `get` only | `.secrets/gws` (`npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly`) |
+| `gws` | The bundled Google Workspace CLI: `JOBBA_GWS_BIN`, else `gws.bin` in `config/mail.json`, else `node_modules/.bin/gws`. `list` and `get` only | `.secrets/gws`: the Desktop OAuth client (`npm run onboard -- gws-client --file <json>`), then `npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly` |
 | `bridge` | The agent, with the harness mail connector's read tools, through request and response files. Claude's Gmail connector: headers from `search_threads`, bodies from `get_message`, threads from `get_thread` | The connector's own; every other tool denied by `npm run onboard -- mail-guard --connector gmail` (`--deny <tools>` for another connector) |
 | `none` | Nothing | None |
 

@@ -154,6 +154,7 @@ The skill runs the conversation and writes the content. `npm run onboard -- <com
 | `npm run onboard -- validate` | Checks every workspace file for shape and consistency. `docs/troubleshooting.md` "Onboarding and workspace" lists the common messages | 0 clean; 1 problems |
 | `npm run onboard -- git-init` | Makes the workspace its own private git repository. Its `.gitignore` comes from the template | 0 |
 | `npm run onboard -- mail-guard --connector gmail [--tools <tool,...>]` | Denies every tool of Claude's Gmail connector except its three reads, in `.claude/settings.local.json`; a live tool the catalog does not know is denied too. `--deny <tool,...>` names the tools for another connector | 0; 1 no read tool in `--tools`; 2 usage or unknown connector |
+| `npm run onboard -- gws-client --file <json>` | Installs a downloaded Desktop app OAuth client as `workspace/.secrets/gws/client_secret.json`, mode 0600, never printing the secret | 0; 1 not a Desktop client or not readable; 2 usage |
 
 An unknown command prints the usage and exits 2.
 
