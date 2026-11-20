@@ -313,3 +313,26 @@ test('a probe guard abort halts its source; its own cap stop does not', async ()
   assert.deepEqual(['checkpoint', 'login-lost', 'canary-failed', 'blocked', 'cap-reached', null].map(haltsSource), [true, true, true, true, false, false]);
   assert.match(readFileSync(join(CODE_ROOT, 'scripts', 'probe-searches.mjs'), 'utf8'), /haltsSource\(result\.aborted\)/);
 });
+
+test('doctor: the Gmail connector fails until mail-guard denied its write tools; gws needs a client and a sign-in', () => {
+  const ws = workspace();
+  const local = join(ws.data, 'settings.local.json');
+  const doctor = () => {
+    const r = spawnSync(process.execPath, [join(CODE_ROOT, 'scripts', 'doctor.mjs'), '--offline', '--json'], {
+      cwd: CODE_ROOT, encoding: 'utf8', timeout: 120000, env: { ...process.env, JOBBA_HOME: ws.home, JOBBA_DATA_DIR: ws.data, JOBBA_CLAUDE_LOCAL_SETTINGS: local },
+    });
+    return JSON.parse(r.stdout.trim().split('\n').pop()).rows.filter((x) => x.group === 'mail');
+  };
+  writeJson(join(ws.home, 'config', 'mail.json'), { adapter: 'bridge', bridge: { connector: 'gmail' } });
+  assert.equal(doctor()[0].status, 'FAIL');
+  const g = spawnSync(process.execPath, [join(CODE_ROOT, 'scripts', 'onboard.mjs'), 'mail-guard', '--connector', 'gmail'], { encoding: 'utf8', env: { ...process.env, JOBBA_HOME: ws.home, JOBBA_CLAUDE_LOCAL_SETTINGS: local } });
+  assert.equal(g.status, 0, g.stdout);
+  assert.equal(doctor()[0].status, 'ok', JSON.stringify(doctor()));
+
+  writeJson(join(ws.home, 'config', 'mail.json'), { adapter: 'gws' });
+  assert.deepEqual(doctor().map((x) => x.status), ['FAIL', 'FAIL']);
+  writeJson(join(ws.home, '.secrets', 'gws', 'client_secret.json'), { installed: { client_id: 'x.apps.googleusercontent.com', client_secret: 'synthetic' } });
+  assert.deepEqual(doctor().map((x) => x.status), ['ok', 'FAIL'], 'a client alone is not a sign-in');
+  writeJson(join(ws.home, '.secrets', 'gws', 'credentials.enc'), {});
+  assert.deepEqual(doctor().map((x) => x.status), ['ok', 'ok']);
+});

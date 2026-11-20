@@ -16,8 +16,9 @@ import { join } from 'node:path';
 import { platform } from 'node:os';
 import { MIN_NODE, nodeOk } from './lib/node-version.mjs';
 import { claimIdsFromBank } from './lib/cv.mjs';
+import { guardRules } from './lib/mail-guard.mjs';
 import {
-  BIN_DIR, BRAND_DIR, CODE_ROOT, COLLATERAL_DIR, CONFIG_DIR, DATA_DIR, HOME, PROFILE_DIR, SECRETS_DIR, display, workspaceExists,
+  BIN_DIR, BRAND_DIR, CLAUDE_LOCAL_SETTINGS, CODE_ROOT, COLLATERAL_DIR, CONFIG_DIR, DATA_DIR, HOME, PROFILE_DIR, SECRETS_DIR, display, workspaceExists,
 } from './lib/paths.mjs';
 
 const args = new Set(process.argv.slice(2));
@@ -113,9 +114,23 @@ if (!preflight) {
 
     const mail = readJson(join(CONFIG_DIR, 'mail.json')) || { adapter: 'none' };
     if (mail.adapter === 'gws') {
+      // The OAuth client (onboard gws-client, or the two client variables in .secrets/.env), then the
+      // sign-in: any other file the CLI keeps in its config dir.
       const dir = join(SECRETS_DIR, 'gws');
-      const signed = existsSync(dir) && readdirSync(dir).length > 0;
-      add('mail', signed ? 'ok' : 'FAIL', `gws adapter ${signed ? 'credentials present' : 'not signed in'}`, 'npm run gws -- auth login (with the read-only Gmail scope); see docs/setup.md');
+      const files = existsSync(dir) ? readdirSync(dir) : [];
+      const envFile = join(SECRETS_DIR, '.env');
+      const client = files.includes('client_secret.json') || (existsSync(envFile) && /^GOOGLE_WORKSPACE_CLI_CLIENT_ID=./m.test(readFileSync(envFile, 'utf8')));
+      add('mail', client ? 'ok' : 'FAIL', `gws OAuth client ${client ? 'present' : 'missing'}`, 'download a Desktop app OAuth client, then npm run onboard -- gws-client --file <json> (docs/setup.md "10. Mail adapter")');
+      const signed = files.some((f) => f !== 'client_secret.json');
+      add('mail', signed ? 'ok' : 'FAIL', `gws adapter ${signed ? 'signed in' : 'not signed in'}`, 'npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly (in your own terminal)');
+    } else if (mail.adapter === 'bridge' && mail.bridge?.connector) {
+      // Every known write tool of the connector must be denied in the harness's local settings.
+      let guarded = false;
+      try {
+        const deny = new Set(JSON.parse(readFileSync(CLAUDE_LOCAL_SETTINGS, 'utf8')).permissions?.deny || []);
+        guarded = guardRules({ connector: mail.bridge.connector, server: mail.bridge.server || undefined }).deny.every((t) => deny.has(t));
+      } catch { guarded = false; }
+      add('mail', guarded ? 'ok' : 'FAIL', `mail adapter: bridge (${mail.bridge.connector} connector) ${guarded ? 'with its write tools denied' : 'without the write-tool guard'}`, `npm run onboard -- mail-guard --connector ${mail.bridge.connector}, then restart the agent`);
     } else add('mail', 'ok', `mail adapter: ${mail.adapter || 'none'}${mail.adapter === 'bridge' ? ' (the agent fetches with its mail connector)' : ''}`);
 
     const tracker = readJson(join(CONFIG_DIR, 'tracker.json')) || { publisher: 'bikeshed' };
