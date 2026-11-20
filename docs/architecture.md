@@ -18,7 +18,7 @@ bin/bootstrap                 POSIX sh first run: host check, Node against packa
 .githooks/pre-commit          check:portable and check:pii on staged files
 .agents/skills/<name>/        canonical skills
 .claude/skills/<name>         relative symlinks into .agents/skills/<name>
-.claude/settings.json         allows npm run, npm test, node scripts/ and bin/bootstrap; denies shell timeout; Bash timeouts
+.claude/settings.json         allows npm run, npm test and node scripts/; denies shell timeout and gws auth export (it prints decrypted credentials); Bash timeouts
 scripts/                      entrypoints: one per npm script, plus check-calibration.mjs and replay-capture.mjs (run with node)
 scripts/cloak-core.mjs        browser launch, profile locks, argument parsing, out() and fail()
 scripts/rate-limiter.mjs      the daily caps and the limiter log

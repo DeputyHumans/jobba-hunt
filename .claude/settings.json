@@ -3,11 +3,13 @@
     "allow": [
       "Bash(npm run:*)",
       "Bash(npm test:*)",
-      "Bash(node scripts/:*)",
-      "Bash(./bin/bootstrap)"
+      "Bash(node scripts/:*)"
     ],
     "deny": [
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(npm run gws -- auth export:*)",
+      "Bash(npm run -s gws -- auth export:*)",
+      "Bash(node scripts/tool.mjs gws auth export:*)"
     ]
   },
   "env": {
