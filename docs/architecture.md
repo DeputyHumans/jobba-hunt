@@ -48,7 +48,7 @@ workspace/                    gitignored: the operator's workspace
 ## Workspace layout
 
 ```
-profile/      person.json  preferences.json  answers.json  voice.md  decisions.md  onboarding.json  pii-extra.txt (optional)
+profile/      person.json  preferences.json  answers.json  voice.md  decisions.md  onboarding.json  pii-extra.txt  pii-allow.txt (both optional)
 .secrets/     xdg/ (bikeshed)  gws/  gws-home/  .env
 sources/      the operator's original CVs, letters, exports, and their extracted .txt
 collateral/   claim-bank.md  cv-map.md  intro-templates.md  screening-answers.md  cv/{master.json, never-claim.json, variants/}

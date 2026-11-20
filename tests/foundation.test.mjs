@@ -148,6 +148,17 @@ test('check-pii: template placeholders are skipped; employers, clients and linke
   assert.deepEqual(terms.sort(), ['Globex Consulting', 'Hooli', 'Initech', 'Ledgerly']);
 });
 
+test('check-pii: an allowed term drops only that exact term, case-insensitively, never a wider one', () => {
+  const master = { roles: { a: { company: 'Initech' }, b: { company: 'Hooli Labs' } } };
+  const person = { email: 'jordan@initech.example' };
+  const terms = termsFrom({ person, master, allow: ['INITECH'] });
+  assert.ok(!terms.includes('Initech'));
+  assert.ok(terms.includes('jordan@initech.example'), 'an allowed name never frees a wider term');
+  assert.ok(terms.includes('Hooli Labs'));
+  assert.deepEqual(scan(['a.md'], terms, () => 'Copyright 2026 Initech'), []);
+  assert.equal(scan(['a.md'], terms, () => 'mail jordan@initech.example').length, 1);
+});
+
 test('package.json pins every dependency exactly', () => {
   const pkg = JSON.parse(readFileSync(join(CODE_ROOT, 'package.json'), 'utf8'));
   for (const [name, v] of Object.entries(pkg.dependencies)) assert.match(v, /^\d+\.\d+\.\d+$/, `${name} must be pinned`);

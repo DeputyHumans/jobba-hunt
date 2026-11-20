@@ -76,6 +76,7 @@ Sign in only through the wrappers: `npm run bikeshed -- login` and `npm run gws 
 | `profile/answers.json` | `profile`: `full_name`, `last_name`, `email`, `phone`, `street_address`, `address_full`, `linkedin`, `website`; `facts.contracting_entity` |
 | `collateral/cv/master.json` | Each role's company and client names, each employer name, each link name |
 | `profile/pii-extra.txt` | One term per line; lines starting with `#` are skipped |
+| `profile/pii-allow.txt` | Not a source: one term per line that the operator made public on purpose, such as the organization that publishes the repository. Each drops only the term equal to it, ignoring case. A wider term that contains it, such as an email address at that organization, stays a term. Only the operator adds a line, with a `profile/decisions.md` row |
 
 - A term shorter than 4 characters is skipped (7 for a phone, 3 for `pii-extra.txt`).
 - A template placeholder such as `<employer>` is skipped, so a workspace not yet onboarded raises nothing.

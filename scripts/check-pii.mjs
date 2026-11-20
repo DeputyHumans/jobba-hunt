@@ -3,6 +3,9 @@
 // data. The terms come from the workspace itself (profile/person.json, profile/answers.json, the
 // employers in collateral/cv/master.json, and one extra term per line in profile/pii-extra.txt),
 // so the check protects whoever is using this install without shipping anyone's data.
+// profile/pii-allow.txt (one per line) names terms the operator has made public on purpose, such as
+// the organization that publishes the repository: each drops only the term equal to it, ignoring
+// case, never a wider term that contains it (an email address at that organization stays a term).
 // The synthetic test persona (a JOBBA_HOME inside tests/, or any workspace holding a .synthetic
 // marker, such as the test runner's temporary copy) is never a source of terms.
 //
@@ -21,7 +24,7 @@ import { CODE_ROOT, COLLATERAL_DIR, HOME, PROFILE_DIR } from './lib/paths.mjs';
 const BINARY = new Set(['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.woff', '.woff2', '.ttf', '.otf', '.ico', '.zip', '.gz', '.docx']);
 const read = (p) => { try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; } };
 
-export function termsFrom({ person = {}, answers = {}, master = {}, extra = [] }) {
+export function termsFrom({ person = {}, answers = {}, master = {}, extra = [], allow = [] }) {
   const t = new Set();
   // A template placeholder ("<employer>") in a workspace not yet onboarded is not a term.
   const add = (v, min = 4) => { const s = String(v ?? '').trim(); if (s.length >= min && !/^<[^<>]*>$/.test(s)) t.add(s); };
@@ -36,7 +39,8 @@ export function termsFrom({ person = {}, answers = {}, master = {}, extra = [] }
   for (const e of extra) add(e, 3);
   // A phone number also matches without punctuation.
   for (const v of [person.phone, p.phone]) { const d = String(v || '').replace(/\D/g, ''); if (d.length >= 7) t.add(d.slice(-7)); }
-  return [...t];
+  const allowed = new Set(allow.map((a) => String(a).trim().toLowerCase()).filter(Boolean));
+  return [...t].filter((x) => !allowed.has(x.toLowerCase()));
 }
 
 export function scan(files, terms, readFile) {
@@ -101,12 +105,13 @@ function main() {
     console.log(json ? JSON.stringify(msg) : `check:pii: nothing to check (${msg.skipped})`);
     return;
   }
-  const extraPath = join(PROFILE_DIR, 'pii-extra.txt');
+  const lines = (name) => { const f = join(PROFILE_DIR, name); return existsSync(f) ? readFileSync(f, 'utf8').split('\n').map((x) => x.trim()).filter((x) => x && !x.startsWith('#')) : []; };
   const terms = termsFrom({
     person: read(join(PROFILE_DIR, 'person.json')) || {},
     answers: read(join(PROFILE_DIR, 'answers.json')) || {},
     master: read(join(COLLATERAL_DIR, 'cv', 'master.json')) || {},
-    extra: existsSync(extraPath) ? readFileSync(extraPath, 'utf8').split('\n').map((s) => s.trim()).filter((s) => s && !s.startsWith('#')) : [],
+    extra: lines('pii-extra.txt'),
+    allow: lines('pii-allow.txt'),
   });
   if (process.argv.includes('--history')) {
     const entries = historyEntries(CODE_ROOT);
