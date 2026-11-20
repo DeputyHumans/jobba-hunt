@@ -50,6 +50,7 @@ Sign in only through the wrappers: `npm run bikeshed -- login` and `npm run gws 
 | Applications | The approved CV, letter and form answers | Only through the apply runner, only to a verified channel, only after an approval (`AGENTS.md` "Platform safety") |
 | bikeshed | Tracker, CV renders, review documents, sent letters, interview briefs, recruiter pages | Private documents in the hunt folder, never the root. The tracker, CV renders and recruiter pages pass their guards first (below) |
 | Mail adapter | Read requests to the operator's own mailbox | Read-only ("Mail rules" below) |
+| Claude's Gmail connector (`bridge`) | The headers and the bodies the agent reads go through the agent's model provider, like everything the agent reads | Google's grant to the connector includes send and modify. jobba-hunt denies every tool but the three reads in Claude Code (`npm run onboard -- mail-guard --connector gmail`); disconnect at https://myaccount.google.com/connections |
 | Job boards | Searches and job views | Read-only, paced, capped |
 
 ## Guards

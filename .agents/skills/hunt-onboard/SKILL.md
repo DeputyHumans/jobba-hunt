@@ -95,10 +95,24 @@ Then draft every `<fill>` in `workspace/fit-profile.md` from the answers and the
 
 ## Phase 7: Access (`access`)
 1. **LinkedIn and Dice.** Ask the operator to run, in their own terminal in the repo folder: `npm run jobs -- login` (sign in in the window, then press Enter) and `npm run dice -- login`. Never run a login from the agent's shell: it has no keyboard for the Enter step and leaves the profile locked. Then run `npm run -s jobs -- whoami` and `npm run -s dice -- whoami` (one page load each). Skip a platform the operator does not use.
-2. **Mail adapter** (AskUserQuestion: "none (default)", "gws", "bridge"). Write `workspace/config/mail.json`: `adapter`, `me` (the one mailbox read), `first_scan_after` (an ISO date, usually today), and `never_open.domains` and `senders` (the operator's own domains, clients, family).
-   - **gws:** the operator creates a Desktop OAuth client in their own Google Cloud project (`docs/setup.md` "Mail adapter"), saves it as `workspace/.secrets/gws/client_secret.json`, then runs in their own terminal: `npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly`. Check with `npm run gws -- auth status` and `npm run -s mail -- pending --dry-run` (exit 0).
-   - **bridge:** list the harness's mail connector tools. Classify each as a read (search, list, get or read a message or thread) or a write (send, draft, label, archive, delete, modify, mark read). Run `npm run -s onboard -- mail-guard --deny <every write tool, comma-separated>`. Check with `npm run -s mail -- pending --dry-run`: exit 6 and a request file under `workspace/data/mail/requests/`; delete that request file afterwards.
-   - **none:** no inbox scan; mailed codes at apply time hand the role to the operator.
+2. **Mail adapter.** Ask (AskUserQuestion) with these three options, in this order:
+   - "None (default)": no inbox scan.
+   - "Claude's Gmail connector": about 3 minutes. Google's grant includes send and modify; jobba-hunt denies those tools in Claude Code.
+   - "Google Workspace CLI (gws)": about 15 minutes in Google Cloud Console; Google itself limits it to read-only.
+
+   Then write `workspace/config/mail.json`: `adapter`, `me` (the one mailbox read), `first_scan_after` (an ISO date, usually today), and `never_open.domains` and `senders` (the operator's own domains, clients, family). Walk the operator through the route's steps in `docs/setup.md` "10. Mail adapter", one at a time, showing each URL.
+   - **Gmail connector (`bridge`):**
+     1. The operator connects Gmail at https://claude.ai/customize/connectors and restarts `claude`.
+     2. You list your `mcp__claude_ai_Gmail__*` tools and run `npm run -s onboard -- mail-guard --connector gmail --tools <every one, comma-separated>`. Exit 1 "no read tool": stop and tell the operator; never pick a deny list by hand. A different server name: add `--server <name>`.
+     3. The operator restarts `claude` and checks `/permissions`.
+     4. Set `bridge.connector: "gmail"`.
+     5. Check: the doctor's bridge row is ok, and `npm run -s mail -- pending --dry-run` exits 6 with a request file under `workspace/data/mail/requests/`; delete that file.
+   - **gws:**
+     1. The operator creates the project, enables the Gmail API, sets up the auth platform and creates a Desktop app client, at the four console URLs in `docs/setup.md`.
+     2. They give you the downloaded file's path. Run `npm run -s onboard -- gws-client --file <path>`. Never open or print the file.
+     3. They run `npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly` in their own terminal.
+     4. Check: both doctor gws rows are ok, and `npm run -s mail -- pending --dry-run` exits 0.
+   - **None:** no inbox scan; mailed codes at apply time hand the role to the operator.
 3. **bikeshed** (default publisher; the operator may choose `publisher: local` instead: no comments and no review documents).
    - The operator runs `npm run bikeshed -- login` in their own terminal.
    - Create the folders: `npm run -s bikeshed -- mkdir "Job hunt" --json`, then `npm run -s bikeshed -- mkdir "Reviews" --parent <hunt folder id> --json` and `npm run -s bikeshed -- mkdir "Letters" --parent <hunt folder id> --json`. Read each id from the JSON, or from `npm run -s bikeshed -- folders --json`. Check with `npm run -s bikeshed -- folder <hunt folder id>` that only the operator can read it.

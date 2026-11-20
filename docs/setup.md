@@ -251,41 +251,67 @@ To run without bikeshed, set `"publisher": "local"` in `workspace/config/tracker
 
 ## 10. Mail adapter
 
-`workspace/config/mail.json` `adapter`, plus `me` (the one mailbox the scan reads). The mail rules are in `AGENTS.md` "Mail (any adapter)". Details: `docs/adapters.md`.
+The inbox scan reads one mailbox, read-only (`AGENTS.md` "Mail (any adapter)"). `/hunt-onboard` asks which route you prefer and walks you through it. It then writes `workspace/config/mail.json`: `adapter`, `me` (the mailbox), `first_scan_after` and `never_open`. Contracts: `docs/adapters.md`.
 
-### `gws`: the bundled Google Workspace CLI
+| Route | Setup | Read-only is enforced by | Needs |
+|---|---|---|---|
+| Claude's Gmail connector (`bridge`) | About 3 minutes | jobba-hunt: Google's grant to the connector includes send and modify, so every tool but the reads is denied in Claude Code | A paid Claude plan signed in through `/login`, and the Claude Code CLI in a terminal |
+| Google Workspace CLI (`gws`) | About 15 minutes in Google Cloud Console | Google: the sign-in asks for the read-only Gmail scope only | A Google account |
+| None (default) | Nothing | Not applicable | Nothing. Mailed codes at apply time hand the role to you |
 
-1. In the Google Cloud Console, in a project of the operator's: enable the Gmail API, configure the OAuth consent screen (add the operator as a test user), and create an OAuth client of type Desktop app.
-2. Save its JSON as `workspace/.secrets/gws/client_secret.json`, or put `GOOGLE_WORKSPACE_CLI_CLIENT_ID=...` and `GOOGLE_WORKSPACE_CLI_CLIENT_SECRET=...` in `workspace/.secrets/.env`.
-3. Sign in with the read-only Gmail scope only:
+### Claude's Gmail connector (`bridge`)
+
+Scripts never fetch: they write request files and the agent fulfils them with the connector's three read tools (`search_threads`, `get_message`, `get_thread`).
+
+1. Open https://claude.ai/customize/connectors, choose **Gmail**, then **Connect**, and sign in to Google with the mailbox the scan should read. On a Team or Enterprise plan an owner may have to enable the connector first.
+2. Restart `claude` in the repo folder. `/mcp` lists the Gmail connector. If it does not, run `/status`: Claude Code must be signed in with your claude.ai plan, not an API key.
+3. The agent lists the connector's tools and runs:
+
+   ```sh
+   npm run onboard -- mail-guard --connector gmail --tools <every tool name the connector shows, comma-separated>
+   ```
+
+   It denies every Gmail tool except the three reads, in `.claude/settings.local.json` (gitignored), including any tool the catalog does not know. Exit 1 "no read tool": the connector's tool names changed, and nothing is guessed. Another connector: `mail-guard --deny <tool,...>`, naming every non-read tool.
+4. Restart `claude` and check `/permissions`: every Gmail tool except the three reads is denied. The desktop app's connectors bypass local deny rules, so use the CLI in a terminal.
+5. `workspace/config/mail.json`: `"adapter": "bridge"`, `"bridge": { "connector": "gmail" }`.
+
+To disconnect later: the connectors page above, and https://myaccount.google.com/connections.
+
+**Checkpoint:** `npm run doctor` shows the bridge row "with its write tools denied". `npm run mail -- pending --dry-run` exits 6 (`needs_fetch`) and names a request file under `workspace/data/mail/requests/`; delete that file afterwards.
+
+### Google Workspace CLI (`gws`)
+
+You click through Google Cloud Console in your own Google account. The agent never sees the client secret.
+
+1. Create a project: https://console.cloud.google.com/projectcreate (any name, such as "jobba-hunt mail").
+2. Enable the Gmail API for it: https://console.cloud.google.com/apis/library/gmail.googleapis.com
+3. Set up the Google Auth Platform: https://console.cloud.google.com/auth/overview. Give the app a name and your email as the support and contact address.
+   - If the console offers a **Personal** app, pick it: only your account can sign in to it.
+   - Otherwise choose the **External** audience at https://console.cloud.google.com/auth/audience and add your address under **Test users**. A testing app's sign-in expires after 7 days: then run step 6 again.
+4. Create the client: https://console.cloud.google.com/auth/clients → **Create client** → application type **Desktop app** → **Create**. Download its JSON now: the console shows the secret in full only at creation.
+5. Install it into the workspace (mode 0600; the secret is never printed):
+
+   ```sh
+   npm run onboard -- gws-client --file <the downloaded JSON>
+   ```
+
+   Instead of the file, `GOOGLE_WORKSPACE_CLI_CLIENT_ID=...` and `GOOGLE_WORKSPACE_CLI_CLIENT_SECRET=...` in `workspace/.secrets/.env` work too.
+6. Sign in, in your own terminal, with the read-only Gmail scope only:
 
    ```sh
    npm run gws -- auth login --scopes https://www.googleapis.com/auth/gmail.readonly
    ```
 
-The wrapper gives the CLI its config dir (`workspace/.secrets/gws`, file keyring) and an in-folder home (`workspace/.secrets/gws-home`), and strips the host credential variables. Host gcloud or application-default credentials are never picked up. Sign in through `npm run gws` only.
+   Google may say the app is not verified: it is your own app. Choose **Advanced**, then continue.
+7. `workspace/config/mail.json`: `"adapter": "gws"`.
 
-**Checkpoint:** `npm run doctor` shows `gws adapter credentials present`, and `npm run mail -- pending --dry-run` exits 0.
+The wrapper gives the CLI its config dir (`workspace/.secrets/gws`, file keyring) and an in-folder home (`workspace/.secrets/gws-home`), and strips the host credential variables. Host gcloud or application-default credentials are never picked up. Sign in through `npm run gws` only, never a global `gws` (whose own `gws auth setup` needs gcloud).
 
-### `bridge`: the harness's mail connector
+**Checkpoint:** `npm run doctor` shows `gws OAuth client present` and `gws adapter signed in`, and `npm run mail -- pending --dry-run` exits 0.
 
-For a harness with a Gmail (or other mail) connector. Scripts never fetch: they write request files and the agent fulfils them with the connector's read tools.
+### None
 
-1. List the connector's tools in the harness.
-2. Deny every tool that is not a read (send, draft, label, archive, delete, modify, mark read):
-
-   ```sh
-   npm run onboard -- mail-guard --deny <tool,tool,...>
-   ```
-
-   It writes `permissions.deny` into `.claude/settings.local.json` (gitignored).
-3. Set `"adapter": "bridge"` in `workspace/config/mail.json`.
-
-**Checkpoint:** `npm run mail -- pending --dry-run` exits 6 (`needs_fetch`) and names a request file under `workspace/data/mail/requests/`. Delete that request file afterwards.
-
-### `none`
-
-No inbox scan. Mailed codes at apply time hand the role to the operator.
+No inbox scan. Mailed codes at apply time hand the role to you.
 
 **Checkpoint:** `npm run doctor` shows `mail adapter: none`.
 
