@@ -114,3 +114,15 @@ test('gws-client installs a Desktop OAuth client JSON with mode 0600 and never p
   assert.equal(run().status, 2);
   assert.equal(run('--file', join(dl, 'missing.json')).status, 1);
 });
+
+test('validation: config/browser.json driver is chrome or cloakbrowser', () => {
+  const home = mkdtempSync(join(tmpdir(), 'jobba-ws-'));
+  cpSync(join(CODE_ROOT, 'tests', 'fixtures', 'workspace'), home, { recursive: true });
+  initWorkspace({ templates: TEMPLATES_DIR, home });
+  const p = join(home, 'config', 'browser.json');
+  assert.equal(JSON.parse(readFileSync(p, 'utf8')).driver, 'cloakbrowser');
+  for (const [v, ok] of [['chrome', true], ['cloakbrowser', true], ['firefox', false]]) {
+    writeFileSync(p, JSON.stringify({ driver: v }));
+    assert.equal(validateWorkspace(home).some((x) => x.file === 'config/browser.json'), !ok, v);
+  }
+});

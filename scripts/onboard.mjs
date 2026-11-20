@@ -34,6 +34,7 @@ import { logAction } from './lib/actions-log.mjs';
 import { claimStatuses, explainClaims } from './lib/cv.mjs';
 import { LETTER_APPROACHES } from './lib/cover.mjs';
 import { CONNECTORS, guardRules, mergeDeny } from './lib/mail-guard.mjs';
+import { DRIVERS } from './lib/browser.mjs';
 
 export const PHASES = ['preflight', 'init', 'ingest', 'claims', 'interview', 'answers', 'calibration', 'access', 'cvs', 'searches', 'ready'];
 const ONB = join(PROFILE_DIR, 'onboarding.json');
@@ -129,6 +130,8 @@ export function validateWorkspace(home = HOME) {
   }
   const apply = j('config/apply.json');
   for (const [k, v] of Object.entries(apply?.verified || {})) if (typeof v !== 'boolean') p('config/apply.json', `verified.${k} must be true or false`);
+  const browser = j('config/browser.json');
+  if (browser && browser.driver !== undefined && !DRIVERS.includes(browser.driver)) p('config/browser.json', 'driver must be chrome or cloakbrowser');
   if (apply?.accounts?.create === true) p('config/apply.json', 'accounts.create: automated ATS account creation is retired (the runner never creates an account or types a password); remove the accounts block');
   const limits = j('config/limits.json');
   for (const [plat, acts] of Object.entries(limits || {})) {

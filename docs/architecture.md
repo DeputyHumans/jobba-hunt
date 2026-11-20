@@ -54,7 +54,7 @@ profile/      person.json  preferences.json  answers.json  voice.md  decisions.m
 sources/      the operator's original CVs, letters, exports, and their extracted .txt
 collateral/   claim-bank.md  cv-map.md  intro-templates.md  screening-answers.md  cv/{master.json, never-claim.json, variants/}
 config/       searches.json  dice-searches.json  prefilter.json  apply.json  mail.json  tracker.json  limits.json
-              cv-bikeshed.json  pause.json  probes/
+              cv-bikeshed.json  pause.json  browser.json  probes/
 docs/         kits/ (profile kits)  probes/ (probe reports)
 fit-profile.md
 brand/        optional overrides of single repo brand files, and the optional mark.json
@@ -88,6 +88,7 @@ data/         state/  raw/  browser/  captures/  applications/<id>/  triage/  ma
 ## Config
 
 - **Merge** (`scripts/lib/config.mjs` `loadConfig(name)`): the shipped default in `templates/workspace/config/<name>` with the workspace file over it. Objects merge key by key; arrays and scalars from the workspace win. Keys starting with `_` are comments.
+- **The browser driver** (`scripts/lib/browser.mjs` `browserDriver()`): `config/browser.json` `driver`, `cloakbrowser` (the bundled Chromium, driven by the scripts) or `chrome` (the operator's Chrome through the Claude in Chrome extension, driven by the agent). `--driver` overrides it for one run. A channel is verified per driver: `config/apply.json` `verified` or `verified_chrome` (`channelVerified()`).
 - **The pause** (`scripts/lib/pause.mjs` `readPause()`): reads the workspace `config/pause.json` alone, with no template merge. No file, or `paused: false`, means not paused. What it stops: `AGENTS.md` "Platform safety".
 - **Schedule:** `loadSearchConfig('searches.json' | 'dice-searches.json')` injects `tick.{tz, days, start, end}` from `profile/preferences.json` `schedule`, the single source for every time window. The limiter and the halts use `schedule.tz` and `schedule.reset_hour`.
 - **Profile** (`scripts/lib/profile.mjs`): `person()`, `preferences()`, `answers()` merge the workspace file over the template. Helpers: `tz()`, `schedule()`, `money()`, `tiers()`, `filePrefix()`, `cvFileBase(share)`, `coverFileBase(slug)`, `applicationEmail()`, `operatorName()`, `formatPhone(phone, country)` (adds the answer bank's country code) and `cvPhone()` (the number a CV may show: `person.json` `phone`, else the answer bank's). Libraries read them lazily, so tests inject values.
