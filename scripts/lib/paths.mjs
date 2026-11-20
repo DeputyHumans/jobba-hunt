@@ -28,6 +28,8 @@ export const TEMPLATES_DIR = join(CODE_ROOT, 'templates', 'workspace');
 export const CACHE_DIR = join(CODE_ROOT, '.cache');
 export const BIN_DIR = join(CODE_ROOT, 'node_modules', '.bin');
 export const SCRIPTS_DIR = join(CODE_ROOT, 'scripts');
+// The harness's local, gitignored settings (mail-guard writes its deny rules there). Tests point it elsewhere.
+export const CLAUDE_LOCAL_SETTINGS = resolve(process.env.JOBBA_CLAUDE_LOCAL_SETTINGS || join(CODE_ROOT, '.claude', 'settings.local.json'));
 
 // The brand pack: <workspace>/brand overrides single files of <repo>/brand.
 export const BRAND_DIR = join(CODE_ROOT, 'brand');

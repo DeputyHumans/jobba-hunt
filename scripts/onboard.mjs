@@ -10,8 +10,12 @@
 //                              their text next to them (<name>.txt), page-tagged for claim sources
 //   validate                   check every workspace file for shape and consistency
 //   git-init                   make the workspace its own private git repository
-//   mail-guard --deny <a,b>    write permissions.deny for a mail connector's non-read tools into
-//                              .claude/settings.local.json (bridge adapter)
+//   mail-guard --connector gmail [--tools <a,b>]
+//                              deny every tool of the harness's Gmail connector except its reads
+//                              (search_threads, get_message, get_thread) in .claude/settings.local.json
+//                              (bridge adapter). --tools: the live tool names the harness lists; any
+//                              that is not a read is denied too. Exit 1 when none of the reads is listed
+//   mail-guard --deny <a,b>    the same file, for any other connector: the tools named
 // Exit 0 ok, 1 refused or invalid, 2 usage.
 
 import './lib/env.mjs';
@@ -20,12 +24,13 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSyn
 import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  CODE_ROOT, HOME, PROFILE_DIR, SOURCES_DIR, TEMPLATES_DIR, display, resolveArgPath,
+  CODE_ROOT, HOME, PROFILE_DIR, SOURCES_DIR, TEMPLATES_DIR, display, resolveArgPath, CLAUDE_LOCAL_SETTINGS,
 } from './lib/paths.mjs';
 import { deepMerge, readJsonFile, writeJsonAtomic } from './lib/config.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { claimStatuses, explainClaims } from './lib/cv.mjs';
 import { LETTER_APPROACHES } from './lib/cover.mjs';
+import { CONNECTORS, guardRules, mergeDeny } from './lib/mail-guard.mjs';
 
 export const PHASES = ['preflight', 'init', 'ingest', 'claims', 'interview', 'answers', 'calibration', 'access', 'cvs', 'searches', 'ready'];
 const ONB = join(PROFILE_DIR, 'onboarding.json');
@@ -194,17 +199,23 @@ async function main() {
     execFileSync('git', ['init', '-q'], { cwd: HOME });
     out({ success: true, note: 'workspace is now a private git repository; add a private remote yourself if you want an off-machine backup' });
   } else if (cmd === 'mail-guard') {
-    const deny = (flag('deny') || '').split(',').map((s) => s.trim()).filter(Boolean);
-    if (!deny.length) { out({ success: false, error: 'usage: mail-guard --deny <tool,tool,...>' }); process.exit(2); }
-    const p = join(CODE_ROOT, '.claude', 'settings.local.json');
-    const cfg = existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : {};
-    cfg.permissions = cfg.permissions || {};
-    cfg.permissions.deny = [...new Set([...(cfg.permissions.deny || []), ...deny])];
-    mkdirSync(join(CODE_ROOT, '.claude'), { recursive: true });
-    writeFileSync(p, `${JSON.stringify(cfg, null, 2)}\n`);
-    out({ success: true, denied: cfg.permissions.deny.length, file: '.claude/settings.local.json' });
+    const list = (v) => (v || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const usage = 'usage: mail-guard --connector gmail [--tools <tool,...>] | mail-guard --deny <tool,...>';
+    let rules;
+    let report = {};
+    if (flag('connector')) {
+      if (!CONNECTORS[flag('connector')]) { out({ success: false, error: `unknown connector "${flag('connector')}"; ${usage}` }); process.exit(2); }
+      try { report = guardRules({ connector: flag('connector'), server: flag('server') || undefined, tools: list(flag('tools')) }); } catch (e) { out({ success: false, error: e.message }); process.exit(1); }
+      rules = report.deny;
+      report = { connector: flag('connector'), kept: report.kept, unknown: report.unknown };
+    } else rules = list(flag('deny'));
+    if (!rules.length) { out({ success: false, error: usage }); process.exit(2); }
+    const cfg = mergeDeny(existsSync(CLAUDE_LOCAL_SETTINGS) ? JSON.parse(readFileSync(CLAUDE_LOCAL_SETTINGS, 'utf8')) : {}, rules);
+    mkdirSync(dirname(CLAUDE_LOCAL_SETTINGS), { recursive: true });
+    writeFileSync(CLAUDE_LOCAL_SETTINGS, `${JSON.stringify(cfg, null, 2)}\n`);
+    out({ success: true, ...report, denied: cfg.permissions.deny.length, file: relative(CODE_ROOT, CLAUDE_LOCAL_SETTINGS) || CLAUDE_LOCAL_SETTINGS });
   } else {
-    console.log('usage: npm run onboard -- init | status | mark --phase <p> | ingest --file <f> | validate | git-init | mail-guard --deny <tools>');
+    console.log('usage: npm run onboard -- init | status | mark --phase <p> | ingest --file <f> | validate | git-init | mail-guard --connector gmail | mail-guard --deny <tools>');
     process.exit(2);
   }
 }

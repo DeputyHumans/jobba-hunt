@@ -153,7 +153,7 @@ The skill runs the conversation and writes the content. `npm run onboard -- <com
 | `npm run onboard -- ingest --file <path> [--file <path> ...]` | Copies PDF, DOCX, TXT or MD sources into `sources/` and writes their page-tagged text next to them (`<name>.txt`) | 0; 1 on a missing file or an unsupported type; 2 usage |
 | `npm run onboard -- validate` | Checks every workspace file for shape and consistency. `docs/troubleshooting.md` "Onboarding and workspace" lists the common messages | 0 clean; 1 problems |
 | `npm run onboard -- git-init` | Makes the workspace its own private git repository. Its `.gitignore` comes from the template | 0 |
-| `npm run onboard -- mail-guard --deny <tool,tool,...>` | Writes `permissions.deny` for a mail connector's non-read tools into `.claude/settings.local.json` | 0; 2 usage |
+| `npm run onboard -- mail-guard --connector gmail [--tools <tool,...>]` | Denies every tool of Claude's Gmail connector except its three reads, in `.claude/settings.local.json`; a live tool the catalog does not know is denied too. `--deny <tool,...>` names the tools for another connector | 0; 1 no read tool in `--tools`; 2 usage or unknown connector |
 
 An unknown command prints the usage and exits 2.
 

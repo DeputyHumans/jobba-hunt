@@ -5,9 +5,11 @@
     "bin": ""
   },
   "bridge": {
+    "connector": null,
+    "server": null,
     "wait_seconds": 180,
     "max_list": 500,
-    "_why": "wait_seconds: how long a bridge fetch request polls for the agent's response when the caller names no wait. The apply runner's code waits (security code, one-time password, verify link) always use config/apply.json code_wait_seconds. max_list: the most headers one scan asks the agent to list."
+    "_why": "connector: the harness connector the bridge reads with (gmail: Claude's Gmail connector, guarded by npm run onboard -- mail-guard --connector gmail); server: its server name when it is not claude_ai_Gmail. wait_seconds: how long a bridge fetch request polls for the agent's response when the caller names no wait. The apply runner's code waits (security code, one-time password, verify link) always use config/apply.json code_wait_seconds. max_list: the most headers one scan asks the agent to list."
   },
   "me": "",
   "first_scan_after": null,
