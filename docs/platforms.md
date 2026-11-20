@@ -18,6 +18,28 @@ The selector tables for LinkedIn and Dice carry the tag in the code: `JOBS_SEL` 
 
 Tests for the runner's handling of site markup: `tests/apply-forms.test.mjs`, `tests/apply-dom.test.mjs`, `tests/apply-click.test.mjs`, `tests/apply-phenom.test.mjs`, `tests/dice.test.mjs`, `tests/extract.test.mjs`. The browser-driven tests skip when no Chromium is installed.
 
+## Browser drivers
+
+Two drivers do the page work (`config/browser.json` `driver`, `docs/architecture.md` "Config"): `cloakbrowser`, the bundled Chromium the scripts drive through playwright-core, and `chrome`, the operator's own Chrome driven by the agent through the Claude in Chrome extension. The selector statuses below were confirmed under `cloakbrowser`; under `chrome` every selector starts at `?`.
+
+### Claude in Chrome tool facts (checked 2026-11-20 on local fixture pages)
+
+Measured against `tests/fixtures` served on 127.0.0.1, with and without a strict Content-Security-Policy (`script-src 'self'`, no `unsafe-eval`). No job board or ATS was opened.
+
+| Tool | Fact | Consequence for the chrome driver |
+|---|---|---|
+| `javascript_tool` | Returns the last expression; objects come back as JSON; top-level `await` works and a promise is awaited | Page scripts run as async functions |
+| `javascript_tool` | Output is cut at about 1,000 characters (`[TRUNCATED]`) | Never a data channel: it returns a one-line status only |
+| `javascript_tool` | A value that looks like encoded data (a 64-character hex digest, base64) is replaced by `[BLOCKED: Base64 encoded data]`, also inside an object; the same hex in 8-character groups joined by `-` passes | Hashes are written dash-grouped |
+| `javascript_tool` under a strict CSP | Its own code runs, `eval` and `new Function` included, but only before the first `await` of the call: after an `await` the page's CSP applies ("'unsafe-eval' is not an allowed source"). An injected inline `<script>` is blocked as usual | A page script is read in one call and evaluated, synchronously, at the top of the next |
+| `get_page_text` | Returns the text of the page's main content. An `<article>` a script prepends to `body` is chosen over the page's own `<main>` and `<article>`; a 24,413-character JSON came back whole; hex digests are not filtered | The data channel: a page script writes its result envelope into `<article id="jobba-out">` |
+| `read_page` | Names are cut at about 100 characters; a `<pre>`'s text and a `<textarea>`'s value are not shown | Not a data channel |
+| `file_upload` | Puts a local file the session can read into an `input[type=file]` found by `find` (a visible one); the page reads it with `File.text()`, under a strict CSP too | The code channel: the script's generated page code reaches the page without the agent retyping it |
+| `crypto.subtle` | Available on secure contexts (https, 127.0.0.1); SHA-256 of "abc" correct | The page hashes its own result |
+| `navigate` | Returns after the page reached `readyState` `complete` | A probe runs right after it |
+
+Not checked: JavaScript dialogs (an `alert` blocks the extension until a person dismisses it, so none was triggered), hidden (`display:none`) file inputs, Chrome tools inside a subagent, and any real site.
+
 ## Query syntax
 
 AGENTS.md rules: "Never `AND` on LinkedIn. Never `"A" OR "B"` on Dice (403)." The table explains them.
