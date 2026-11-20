@@ -1,15 +1,55 @@
 jobba-hunt
-Licensed under the Apache License, Version 2.0 (see LICENSE).
+Copyright 2026 Deputy Humans
 
-This project bundles third-party material:
+Licensed under the Apache License, Version 2.0 (see LICENSE). Everything in this
+repository is covered by that license unless listed below. That includes the
+first-party agent skills in .agents/skills/ (hunt-*, authentic-prose,
+humanizing-prose).
 
-- .agents/skills/bs-publish, bs-comment, bs-folder, bs-share
-  Agent skills from the bikeshed-now project (https://bikeshed.now), Apache License 2.0.
-  Vendored unchanged.
+-------------------------------------------------------------------------------
+Third-party material included in this repository
+-------------------------------------------------------------------------------
 
-- brand/fonts/
-  Typefaces under the SIL Open Font License 1.1. Each family's licence file sits next to its font files.
+1. .agents/skills/bs-publish, bs-comment, bs-folder, bs-share
+   Agent skills from bikeshed-now (https://github.com/DeputyHumans/bikeshed-now),
+   Apache License 2.0, vendored unchanged. The bikeshed-now NOTICE reads:
 
-- npm dependencies (node_modules/, installed by `npm ci`) keep their own licences:
-  cloakbrowser (MIT), playwright-core (Apache-2.0), bikeshed-now (Apache-2.0),
-  @googleworkspace/cli (Apache-2.0), pdf-lib (MIT), pdfjs-dist (Apache-2.0), docx (MIT).
+     Bikeshed
+     Copyright 2026 Bikeshed contributors
+     This product includes software developed by the Bikeshed contributors.
+
+2. docs/acf/
+   Conventions generated from the templates of the ACF Tools plugins
+   acf-whip 3.7.1 and acf-librarian 1.3.3, Apache License 2.0. Each file's
+   first line names its template. Releases of these plugins before acf-whip
+   3.6.2 and acf-librarian 1.3.1 were under a proprietary license. These files
+   come from the Apache-licensed releases (the template hashes match
+   acf-librarian 1.3.3).
+
+3. brand/fonts/
+   Typefaces under the SIL Open Font License 1.1 (https://openfontlicense.org).
+   Each family's license file sits next to its font files.
+   - Charis, unmodified: Copyright (c) 1997-2025 SIL Global
+     (https://software.sil.org/charis/), Reserved Font Names "Charis" and "SIL".
+   - Nunito Sans: Copyright 2016 The Nunito Sans Project Authors
+     (https://github.com/Fonthausen/NunitoSans).
+   - Instrument Sans, Latin subset: Copyright 2022 The Instrument Sans Project
+     Authors (https://github.com/Instrument/instrument-sans).
+   - Geist Mono, Latin subset: Copyright 2024 The Geist Project Authors
+     (https://github.com/vercel/geist-font).
+
+-------------------------------------------------------------------------------
+Not included in this repository
+-------------------------------------------------------------------------------
+
+npm dependencies are installed into node_modules/ by `npm ci` and keep their own
+licenses: playwright-core, bikeshed-now, @googleworkspace/cli and pdfjs-dist
+(Apache-2.0); pdf-lib, docx, marked and cloakbrowser (MIT).
+
+The CloakBrowser Chromium binary is downloaded by the `cloakbrowser` npm package
+(MIT) into the gitignored .cache/ folder during `npm run setup`. The binary is
+under its own license
+(https://github.com/CloakHQ/CloakBrowser/blob/main/BINARY-LICENSE.md): free to
+use, no redistribution, and no automated account creation. This repository never
+contains or redistributes it. The wrapper contacts cloakbrowser.dev to check
+licenses.
