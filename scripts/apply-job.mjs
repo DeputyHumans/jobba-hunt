@@ -37,8 +37,12 @@
 //
 // Every attempt outcome, learn and verify is appended to the action log (data/log/actions.jsonl).
 //
+// Under the chrome driver (config/browser.json) it runs as npm run -s browser -- start apply -- <args>:
+// the agent does the page work in the operator's Chrome (scripts/lib/apply-chrome.mjs).
+//
 // Exit codes: 0 submitted, dry run complete, or a command done; 1 error; 2 refused by a gate;
-// 3 profile busy; 4 needs_answers (questions listed; nothing submitted); 5 handed to the user
+// 3 profile busy, or under the chrome driver the browser stopped answering before Submit (nothing
+// sent); 4 needs_answers (questions listed; nothing submitted); 5 handed to the user
 // (unsupported site, account portal, CAPTCHA, a mailed code that did not come)
 // or a closed posting; 6 submit-unverified (do not retry; the user checks); 7 the platform shows
 // the job as already applied.
@@ -64,6 +68,9 @@ import { logAction } from './lib/actions-log.mjs';
 import { letterNeedsReview } from './lib/cover.mjs';
 import { STATE_PATH, loadState, saveStateAtomic, sourceState, carryRun } from './lib/state.mjs';
 import { DRIVERS, channelVerified, verifiedKey } from './lib/browser.mjs';
+import { openSession, sessionDriver, SessionRefused } from './lib/session.mjs';
+import { BrowserUnavailableError } from './lib/bridge.mjs';
+import { runChromeApply } from './lib/apply-chrome.mjs';
 import { applyGate, recordAttempt, sameCompanyRoles, markSubmitPending, recoverPending } from './lib/triage.mjs';
 import { loadCompanyOpts } from './lib/company.mjs';
 import { readPause } from './lib/pause.mjs';
@@ -2193,6 +2200,66 @@ async function workdayWizard(site, url, filled, done) {
 }
 
 // ---------- run ----------
+// Set right before any Submit click. After it, an exception can never be recorded as a
+// plain error: it becomes submit-unverified, which blocks a retry (a retry could send a
+// duplicate application): one was sent, then a post-submit click timed out.
+let submitClicked = false;
+// Right before any Submit click: the request goes to disk first, in the run folder and the job state
+// (submit_pending), so a run that dies after the click is never retried: applyGate refuses it and
+// `apply -- recover` records it submit-unverified. finish() clears it (recordAttempt).
+function markSubmit() {
+  const at = new Date().toISOString();
+  writeFileSync(join(outDir, 'submit-requested.json'), JSON.stringify({ job_id: id, at }, null, 2));
+  const fresh = loadState(STATE_PATH);
+  markSubmitPending(fresh, id, { dir: display(outDir), at });
+  saveStateAtomic(STATE_PATH, fresh);
+  submitClicked = true;
+}
+// ---------- the chrome driver: the operator's own Chrome, through the bridge ----------
+// Every gate above has run. The page work goes to the agent (scripts/lib/apply-chrome.mjs); the
+// records, the caps and the submit marker stay here.
+if (sessionDriver(flags) === 'chrome') {
+  let session;
+  try {
+    session = await openSession(dice ? DICE_PLATFORM : 'linkedin', { flags, command: 'apply', source: dice ? 'dice' : 'linkedin', readers: { cloak: {}, chrome: (r) => ({ run: r }) } });
+  } catch (err) {
+    if (err instanceof SessionRefused) { log(`SKIPPED: ${err.result.reason}`); out({ ...err.result, job_id: id }); process.exit(err.code); }
+    throw err;
+  }
+  const forcedAts = (() => { try { const u = new URL(String(flags['ats-url'] || '')); return u.protocol === 'https:' && !/(^|\.)(linkedin|dice)\.com$/.test(u.hostname) ? u.href : null; } catch { return null; } })();
+  const appsPlatform = (ch) => (ch === 'easy' ? 'linkedin_apply' : ch === 'dice-easy' ? 'dice_apply' : 'ats_apply');
+  let c = 1;
+  let r = { outcome: 'error' };
+  try {
+    [c, r] = await runChromeApply({
+      run: session.run, id, dice, dryRun, cfg, bank, ctx, outDir, log, markSubmit,
+      atsUrl: forcedAts || (flags['via-linkedin'] ? null : recordedAtsUrl(job.application, (dir) => readJson(join(dir, 'result.json')))),
+      recordLoad: () => recordPost(applyCap, 'apply_page_loads_per_day', { jobId: id, dryRun, ...loadMeta, driver: 'chrome' }),
+      appsOk: (ch) => appsCap(appsPlatform(ch)).ok,
+      recordApply: (ch) => recordPost(appsPlatform(ch), 'applications_per_day', { jobId: id, channel: ch, ...appsCap(appsPlatform(ch)).meta, driver: 'chrome' }),
+    });
+  } catch (err) {
+    const lost = err instanceof BrowserUnavailableError;
+    [c, r] = submitClicked
+      ? [6, { outcome: 'submit-unverified', driver: 'chrome', detail: `${lost ? 'the browser stopped answering' : `error: ${err.message.slice(0, 200)}`} after Submit was requested: check the platform by hand; never retry` }]
+      : lost ? [3, { outcome: 'error', driver: 'chrome', browser: 'unavailable', detail: err.why }]
+      : err.needs ? [4, { outcome: 'needs_answers', driver: 'chrome', detail: err.needs }]
+      : [1, { outcome: 'error', driver: 'chrome', detail: err.message.slice(0, 300) }];
+  }
+  // The screenshots the agent saved: copied into the run folder (the evidence of this run).
+  for (const sshot of r.screenshots || []) { try { if (existsSync(sshot.path)) copyFileSync(sshot.path, join(outDir, `${sshot.name}.png`)); } catch { /* evidence copy only */ } }
+  delete r.screenshots;
+  // A checkpoint or a Dice block on the job page halts that source, as under cloakbrowser.
+  if (r.halt) {
+    const until = haltUntil(r.halt === 'checkpoint' ? 'checkpoint' : 'blocked', Date.now(), tz(), schedule().reset_hour ?? 4);
+    loop.halt_until = until;
+    logAction({ action: 'halt.set', source: dice ? 'dice' : 'linkedin', job_id: id, detail: { abort: r.halt, until, by: 'apply' } });
+    delete r.halt;
+  }
+  [c, r] = aiApplicantHandoff([c, r]);
+  finish(c, r);
+}
+
 let context, page;
 try {
   ({ context, page } = dice
@@ -2210,21 +2277,6 @@ try {
 
 let code = 1;
 let result = { outcome: 'error' };
-// Set right before any Submit click. After it, an exception can never be recorded as a
-// plain error: it becomes submit-unverified, which blocks a retry (a retry could send a
-// duplicate application): one was sent, then a post-submit click timed out.
-let submitClicked = false;
-// Right before any Submit click: the request goes to disk first, in the run folder and the job state
-// (submit_pending), so a run that dies after the click is never retried: applyGate refuses it and
-// `apply -- recover` records it submit-unverified. finish() clears it (recordAttempt).
-function markSubmit() {
-  const at = new Date().toISOString();
-  writeFileSync(join(outDir, 'submit-requested.json'), JSON.stringify({ job_id: id, at }, null, 2));
-  const fresh = loadState(STATE_PATH);
-  markSubmitPending(fresh, id, { dir: display(outDir), at });
-  saveStateAtomic(STATE_PATH, fresh);
-  submitClicked = true;
-}
 // The company-site URL the run reached, kept on an error too: the next run starts there (recordedAtsUrl).
 let reachedAts = null;
 try {

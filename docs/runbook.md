@@ -202,7 +202,7 @@ The last JSON line of a tick, sweep or probe names the guard in `aborted`; the s
 
 ## Apply outcomes
 
-`npm run apply -- --job <id>` exits as follows (`scripts/apply-job.mjs` header). Never wrap it in a shell `timeout` and never kill it early (`AGENTS.md` "Platform safety"): use the harness's own tool timeout, in the background when the run may wait for the operator.
+`npm run apply -- --job <id>` exits as follows (`scripts/apply-job.mjs` header). Under the chrome driver it runs as `npm run -s browser -- start apply -- --job <id> [--dry-run]` and exits the same way, plus 3 with `browser: unavailable` when the browser stops answering before Submit (nothing sent; after Submit it is 6). A channel needing the cloakbrowser driver's own steps comes back 5 with `driver_hint: cloakbrowser` (`docs/platforms.md` "Applying under the chrome driver"). Never wrap it in a shell `timeout` and never kill it early (`AGENTS.md` "Platform safety"): use the harness's own tool timeout, in the background when the run may wait for the operator.
 
 | Exit | Outcome | Action |
 |---|---|---|
