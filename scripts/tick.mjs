@@ -12,7 +12,8 @@
 //
 // Exit codes: 0 done (incl. budget exhausted), 1 aborted by a guard (state halted until
 // the next reset_hour, or 7 days on a checkpoint), 2 refused (a cap, or the query set is not
-// verified yet), 3 profile busy (skip, never retry in a loop), 4 outside the tick window or paused (config/pause.json),
+// verified yet, or under the chrome driver a refusal: chrome-needs-bridge, chrome-session-unconfirmed),
+// 3 profile busy, or the chrome driver's browser stopped answering (skip, never retry in a loop; no halt), 4 outside the tick window or paused (config/pause.json),
 // 5 halted by an earlier abort. The last stdout line is JSON with next_tick_at (the absolute time
 // the loop schedules the next firing from: never inside the limiter's jitter gap) and
 // next_delay_seconds (the same instant as an offset from the end of this run).
@@ -20,12 +21,14 @@
 import './lib/env.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseArgs, out, openContext, ProfileBusyError } from './cloak-core.mjs';
-import { searchJobs, viewJob } from './linkedin-jobs.mjs';
+import { parseArgs, out } from './cloak-core.mjs';
+import { openSession, SessionRefused } from './lib/session.mjs';
+import { recordSession } from './lib/browser.mjs';
+import { searchJobs, viewJob, chromeReaders } from './linkedin-jobs.mjs';
 import { buildSearchUrl } from './lib/search-url.mjs';
 import { compilePrefilter } from './lib/prefilter.mjs';
 import { DATA_DIR, STATE_PATH, loadState, saveStateAtomic, recordTick } from './lib/state.mjs';
-import { isOpen, nextOpen, isHalted, haltUntil, pickTick, nextTickAt } from './lib/tick-plan.mjs';
+import { isOpen, nextOpen, isHalted, haltUntil, haltsSource, pickTick, nextTickAt } from './lib/tick-plan.mjs';
 import { createRun, survivorsOf, pendingTriageCount } from './lib/sweep-core.mjs';
 import { canPost, recordPost, getUsageSummary } from './rate-limiter.mjs';
 import { loadConfig, loadSearchConfig } from './lib/config.mjs';
@@ -101,36 +104,39 @@ for (const cap of ['ticks_per_day', 'searches_per_day']) {
 
 const startedAt = new Date();
 const tickId = `tick-${startedAt.toISOString()}`;
-let context, page;
+// The browser: the bundled CloakBrowser profile, or under the chrome driver the agent's Chrome
+// through the bridge (npm run browser -- start tick).
+let session;
 try {
-  ({ context, page } = await openContext('linkedin', { headed: !!flags.headed, flags }));
+  session = await openSession('linkedin', { flags, headed: !!flags.headed, command: 'tick', source: 'linkedin', readers: { cloak: { searchJobs, viewJob }, chrome: chromeReaders } });
 } catch (err) {
-  if (err instanceof ProfileBusyError) {
-    log(`SKIPPED: ${err.message}`);
-    finish(3, { success: false, profileBusy: true, profile: err.profile });
+  if (err instanceof SessionRefused) {
+    log(`SKIPPED: ${err.result.reason}`);
+    finish(err.code, err.result);
   }
   throw err;
 }
 recordPost('linkedin_jobs', 'ticks_per_day', { tickId, query: pick.id });
 
 const run = createRun({
-  page, state, cfg, P: compilePrefilter(loadConfig('prefilter.json')), runId: tickId, log, suspectStreak: state.suspect_streak,
-  io: { searchJobs, viewJob }, limiter: { canPost, recordPost },
+  page: session.page, state, cfg, P: compilePrefilter(loadConfig('prefilter.json')), runId: tickId, log, suspectStreak: state.suspect_streak,
+  io: session.io, limiter: { canPost, recordPost },
 });
 try {
   await run.searchQuery(pick);
   run.prefilterTouched();
   if (viewBudget && !run.abort) await run.viewQueue(viewBudget);
 } finally {
-  await context.close().catch(() => {});
+  await session.close();
 }
+if (session.driver === 'chrome' && run.abort === 'login-lost') recordSession('linkedin', false);
 
 state.suspect_streak = run.suspectStreak;
 recordTick(state, { kind: pick.kind, id: pick.id, at: startedAt.toISOString() });
-if (run.abort) state.halt_until = haltUntil(run.abort, Date.now(), T.tz, resetHour);
+if (haltsSource(run.abort)) state.halt_until = haltUntil(run.abort, Date.now(), T.tz, resetHour);
 else if (expiredHalt) state.halt_until = null;
 saveStateAtomic(STATE_PATH, state);
-if (run.abort) logAction({ action: 'halt.set', source: 'linkedin', detail: { abort: run.abort, until: state.halt_until, by: tickId } });
+if (haltsSource(run.abort)) logAction({ action: 'halt.set', source: 'linkedin', detail: { abort: run.abort, until: state.halt_until, by: tickId } });
 else if (expiredHalt) logAction({ action: 'halt.cleared', source: 'linkedin', detail: { was: expiredHalt, by: tickId } });
 
 // Roles this tick fetched and kept: what /hunt-loop triages next.
@@ -159,6 +165,10 @@ logAction({ action: 'tick.done', source: 'linkedin', ref: display(snapPath), det
 
 log(`\n${pick.id}: ${summary.searches} search, ${summary.new} new, ${summary.views} viewed, ${summary.pending_triage} pending triage | guards: ${run.abort || 'none'}${run.budgetExhausted ? ' | budget exhausted' : ''}`);
 log(`snapshot -> ${display(snapPath)}`);
+if (run.abort === 'browser-unavailable') {
+  log(`!! The browser stopped answering (${run.browserError}). No halt; the next firing tries again. Check the Chrome connection (/chrome).`);
+  finish(3, { success: false, aborted: run.abort, browser: 'unavailable', why: run.browserError, halt_until: state.halt_until, summary, viewed, snapshot: display(snapPath) });
+}
 if (run.abort === 'checkpoint') log('!! STOP. Halted 7 days. Log in by hand in a real terminal: npm run jobs -- login. Then halve the caps in config/limits.json (docs/runbook.md "Halts, the pause and cap overrides").');
 else if (run.abort) log(`!! ABORTED (${run.abort}). Halted until ${state.halt_until}. See docs/runbook.md "Guards and actions".`);
 finish(run.abort ? 1 : 0, { success: !run.abort, aborted: run.abort, halt_until: state.halt_until, budget_exhausted: run.budgetExhausted, summary, viewed, snapshot: display(snapPath) });

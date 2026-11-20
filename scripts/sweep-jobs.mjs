@@ -14,18 +14,21 @@
 //   node scripts/sweep-jobs.mjs --no-views           # searches only
 //
 // Exit codes: 0 done (incl. budget exhausted), 1 aborted by a guard, 2 refused (a daily cap,
-// a halt, or the query set is not verified yet), 3 profile busy (not counted; re-run later by
-// hand, never loop), 4 paused (config/pause.json; a dry run still plans).
+// a halt, the query set is not verified yet, or a chrome-driver refusal), 3 profile busy, or the
+// chrome driver's browser stopped answering (no halt; re-run later by hand, never loop), 4 paused
+// (config/pause.json; a dry run still plans).
 
 import './lib/env.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseArgs, out, openContext, ProfileBusyError, sleep, jitter } from './cloak-core.mjs';
-import { searchJobs, viewJob } from './linkedin-jobs.mjs';
+import { parseArgs, out, sleep, jitter } from './cloak-core.mjs';
+import { openSession, SessionRefused } from './lib/session.mjs';
+import { recordSession } from './lib/browser.mjs';
+import { searchJobs, viewJob, chromeReaders } from './linkedin-jobs.mjs';
 import { planSearches } from './lib/search-url.mjs';
 import { compilePrefilter } from './lib/prefilter.mjs';
 import { DATA_DIR, STATE_PATH, loadState, saveStateAtomic, markSweepSuccess, touchedIds } from './lib/state.mjs';
-import { queryWindow, haltUntil, isHalted } from './lib/tick-plan.mjs';
+import { queryWindow, haltUntil, haltsSource, isHalted } from './lib/tick-plan.mjs';
 import { readPause, pauseBlock } from './lib/pause.mjs';
 import { createRun, survivorsOf, pendingTriageCount } from './lib/sweep-core.mjs';
 import { canPost, recordPost, getUsageSummary } from './rate-limiter.mjs';
@@ -96,20 +99,20 @@ if (!gate.allowed) {
   process.exit(2);
 }
 
-let context, page;
+let session;
 try {
-  ({ context, page } = await openContext('linkedin', { headed: !!flags.headed, flags }));
+  session = await openSession('linkedin', { flags, headed: !!flags.headed, command: 'sweep', source: 'linkedin', readers: { cloak: { searchJobs, viewJob }, chrome: chromeReaders } });
 } catch (err) {
-  if (err instanceof ProfileBusyError) {
-    log(`SKIPPED: ${err.message}`);
-    out({ success: false, profileBusy: true, profile: err.profile });
-    process.exit(3);
+  if (err instanceof SessionRefused) {
+    log(`SKIPPED: ${err.result.reason}`);
+    out(err.result);
+    process.exit(err.code);
   }
   throw err;
 }
 recordPost('linkedin_jobs', 'sweeps_per_day', { sweepId });
 
-const run = createRun({ page, state, cfg, P, runId: sweepId, log, io: { searchJobs, viewJob }, limiter: { canPost, recordPost } });
+const run = createRun({ page: session.page, state, cfg, P, runId: sweepId, log, io: session.io, limiter: { canPost, recordPost } });
 const expiredHalt = state.halt_until || null;
 
 try {
@@ -122,13 +125,14 @@ try {
   if (doViews && !run.abort) await run.viewQueue(viewBudget);
 
   if (!run.abort) markSweepSuccess(state, sweepId);
-  else state.halt_until = haltUntil(run.abort, Date.now(), cfg.tick.tz, schedule()?.reset_hour ?? 4);
+  else if (haltsSource(run.abort)) state.halt_until = haltUntil(run.abort, Date.now(), cfg.tick.tz, schedule()?.reset_hour ?? 4);
   if (!run.abort && expiredHalt) state.halt_until = null;
   saveStateAtomic(STATE_PATH, state);
 } finally {
-  await context.close().catch(() => {});
+  await session.close();
 }
-if (run.abort) logAction({ action: 'halt.set', source: 'linkedin', detail: { abort: run.abort, until: state.halt_until, by: `sweep-${sweepId}` } });
+if (session.driver === 'chrome' && run.abort === 'login-lost') recordSession('linkedin', false);
+if (haltsSource(run.abort)) logAction({ action: 'halt.set', source: 'linkedin', detail: { abort: run.abort, until: state.halt_until, by: `sweep-${sweepId}` } });
 else if (expiredHalt) logAction({ action: 'halt.cleared', source: 'linkedin', detail: { was: expiredHalt, by: `sweep-${sweepId}` } });
 
 const { perQuery, views, abort, budgetExhausted } = run;
@@ -163,6 +167,7 @@ log(`\n${summary.searches} searches, ${summary.ids_seen} ids (${summary.new} new
 log(`snapshot -> ${display(snapPath)}`);
 if (abort === 'checkpoint') log('!! STOP. LinkedIn is halted 7 days after a checkpoint. Log in by hand in a real terminal: npm run jobs -- login. Then halve the caps. See docs/runbook.md "Guards and actions".');
 else if (abort === 'login-lost') log('!! STOP. LinkedIn is halted until the next reset. Log in by hand in a real terminal: npm run jobs -- login. See docs/runbook.md "Guards and actions".');
-else if (abort) log(`!! ABORTED (${abort}). No retry today. Debug with a --headed single search after the reset; see docs/runbook.md "Guards and actions".`);
-out({ success: !abort, aborted: abort, budget_exhausted: budgetExhausted, summary, snapshot: display(snapPath) });
-process.exit(abort ? 1 : 0);
+else if (abort && abort !== 'browser-unavailable') log(`!! ABORTED (${abort}). No retry today. Debug with a --headed single search after the reset; see docs/runbook.md "Guards and actions".`);
+if (abort === 'browser-unavailable') log(`!! The browser stopped answering (${run.browserError}). No halt; check the Chrome connection (/chrome).`);
+out({ success: !abort, aborted: abort, ...(abort === 'browser-unavailable' ? { browser: 'unavailable', why: run.browserError } : {}), budget_exhausted: budgetExhausted, summary, snapshot: display(snapPath) });
+process.exit(abort === 'browser-unavailable' ? 3 : abort ? 1 : 0);

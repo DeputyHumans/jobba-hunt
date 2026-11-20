@@ -72,7 +72,8 @@ This file is the entry point and the operating rules for every coding agent: Cla
 - **Any abort halts that source** (`halt_until`): until the next reset, or 7 days for a checkpoint or authwall. One source's halt never stops another.
   - The halt stops ticks, sweeps, probes, reader searches and views, and every apply run on that source, dry runs included. `login`, `whoami` and `limits` still run.
   - Only the operator clears a halt early, in their own words: `npm run jobs -- clear-halt --note "<their words>"` (or `npm run dice -- clear-halt`). It logs `halt.cleared`. Record it in the digest and in `profile/decisions.md` too.
-- **Checkpoint or authwall:** stop that source. The operator logs in by hand in a real terminal (`npm run jobs -- login`, `npm run dice -- login`); then halve that source's caps.
+- **Checkpoint or authwall:** stop that source. The operator signs in by hand: in a real terminal under the cloakbrowser driver (`npm run jobs -- login`, `npm run dice -- login`), or in their own Chrome under the chrome driver, followed by `npm run -s browser -- start jobs -- whoami` (or `dice`). Then halve that source's caps.
+- **The chrome driver's browser.** The agent acts in Chrome only on a bridge request (`npm run browser`, the hunt-browser skill), never on its own initiative. It never types a value or clicks Submit outside a request, and never touches a sign-in or CAPTCHA page. A browser that stops answering ends the run with exit 3 and halts nothing.
 - **The pause** (`config/pause.json` `{paused, reason, since, by}`) stops the whole hunt:
   - Live ticks exit 4.
   - Sweeps, probes and reader searches and views refuse.

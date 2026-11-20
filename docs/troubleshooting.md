@@ -32,6 +32,19 @@ Symptom, cause, fix. The rules are in `AGENTS.md`. Guard-by-guard actions, halts
 | Sweep or live probe exits 4; a reader `search` or `view` exits 1 with `paused: true` | The pause holds every page load outside a dry run | As above. A `--dry-run` and `probe -- --mark-verified` still run |
 | The loop stops by itself | Both sources halted for more than a day | Fix both causes, then `/loop /hunt-loop` again |
 
+## Chrome driver
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| A tick, sweep, probe or reader exits 2 `cap: chrome-needs-bridge` | It was started directly under the chrome driver | `npm run -s browser -- start <command> -- <args>`, then serve its requests (the hunt-browser skill) |
+| Exits 2 `cap: chrome-session-unconfirmed` | The source's sign-in in Chrome was never confirmed, or a login-lost abort cleared it (`data/state/browser-sessions.json`) | Sign in to the board in your own Chrome, then `npm run -s browser -- start jobs -- whoami` (or `dice -- whoami`) |
+| Exits 3 with `browser: unavailable` | A bridge request got no answer in time, was failed (no browser connected, the extension idle), or its envelope failed the checks twice | No halt. `/chrome`, then Reconnect extension, and the next firing tries again |
+| `browser -- done` exits 1 "write the envelope … first" | A `load` or `eval` was acknowledged before its `respond_to` file held the `get_page_text` copy | Copy from `JOBBA-ENVELOPE` to `JOBBA-END` into `respond_to`, then `done` again, or `done --failed "<why>"` |
+| A request's envelope fails "hash mismatch" | The copy changed a character | Nothing: the command reads the page once more by itself. A second failure ends the run (exit 3) |
+| `start` exits 3 `busy` | Another bridge run holds `data/bridge/active.json` | Serve it to its end (`npm run -s browser -- next`), or wait. A dead holder is cleared by itself |
+| `eval` of the uploaded script errors "'unsafe-eval' is not an allowed source" | The evaluation ran after an `await` in the same call | Run `READ_JS` and `EVAL_JS` as two separate `javascript_tool` calls, as the request's steps list them |
+| `--capture`, `--pause`, `--profile` or `--force-reap` refused (`chrome-unsupported-flag`) | They belong to the cloakbrowser driver | Add `--driver cloakbrowser` for that run |
+
 ## Browser profile
 
 | Symptom | Cause | Fix |

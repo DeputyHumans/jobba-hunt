@@ -15,19 +15,23 @@
 //        searches_per_day caps, the guards, the Dice halt and the pause still apply.
 //
 // Exit codes: 0 done, 1 aborted by a guard (Dice halted until the next reset_hour, or 7 days on
-// a checkpoint), 2 refused (a cap, or the query set is not verified yet), 3 profile busy,
+// a checkpoint), 2 refused (a cap, the query set is not verified yet, or a chrome-driver refusal:
+// chrome-needs-bridge, chrome-session-unconfirmed), 3 profile busy or the chrome driver's browser
+// stopped answering (no halt),
 // 4 outside the tick window or paused (config/pause.json), 5 halted by an earlier Dice abort.
 // The last stdout line is JSON with next_tick_at and next_delay_seconds, as tick.mjs.
 
 import './lib/env.mjs';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseArgs, out, openContext, ProfileBusyError, sleep, jitter } from './cloak-core.mjs';
-import { searchJobs, viewJob, signedInAtHome, capture, DICE_PROFILE, DICE_PLATFORM } from './dice-jobs.mjs';
+import { parseArgs, out, sleep, jitter } from './cloak-core.mjs';
+import { openSession, SessionRefused } from './lib/session.mjs';
+import { recordSession } from './lib/browser.mjs';
+import { searchJobs, viewJob, signedInAtHome, capture, chromeReaders, DICE_PROFILE, DICE_PLATFORM } from './dice-jobs.mjs';
 import { buildDiceUrl } from './lib/dice-url.mjs';
 import { compilePrefilter } from './lib/prefilter.mjs';
 import { DATA_DIR, STATE_PATH, loadState, saveStateAtomic, recordTick, sourceState } from './lib/state.mjs';
-import { isOpen, nextOpen, isHalted, haltUntil, pickTick, nextTickAt, queryWindow } from './lib/tick-plan.mjs';
+import { isOpen, nextOpen, isHalted, haltUntil, haltsSource, pickTick, nextTickAt, queryWindow } from './lib/tick-plan.mjs';
 import { createRun, survivorsOf, pendingTriageCount } from './lib/sweep-core.mjs';
 import { canPost, recordPost, getUsageSummary } from './rate-limiter.mjs';
 import { loadConfig, loadSearchConfig } from './lib/config.mjs';
@@ -112,16 +116,18 @@ for (const cap of sweep ? ['sweeps_per_day', 'searches_per_day'] : ['ticks_per_d
 
 const startedAt = new Date();
 const tickId = `${sweep ? 'dice-sweep' : 'dice-tick'}-${startedAt.toISOString()}`;
-let context, page;
+// The browser: the bundled Dice profile, or under the chrome driver the agent's Chrome (the bridge).
+let session;
 try {
-  ({ context, page } = await openContext(DICE_PLATFORM, { headed: !!flags.headed, flags, dir: DICE_PROFILE }));
+  session = await openSession(DICE_PLATFORM, { flags, headed: !!flags.headed, dir: DICE_PROFILE, command: 'dice-tick', source: 'dice', readers: { cloak: { searchJobs, viewJob }, chrome: chromeReaders } });
 } catch (err) {
-  if (err instanceof ProfileBusyError) {
-    log(`SKIPPED: ${err.message}`);
-    finish(3, { success: false, profileBusy: true, profile: err.profile });
+  if (err instanceof SessionRefused) {
+    log(`SKIPPED: ${err.result.reason}`);
+    finish(err.code, err.result);
   }
   throw err;
 }
+const { page } = session;
 if (!sweep) recordPost('dice_jobs', 'ticks_per_day', { tickId, query: pick.id });
 else {
   recordPost('dice_jobs', 'sweeps_per_day', { sweepId: tickId });
@@ -130,7 +136,7 @@ else {
 
 const run = createRun({
   page, state, cfg, P: compilePrefilter(loadConfig('prefilter.json')), runId: tickId, log, suspectStreak: loop.suspect_streak,
-  io: { searchJobs, viewJob, buildUrl: buildDiceUrl }, limiter: { canPost, recordPost },
+  io: { ...session.io, buildUrl: buildDiceUrl }, limiter: { canPost, recordPost },
   platform: 'dice_jobs', source: 'dice', loop, pageScopes: sweep ? ['dice'] : [],
 });
 // A login-lost verdict is checked against the home feed before it halts Dice: false ones came
@@ -138,8 +144,9 @@ const run = createRun({
 // page, not an abort.
 async function confirmLoginLost() {
   if (run.abort !== 'login-lost') return;
-  await capture(page, 'login-lost').catch(() => {});
-  if (await signedInAtHome(page).catch(() => false)) {
+  if (session.driver === 'cloakbrowser') await capture(page, 'login-lost').catch(() => {});
+  const home = session.driver === 'chrome' ? () => session.io.signedIn() : () => signedInAtHome(page);
+  if (await home().catch(() => false)) {
     log('login-lost not confirmed: the home feed is signed in. Recorded as suspect, no halt.');
     run.abort = null;
     run.falseLogin = true;
@@ -156,15 +163,16 @@ try {
   run.prefilterTouched();
   if (viewBudget && !run.abort && !run.falseLogin) { await run.viewQueue(viewBudget); await confirmLoginLost(); }
 } finally {
-  await context.close().catch(() => {});
+  await session.close();
 }
+if (session.driver === 'chrome' && run.abort === 'login-lost') recordSession('dice', false);
 
 loop.suspect_streak = run.suspectStreak;
 if (!sweep) recordTick(loop, { kind: pick.kind, id: pick.id, at: startedAt.toISOString() });
-if (run.abort) loop.halt_until = haltUntil(run.abort, Date.now(), T.tz, resetHour);
+if (haltsSource(run.abort)) loop.halt_until = haltUntil(run.abort, Date.now(), T.tz, resetHour);
 else if (expiredHalt) loop.halt_until = null;
 saveStateAtomic(STATE_PATH, state);
-if (run.abort) logAction({ action: 'halt.set', source: 'dice', detail: { abort: run.abort, until: loop.halt_until, by: tickId } });
+if (haltsSource(run.abort)) logAction({ action: 'halt.set', source: 'dice', detail: { abort: run.abort, until: loop.halt_until, by: tickId } });
 else if (expiredHalt) logAction({ action: 'halt.cleared', source: 'dice', detail: { was: expiredHalt, by: tickId } });
 
 const viewed = run.views.filter((v) => v.status === 'ok' && v.verdict !== 'drop').map((v) => {
@@ -193,6 +201,10 @@ logAction({ action: sweep ? 'sweep.done' : 'tick.done', source: 'dice', ref: dis
 
 log(`\ndice ${pick.id}: ${summary.searches} search, ${summary.new} new, ${summary.views} viewed, ${summary.pending_triage} pending triage | guards: ${run.abort || 'none'}${run.budgetExhausted ? ' | budget exhausted' : ''}`);
 log(`snapshot -> ${display(snapPath)}`);
+if (run.abort === 'browser-unavailable') {
+  log(`!! The browser stopped answering (${run.browserError}). No halt; the next firing tries again. Check the Chrome connection (/chrome).`);
+  finish(3, { success: false, aborted: run.abort, browser: 'unavailable', why: run.browserError, halt_until: loop.halt_until, summary, viewed, snapshot: display(snapPath) });
+}
 if (run.abort === 'checkpoint') log('!! STOP DICE. Halted 7 days. Log in by hand: npm run dice -- login (docs/runbook.md "Dice").');
 else if (run.abort) log(`!! DICE ABORTED (${run.abort}). Dice halted until ${loop.halt_until}. LinkedIn is unaffected.`);
 finish(run.abort ? 1 : 0, { success: !run.abort, aborted: run.abort, halt_until: loop.halt_until, budget_exhausted: run.budgetExhausted, summary, viewed, snapshot: display(snapPath) });

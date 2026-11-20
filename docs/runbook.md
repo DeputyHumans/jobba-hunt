@@ -189,6 +189,9 @@ The last JSON line of a tick, sweep or probe names the guard in `aborted`; the s
 | `aborted: views-unreadable` | Two job pages in a row had no title or under 100 description characters | After the reset: `npm run jobs -- view --id <id> --headed --capture`, replay it with `node scripts/replay-capture.mjs <capture>`, re-pin the view selectors |
 | `aborted: unknown-status:<x>` | A reader returned a status the guards do not know: the run fails closed | Halted until the reset. Capture the page, replay it, fix the reader |
 | `profileBusy` (exit 3) | Another process held the browser profile past the lock wait | Next firing. Not counted against a cap |
+| `aborted: browser-unavailable`, `browser: unavailable` (exit 3, chrome driver) | The agent's Chrome stopped answering a bridge request in time, failed it, or its copied envelope failed the checks twice | No halt. Check `/chrome` (Reconnect extension) and run the next firing. A page load counts only if the agent made it |
+| `cap: chrome-session-unconfirmed` (exit 2, chrome driver) | The source's sign-in in Chrome was never confirmed, or a login-lost abort cleared it | The operator signs in to the board in Chrome, then `npm run -s browser -- start jobs -- whoami` (or `dice`) |
+| `cap: chrome-needs-bridge` (exit 2, chrome driver) | A browser command was started directly | Start it through the bridge: `npm run -s browser -- start <command> -- <args>` |
 | `halted` (tick and dice-tick exit 5, sweep exit 2) | An earlier abort set `halt_until` | Wait. Fix the cause per its row. Only the operator clears a halt early |
 | Exit 4, `closed: true` | Outside the tick window | Normal. The loop hops toward the window |
 | Exit 4, `paused: true` | `config/pause.json` is paused | Inbox and tracker only, next firing in an hour |

@@ -27,14 +27,17 @@
 //
 // Exit codes: 0 done, 1 aborted by a guard (the source is then halted, like a tick abort) or a usage
 // error, 2 refused (not enough cap left today, or
-// --mark-verified on a probe that did not finish), 3 profile busy (not counted; never loop),
+// --mark-verified on a probe that did not finish, or a chrome-driver refusal), 3 profile busy, or the
+// chrome driver's browser stopped answering (no halt; never loop),
 // 4 paused (config/pause.json), 5 halted (the source's halt from an earlier abort). A dry run and
 // --mark-verified open no browser and run while paused or halted.
 
 import './lib/env.mjs';
 import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseArgs, out, fail, openContext, ProfileBusyError, sleep, jitter } from './cloak-core.mjs';
+import { parseArgs, out, fail, sleep, jitter } from './cloak-core.mjs';
+import { openSession, SessionRefused } from './lib/session.mjs';
+import { BrowserUnavailableError } from './lib/bridge.mjs';
 import * as linkedin from './linkedin-jobs.mjs';
 import * as diceJobs from './dice-jobs.mjs';
 import { buildSearchUrl } from './lib/search-url.mjs';
@@ -86,7 +89,8 @@ if (!existsSync(probeFile)) fail(`probe file not found: ${flags.file}`);
 const probe = readJsonFile(probeFile);
 const dice = flags.source === 'dice' || probe.source === 'dice';
 const cfg = loadSearchConfig(dice ? 'dice-searches.json' : 'searches.json');
-const { searchJobs, viewJob, capture } = dice ? diceJobs : linkedin;
+const { capture } = dice ? diceJobs : linkedin;
+const readers = { cloak: { searchJobs: (dice ? diceJobs : linkedin).searchJobs, viewJob: (dice ? diceJobs : linkedin).viewJob }, chrome: (dice ? diceJobs : linkedin).chromeReaders };
 const buildUrl = dice ? buildDiceUrl : buildSearchUrl;
 const platform = dice ? 'dice_jobs' : 'linkedin_jobs';
 if (flags['into-state'] && !dice) fail('--into-state is for Dice probes only');
@@ -133,19 +137,28 @@ if (searches.length > usage.searches_per_day.available || maxViews > usage.job_v
   process.exit(2);
 }
 
-let context, page;
+let session;
 try {
-  ({ context, page } = dice
-    ? await openContext(diceJobs.DICE_PLATFORM, { headed: !!flags.headed, flags, dir: diceJobs.DICE_PROFILE })
-    : await openContext('linkedin', { headed: !!flags.headed, flags }));
+  session = dice
+    ? await openSession(diceJobs.DICE_PLATFORM, { flags, headed: !!flags.headed, dir: diceJobs.DICE_PROFILE, command: 'probe', source: 'dice', readers })
+    : await openSession('linkedin', { flags, headed: !!flags.headed, command: 'probe', source: 'linkedin', readers });
 } catch (err) {
-  if (err instanceof ProfileBusyError) {
-    log(`SKIPPED: ${err.message}`);
-    out({ success: false, profileBusy: true, profile: err.profile });
-    process.exit(3);
+  if (err instanceof SessionRefused) {
+    log(`SKIPPED: ${err.result.reason}`);
+    out(err.result);
+    process.exit(err.code);
   }
   throw err;
 }
+const { page } = session;
+// A lost browser under the chrome driver ends the probe: browser-unavailable, no halt; the load
+// counts only if the agent made it.
+const lost = (err, action, entry) => {
+  if (err.loaded) recordPost(platform, action, entry);
+  result.aborted = 'browser-unavailable';
+  result.browser_error = err.why;
+  log(`browser unavailable: ${err.why}`);
+};
 
 const result = { name: probe.name, source: dice ? 'dice' : 'linkedin', report: probe.report || (dice ? 'kept' : 'leadership'), file: display(probeFile), started_at: startedAt.toISOString(), finished_at: null, aborted: null, tpr_seconds: probe.tpr_seconds, searches: [], views: [] };
 mkdirSync(join(DATA_DIR, 'probes'), { recursive: true });
@@ -160,7 +173,10 @@ try {
     if (!canPost(platform, 'searches_per_day').allowed) { result.aborted = 'cap-reached'; break; }
     log(`[search] ${s.id}: ${s.keywords}`);
     let r;
-    try { r = await searchJobs(page, s.url); } catch (err) { r = { status: 'suspect', cards: [], error: err.message.slice(0, 200) }; }
+    try { r = await session.io.searchJobs(page, s.url); } catch (err) {
+      if (err instanceof BrowserUnavailableError) { lost(err, 'searches_per_day', { probe: probe.name, query: s.id, via: 'probe' }); break; }
+      r = { status: 'suspect', cards: [], error: err.message.slice(0, 200) };
+    }
     recordPost(platform, 'searches_per_day', { probe: probe.name, query: s.id, via: 'probe' });
     // Every card carries its prefilter verdict: the kept-card report (Dice, LinkedIn IC) counts it.
     const scope = dice ? 'dice' : s.job_type ? 'generic' : s.scope || 'fractional';
@@ -171,7 +187,7 @@ try {
       saveStateAtomic(STATE_PATH, state);
     }
     // capture: true saves HTML + screenshot (data/captures, gitignored) for offline replay.
-    if (s.capture) r.capture = await capture(page, `${probe.name}-${s.id}-search`).catch((err) => ({ error: err.message }));
+    if (s.capture) r.capture = session.driver === 'cloakbrowser' ? await capture(page, `${probe.name}-${s.id}-search`).catch((err) => ({ error: err.message })) : { skipped: 'captures need the cloakbrowser driver' };
     const g = evaluateSearch(r, { canary: false, suspectStreak });
     suspectStreak = g.suspectStreak;
     result.searches.push({
@@ -200,7 +216,10 @@ try {
       await sleep(jitter(cfg.pacing.view_gap_ms));
       if (!canPost(platform, 'job_views_per_day').allowed) { result.aborted = 'cap-reached'; break; }
       let d;
-      try { d = await viewJob(page, v.job_id); } catch (err) { d = { status: 'unreadable', error: err.message.slice(0, 200) }; }
+      try { d = await session.io.viewJob(page, v.job_id); } catch (err) {
+        if (err instanceof BrowserUnavailableError) { lost(err, 'job_views_per_day', { probe: probe.name, jobId: v.job_id, via: 'probe' }); break; }
+        d = { status: 'unreadable', error: err.message.slice(0, 200) };
+      }
       recordPost(platform, 'job_views_per_day', { probe: probe.name, jobId: v.job_id, via: 'probe' });
       const g = evaluateView(d, { unreadableStreak });
       unreadableStreak = g.unreadableStreak;
@@ -218,7 +237,7 @@ try {
     }
   }
 } finally {
-  await context.close().catch(() => {});
+  await session.close();
   result.finished_at = new Date().toISOString();
   save();
 }
@@ -237,4 +256,4 @@ logAction({ action: 'probe.run', source: result.source, ref: display(outPath), d
 log(`\n${result.searches.length} searches, ${result.views.length} views | guards: ${result.aborted || 'none'}\nprobe -> ${display(outPath)}`);
 if (result.aborted === 'checkpoint' || result.aborted === 'login-lost') log('!! STOP. Same rules as a sweep abort: see docs/runbook.md "Guards and actions".');
 out({ success: !result.aborted, aborted: result.aborted, searches: result.searches.length, views: result.views.length, file: display(outPath) });
-process.exit(result.aborted ? 1 : 0);
+process.exit(result.aborted === 'browser-unavailable' ? 3 : result.aborted ? 1 : 0);

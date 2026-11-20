@@ -37,6 +37,10 @@ import { logAction } from './lib/actions-log.mjs';
 import { runStop } from './lib/tick-plan.mjs';
 import { readPause } from './lib/pause.mjs';
 import { display } from './lib/paths.mjs';
+import { probeScript } from './lib/page-script.mjs';
+import { openSession, sessionDriver, SessionRefused } from './lib/session.mjs';
+import { recordSession } from './lib/browser.mjs';
+import { BrowserUnavailableError } from './lib/bridge.mjs';
 import { loadSearchConfig } from './lib/config.mjs';
 import { operatorName } from './lib/profile.mjs';
 
@@ -161,39 +165,76 @@ export function collectView(sel) {
 // Serializable selector bundle for page.evaluate (RegExp does not cross the boundary).
 export const SEL_ARG = { ...JOBS_SEL, closedMarker: undefined };
 
-// ---------- library API ----------
-export async function searchJobs(page, url, { maxScrollPasses = 8 } = {}) {
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(jitter(SETTLE_MS));
-  const loggedOut = await isLoggedOut(page);
-  if (loggedOut || /\/(checkpoint|authwall)/.test(page.url())) {
-    return { status: classifySearch({ url: page.url(), loggedOut: true, idCount: 0, emptyMarker: false }), url: page.url(), cards: [] };
-  }
+// The sign-in markers of a LinkedIn page (the signed-in nav, a login link or form), read in the page.
+export function loggedOutMarkers() {
+  return {
+    url: location.href,
+    nav: document.querySelectorAll('#global-nav, .global-nav__me, img.global-nav__me-photo').length,
+    login: document.querySelectorAll('a[href*="/login"], .authwall, form.login__form').length,
+  };
+}
+// Fail toward "logged out": a false positive only stops a sweep.
+export const loggedOutFrom = (m) => /\/(login|checkpoint|authwall)/.test(m.url) || (m.nav === 0 && m.login > 0);
+
+// ---------- page probes (both drivers: page.evaluate, or a chrome bundle) ----------
+// sel.settleMs replaces every wait (tests only).
+// One search results page: the settle wait, the sign-in check, then up to 8 passes of read and
+// scroll so virtualized cards render. Returns the raw reads; interpretSearch decides.
+export async function linkedinSearchProbe(sel) {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const jit = (a, b) => a + Math.round(Math.random() * (b - a));
+  await wait(sel.settleMs ?? jit(3500, 4500));
+  const m = loggedOutMarkers();
+  if (/\/(login|checkpoint|authwall)/.test(m.url) || (m.nav === 0 && m.login > 0)) return { url: location.href, loggedOut: true, merged: [], snap: null };
   const merged = new Map();
   let snap = null;
-  for (let pass = 0; pass < maxScrollPasses; pass++) {
-    snap = await page.evaluate(collectCards, SEL_ARG);
-    for (const [id, text] of snap.cards) {
-      const prev = merged.get(id);
-      if (prev === undefined || text.length > prev.length) merged.set(id, text);
-    }
+  for (let pass = 0; pass < 8; pass++) {
+    snap = collectCards(sel);
+    for (const [id, text] of snap.cards) { const prev = merged.get(id); if (prev === undefined || text.length > prev.length) merged.set(id, text); }
     if (!snap.cards.length) break;
-    const s = await page.evaluate(scrollList, SEL_ARG);
-    await page.waitForTimeout(jitter([900, 1400]));
+    const s = scrollList(sel);
+    await wait(sel.settleMs ?? jit(900, 1400));
     if (s.atBottom) {
-      const last = await page.evaluate(collectCards, SEL_ARG);
+      const last = collectCards(sel);
       for (const [id, text] of last.cards) if (!merged.has(id) || text.length > merged.get(id).length) merged.set(id, text);
       break;
     }
   }
+  return { url: location.href, loggedOut: false, merged: [...merged.entries()], snap: snap && { countText: snap.countText, mainText: snap.mainText, outsideText: snap.outsideText, usedListItems: snap.usedListItems } };
+}
+
+// One job view page: the settle wait, the sign-in check, the view read.
+export async function linkedinViewProbe(sel) {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  await wait(sel.settleMs ?? 3500 + Math.round(Math.random() * 1000));
+  const m = loggedOutMarkers();
+  if (/\/(login|checkpoint|authwall)/.test(m.url) || (m.nav === 0 && m.login > 0)) return { url: location.href, loggedOut: true, v: null };
+  return { url: location.href, loggedOut: false, v: collectView(sel) };
+}
+
+// The signed-in check of whoami: the feed's sign-in markers.
+export async function linkedinFeedProbe(sel = {}) {
+  await new Promise((r) => setTimeout(r, sel?.settleMs ?? 3500 + Math.round(Math.random() * 1000)));
+  return loggedOutMarkers();
+}
+
+export const SEARCH_PROBE = { main: linkedinSearchProbe, helpers: [collectCards, scrollList, loggedOutMarkers] };
+export const VIEW_PROBE = { main: linkedinViewProbe, helpers: [collectView, loggedOutMarkers] };
+export const FEED_PROBE = { main: linkedinFeedProbe, helpers: [loggedOutMarkers] };
+
+// ---------- interpretation (pure: the same for both drivers) ----------
+export function interpretSearch({ url, loggedOut, merged = [], snap = null }) {
+  if (loggedOut || /\/(checkpoint|authwall)/.test(url)) {
+    return { status: classifySearch({ url, loggedOut: true, idCount: 0, emptyMarker: false }), url, cards: [] };
+  }
   const emptyMarker = isEmptyMarkerText(`${snap?.outsideText || ''}\n${snap?.mainText || ''}`);
-  const cards = [...merged.entries()].map(([job_id, text]) => ({
+  const cards = merged.map(([job_id, text]) => ({
     job_id, url: `https://www.linkedin.com/jobs/view/${job_id}/`, ...parseCardText(text),
   }));
-  const status = classifySearch({ url: page.url(), loggedOut: false, idCount: cards.length, emptyMarker });
+  const status = classifySearch({ url, loggedOut: false, idCount: cards.length, emptyMarker });
   return {
     status,
-    url: page.url(),
+    url,
     result_count: parseResultCount(snap?.countText || snap?.mainText),
     empty_marker: emptyMarker,
     used_list_items: snap?.usedListItems ?? false,
@@ -203,20 +244,14 @@ export async function searchJobs(page, url, { maxScrollPasses = 8 } = {}) {
   };
 }
 
-export async function viewJob(page, id) {
-  const url = `https://www.linkedin.com/jobs/view/${id}/`;
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(jitter(SETTLE_MS));
-  if (await isLoggedOut(page) || /\/(checkpoint|authwall)/.test(page.url())) {
-    return { status: /\/(checkpoint|authwall)/.test(page.url()) ? 'checkpoint' : 'login', url: page.url() };
-  }
-  const v = await page.evaluate(collectView, SEL_ARG);
+export function interpretView({ url, loggedOut, v }, id) {
+  if (loggedOut || /\/(checkpoint|authwall)/.test(url)) return { status: /\/(checkpoint|authwall)/.test(url) ? 'checkpoint' : 'login', url };
   const closed = JOBS_SEL.closedMarker.test(v.main_text);
   const parsed = parseTopCard(v.top_card_text);
   return {
     // A bare "About the job" heading is not a description: below 100 chars counts as unreadable.
     status: v.title && v.description_text.length >= 100 ? 'ok' : 'unreadable',
-    url: page.url(),
+    url,
     job_id: id,
     fetched_at: new Date().toISOString(),
     title: v.title,
@@ -230,6 +265,25 @@ export async function viewJob(page, id) {
     description_text: v.description_text,
   };
 }
+
+// ---------- library API: the cloakbrowser driver (a Playwright page) ----------
+export async function searchJobs(page, url) {
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  return interpretSearch(await page.evaluate(probeScript(SEARCH_PROBE.main, SEL_ARG, SEARCH_PROBE.helpers)));
+}
+
+export async function viewJob(page, id) {
+  await page.goto(`https://www.linkedin.com/jobs/view/${id}/`, { waitUntil: 'domcontentloaded' });
+  return interpretView(await page.evaluate(probeScript(VIEW_PROBE.main, SEL_ARG, VIEW_PROBE.helpers)), id);
+}
+
+// ---------- library API: the chrome driver (a bridge run, scripts/lib/bridge.mjs) ----------
+const payloadOf = (r) => { if (r.env.status !== 'ok') throw new Error(`page script error: ${r.env.error}`); return r.env.payload; };
+export const chromeReaders = (run) => ({
+  searchJobs: async (_page, url) => interpretSearch(payloadOf(await run.page({ kind: 'load', url, host: 'linkedin.com', ...SEARCH_PROBE, arg: SEL_ARG, summary: 'Read a LinkedIn job search page (read-only)' }))),
+  viewJob: async (_page, id) => interpretView(payloadOf(await run.page({ kind: 'load', url: `https://www.linkedin.com/jobs/view/${id}/`, host: 'linkedin.com', ...VIEW_PROBE, arg: SEL_ARG, summary: `Read LinkedIn job ${id} (read-only)` })), id),
+  signedIn: async () => !loggedOutFrom(payloadOf(await run.page({ kind: 'load', url: 'https://www.linkedin.com/feed/', host: 'linkedin.com', ...FEED_PROBE, summary: 'Check the LinkedIn sign-in on the feed (read-only)' }))),
+});
 
 // ---------- CLI ----------
 export async function capture(page, label) {
@@ -286,6 +340,49 @@ async function main() {
     if (stop) fail(`${cmd} refused: ${stop.reason}`, stop);
   }
 
+  const cfgUrl = () => {
+    const cfg = loadSearchConfig('searches.json');
+    const d = cfg.defaults || {};
+    const q = { keywords: flags.query, geo: flags.geo || d.geo || 'us', workplace: flags.workplace || d.workplace || 'remote', job_type: flags['job-type'] || undefined };
+    return buildSearchUrl(cfg, q, { tprSeconds: Number(flags.tpr) || 604800, page: Number(flags.page) || 0 });
+  };
+  // The chrome driver: the operator signs in to LinkedIn in their own Chrome; whoami confirms it
+  // through the bridge (it records the session the ticks wait for); search and view read through it.
+  if (sessionDriver(flags) === 'chrome') {
+    if (cmd === 'login') return out({ success: true, action: 'login', driver: 'chrome', manual: true, note: `Sign in to LinkedIn as ${operatorName()} in your own Chrome (https://www.linkedin.com/login), then confirm it: npm run -s browser -- start jobs -- whoami` });
+    let s;
+    try { s = await openSession('linkedin', { flags, command: 'jobs', source: 'linkedin', checkSession: cmd !== 'whoami', readers: { cloak: {}, chrome: chromeReaders } }); } catch (err) {
+      if (err instanceof SessionRefused) { out(err.result); process.exit(err.code); }
+      fail(err.message);
+    }
+    try {
+      let result;
+      if (cmd === 'whoami') {
+        const ok = await s.io.signedIn();
+        result = { success: ok, loggedIn: ok, driver: 'chrome', ...(ok ? {} : { loginRequired: true }) };
+      } else if (cmd === 'search') {
+        const url = cfgUrl();
+        const r = await s.io.searchJobs(null, url);
+        recordPost('linkedin_jobs', 'searches_per_day', { query: flags.query, via: 'cli' });
+        result = { success: r.status === 'ok' || r.status === 'empty', driver: 'chrome', requested: url, ...r, count: r.cards.length };
+      } else {
+        const r = await s.io.viewJob(null, String(flags.id));
+        recordPost('linkedin_jobs', 'job_views_per_day', { jobId: String(flags.id), via: 'cli' });
+        result = { success: r.status === 'ok', driver: 'chrome', ...r };
+      }
+      if (result.status === 'login' || result.status === 'checkpoint') result.loginRequired = true;
+      if (cmd === 'whoami' || result.loginRequired) recordSession('linkedin', !result.loginRequired);
+      return out(result);
+    } catch (err) {
+      if (err instanceof BrowserUnavailableError) {
+        if (err.loaded && cmd !== 'whoami') recordPost('linkedin_jobs', cmd === 'search' ? 'searches_per_day' : 'job_views_per_day', { via: 'cli' });
+        out({ success: false, browser: 'unavailable', why: err.why });
+        process.exit(3);
+      }
+      fail(`${cmd} failed: ${err.message}`);
+    }
+  }
+
   const headed = cmd === 'login' || !!flags.headed || !!flags.pause;
   let context, page;
   try {
@@ -309,10 +406,7 @@ async function main() {
       const loggedOut = await isLoggedOut(page);
       result = { success: !loggedOut, loggedIn: !loggedOut, url: page.url(), ...(loggedOut ? { loginRequired: true } : {}) };
     } else if (cmd === 'search') {
-      const cfg = loadSearchConfig('searches.json');
-      const d = cfg.defaults || {};
-      const q = { keywords: flags.query, geo: flags.geo || d.geo || 'us', workplace: flags.workplace || d.workplace || 'remote', job_type: flags['job-type'] || undefined };
-      const url = buildSearchUrl(cfg, q, { tprSeconds: Number(flags.tpr) || 604800, page: Number(flags.page) || 0 });
+      const url = cfgUrl();
       const r = await searchJobs(page, url);
       recordPost('linkedin_jobs', 'searches_per_day', { query: flags.query, via: 'cli' });
       result = { success: r.status === 'ok' || r.status === 'empty', requested: url, ...r, count: r.cards.length };

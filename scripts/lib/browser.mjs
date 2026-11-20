@@ -6,6 +6,10 @@
 // A channel is verified per driver: `verified` in config/apply.json for cloakbrowser,
 // `verified_chrome` for chrome. Each needs its own headed dry run checked by the operator.
 
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { DATA_DIR } from './paths.mjs';
+
 export const DRIVERS = ['chrome', 'cloakbrowser'];
 const DEFAULT = 'cloakbrowser';
 
@@ -20,4 +24,20 @@ export const verifiedKey = (driver) => (driver === 'chrome' ? 'verified_chrome' 
 
 export function channelVerified(applyCfg, channel, driver) {
   return applyCfg?.[verifiedKey(driver)]?.[channel] === true;
+}
+
+// Under chrome, a source's sign-in is confirmed by a served whoami (or lost on a login-lost abort):
+// <data>/state/browser-sessions.json { chrome: { linkedin: { logged_in, checked_at } } }. Ticks,
+// sweeps, probes and the reader CLIs refuse until it is confirmed, so a Chrome never signed in to a
+// board cannot produce a false login-lost halt.
+const sessionsPath = () => join(DATA_DIR, 'state', 'browser-sessions.json');
+const readSessions = () => { try { return existsSync(sessionsPath()) ? JSON.parse(readFileSync(sessionsPath(), 'utf8')) : {}; } catch { return {}; } };
+export const sessionConfirmed = (source) => readSessions().chrome?.[source]?.logged_in === true;
+export function recordSession(source, loggedIn, at = new Date().toISOString()) {
+  const s = readSessions();
+  s.chrome = { ...(s.chrome || {}), [source]: { logged_in: !!loggedIn, checked_at: at } };
+  mkdirSync(dirname(sessionsPath()), { recursive: true });
+  const tmp = `${sessionsPath()}.tmp-${process.pid}`;
+  writeFileSync(tmp, `${JSON.stringify(s, null, 2)}\n`);
+  renameSync(tmp, sessionsPath());
 }

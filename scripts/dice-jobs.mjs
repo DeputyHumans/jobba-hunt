@@ -31,6 +31,10 @@ import { logAction } from './lib/actions-log.mjs';
 import { runStop } from './lib/tick-plan.mjs';
 import { readPause } from './lib/pause.mjs';
 import { display } from './lib/paths.mjs';
+import { probeScript } from './lib/page-script.mjs';
+import { openSession, sessionDriver, SessionRefused } from './lib/session.mjs';
+import { recordSession } from './lib/browser.mjs';
+import { BrowserUnavailableError } from './lib/bridge.mjs';
 import { loadSearchConfig } from './lib/config.mjs';
 import { operatorName } from './lib/profile.mjs';
 
@@ -184,80 +188,95 @@ export async function settle(page) {
   await page.waitForFunction((sel) => !!document.querySelector(sel) || [...document.querySelectorAll('a, button, [role="menuitem"]')].some((e) => /^\s*(log ?out|log ?in|sign ?in)\s*$/i.test(e.textContent || '')), DICE_SEL.signedIn, { timeout: 15000 }).catch(() => {});
 }
 
-// Independent sign-in check: the home feed needs a session (a signed-out visit lands on the
-// login page). Used before a login-lost abort halts Dice.
-export async function signedInAtHome(page) {
-  await page.goto('https://www.dice.com/home-feed', { waitUntil: 'domcontentloaded' });
-  await settle(page);
-  const m = await page.evaluate(authMarkers, DICE_SEL);
-  return m.signedIn && !/\/(login|sign-?in)\b/i.test(page.url());
+// ---------- page probes (both drivers: page.evaluate, or a chrome bundle) ----------
+// sel.settleMs and sel.markerWaitMs replace the waits (tests only).
+// The settle of a Dice page inside the page: a jittered wait, then up to 15 s for the account menu
+// or a log in / log out control (the menu renders client-side, after the page).
+export async function diceSettleInPage(sel) {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  await wait(sel.settleMs ?? 4500 + Math.round(Math.random() * 1500));
+  const marked = () => !!document.querySelector(sel.signedIn) || [...document.querySelectorAll('a, button, [role="menuitem"]')].some((e) => /^\s*(log ?out|log ?in|sign ?in)\s*$/i.test(e.textContent || ''));
+  for (let i = 0, n = Math.ceil((sel.markerWaitMs ?? 15000) / 500); i < n && !marked(); i++) await wait(500);
+}
+// The HTTP status of the page's own load (a 403 from Dice is a block), from the Navigation Timing entry.
+export function navStatus() {
+  const nav = performance.getEntriesByType('navigation')[0];
+  return (nav && nav.responseStatus) || null;
 }
 
-const CLOSED_RE = /no longer (available|accepting applications)|this job (has )?(expired|closed)|position (has been )?filled/i; // ?
-
-// ---------- library API ----------
-export async function searchJobs(page, url) {
-  const resp = await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await settle(page);
-  let snap = await page.evaluate(collectDiceCards, DICE_SEL);
-  // The search page can render its signed-out header ("Log in") before the session loads
-  // (three false login-lost halts, 2026-10-28/29): give it up to 10 s more to show "Log Out".
-  for (let i = 0; i < 5 && snap.signedOut && !snap.signedIn; i++) {
-    await page.waitForTimeout(2000);
-    snap = await page.evaluate(collectDiceCards, DICE_SEL);
-  }
+// One search results page: settle, read; while the header reads signed out, up to 5 more reads
+// 2 s apart (the session can load late); one scroll to the bottom and a second read.
+export async function diceSearchProbe(sel) {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  await diceSettleInPage(sel);
+  let snap = collectDiceCards(sel);
+  for (let i = 0; i < 5 && snap.signedOut && !snap.signedIn; i++) { await wait(sel.settleMs ?? 2000); snap = collectDiceCards(sel); }
   if (snap.cards.length) {
-    // Results load as the list scrolls; one pass to the bottom, then read again.
-    await page.evaluate(scrollResults);
-    await page.waitForTimeout(jitter([1500, 2500]));
-    const more = await page.evaluate(collectDiceCards, DICE_SEL);
+    scrollResults();
+    await wait(sel.settleMs ?? 1500 + Math.round(Math.random() * 1000));
+    const more = collectDiceCards(sel);
     const known = new Set(snap.cards.map((c) => c.guid));
     snap = { ...snap, cards: [...snap.cards, ...more.cards.filter((c) => !known.has(c.guid))] };
   }
-  let status = resp?.status() === 403 ? 'blocked' : classifyDicePage({
-    title: snap.title, text: snap.text, url: page.url(), loggedOut: snap.signedOut && !snap.signedIn, cardCount: snap.cards.length, emptyMarker: snap.emptyMarker,
-  });
-  const searchUrl = page.url();
-  // Dice now and then serves its public search view (a "Login" header) to a signed-in session:
-  // 7 of 11 ticks on 2026-10-29/30, each with real results. The cards are the same public
-  // listings, so confirm the session on the home feed and keep them. A real expiry still
-  // reads 'login' there, and the tick halts as before.
-  let anonHeader = false;
-  if (status === 'login' && snap.cards.length && !/\/(login|sign-?in)\b/i.test(searchUrl) && await signedInAtHome(page).catch(() => false)) {
-    status = 'ok';
-    anonHeader = true;
-  }
-  const cards = snap.cards.map(normalizeDiceCard).filter(Boolean);
-  return {
-    status,
-    anon_header: anonHeader,
-    url: searchUrl,
-    result_count: parseDiceResultCount(snap.countText),
-    empty_marker: snap.emptyMarker,
-    cards: status === 'ok' ? cards : [],
-  };
+  return { url: location.href, http_status: navStatus(), snap };
 }
 
-export async function viewJob(page, id) {
-  const url = diceJobUrl(diceGuid(id));
-  const resp = await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await settle(page);
-  let v = await page.evaluate(collectDiceView, DICE_SEL);
-  for (let i = 0; i < 5 && v.signed_out && !v.signed_in; i++) {
-    await page.waitForTimeout(2000);
-    v = await page.evaluate(collectDiceView, DICE_SEL);
-  }
-  const viewUrl = page.url();
-  let verdict = resp?.status() === 403 ? 'blocked' : classifyDicePage({ title: v.page_title, text: v.text, url: viewUrl, loggedOut: v.signed_out && !v.signed_in, cardCount: 1 });
-  // The same public-view header on a job page: the posting text is already read, so confirm the
-  // session on the home feed and keep it (see searchJobs).
-  if (verdict === 'login' && v.title && !/\/(login|sign-?in)\b/i.test(viewUrl) && await signedInAtHome(page).catch(() => false)) verdict = 'ok';
-  if (verdict !== 'ok') return { status: verdict === 'suspect' ? 'unreadable' : verdict, url: viewUrl };
+export async function diceViewProbe(sel) {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  await diceSettleInPage(sel);
+  let v = collectDiceView(sel);
+  for (let i = 0; i < 5 && v.signed_out && !v.signed_in; i++) { await wait(sel.settleMs ?? 2000); v = collectDiceView(sel); }
+  return { url: location.href, http_status: navStatus(), v };
+}
+
+// The home feed needs a session (a signed-out visit lands on the login page).
+export async function diceHomeProbe(sel) {
+  await diceSettleInPage(sel);
+  return { url: location.href, ...authMarkers(sel) };
+}
+
+export const DICE_SEARCH_PROBE = { main: diceSearchProbe, helpers: [diceSettleInPage, navStatus, collectDiceCards, scrollResults] };
+export const DICE_VIEW_PROBE = { main: diceViewProbe, helpers: [diceSettleInPage, navStatus, collectDiceView] };
+export const DICE_HOME_PROBE = { main: diceHomeProbe, helpers: [diceSettleInPage, authMarkers] };
+export const DICE_HOME = 'https://www.dice.com/home-feed';
+
+// ---------- interpretation (pure: the same for both drivers) ----------
+export const signedInOnHome = (m) => !!m.signedIn && !/\/(login|sign-?in)\b/i.test(m.url);
+
+// Dice now and then serves its public search view (a "Login" header) to a signed-in session (7 of
+// 11 ticks on 2026-10-29/30, each with real results): such a page asks for the home-feed check, and
+// a confirmed session keeps the cards. A real expiry still reads 'login' there.
+export function interpretDiceSearch({ url, http_status, snap }) {
+  const status = http_status === 403 ? 'blocked' : classifyDicePage({
+    title: snap.title, text: snap.text, url, loggedOut: snap.signedOut && !snap.signedIn, cardCount: snap.cards.length, emptyMarker: snap.emptyMarker,
+  });
+  return {
+    status,
+    anon_header: false,
+    url,
+    result_count: parseDiceResultCount(snap.countText),
+    empty_marker: snap.emptyMarker,
+    cards: snap.cards.map(normalizeDiceCard).filter(Boolean),
+    needs_home_check: status === 'login' && snap.cards.length > 0 && !/\/(login|sign-?in)\b/i.test(url),
+  };
+}
+export function finishDiceSearch(r, homeOk) {
+  const { needs_home_check: _n, ...rest } = r;
+  const status = r.needs_home_check && homeOk ? 'ok' : r.status;
+  return { ...rest, status, anon_header: !!(r.needs_home_check && homeOk), cards: status === 'ok' ? r.cards : [] };
+}
+
+export function diceViewVerdict({ url, http_status, v }) {
+  const verdict = http_status === 403 ? 'blocked' : classifyDicePage({ title: v.page_title, text: v.text, url, loggedOut: v.signed_out && !v.signed_in, cardCount: 1 });
+  return { verdict, needs_home_check: verdict === 'login' && !!v.title && !/\/(login|sign-?in)\b/i.test(url) };
+}
+export function interpretDiceView({ url, v }, id, verdict) {
+  if (verdict !== 'ok') return { status: verdict === 'suspect' ? 'unreadable' : verdict, url };
   const badges = parseDiceBadges(v.badges, { locationType: v.location_type });
   const loc = parseDiceLocationLine(v.loc_line);
   return {
     status: v.title && v.description_text.length >= 100 ? 'ok' : 'unreadable',
-    url: viewUrl,
+    url,
     job_id: id,
     source: 'dice',
     fetched_at: new Date().toISOString(),
@@ -273,6 +292,49 @@ export async function viewJob(page, id) {
     ...badges,
     top_card_text: v.header_text,
     description_text: v.description_text,
+  };
+}
+
+const CLOSED_RE = /no longer (available|accepting applications)|this job (has )?(expired|closed)|position (has been )?filled/i; // ?
+
+// ---------- library API: the cloakbrowser driver (a Playwright page) ----------
+// The home-feed sign-in check, used before a login-lost abort halts Dice.
+export async function signedInAtHome(page) {
+  await page.goto(DICE_HOME, { waitUntil: 'domcontentloaded' });
+  return signedInOnHome(await page.evaluate(probeScript(DICE_HOME_PROBE.main, DICE_SEL, DICE_HOME_PROBE.helpers)));
+}
+
+export async function searchJobs(page, url) {
+  const resp = await page.goto(url, { waitUntil: 'domcontentloaded' });
+  const raw = await page.evaluate(probeScript(DICE_SEARCH_PROBE.main, DICE_SEL, DICE_SEARCH_PROBE.helpers));
+  const r = interpretDiceSearch({ ...raw, http_status: resp?.status() ?? raw.http_status });
+  return finishDiceSearch(r, r.needs_home_check && await signedInAtHome(page).catch(() => false));
+}
+
+export async function viewJob(page, id) {
+  const resp = await page.goto(diceJobUrl(diceGuid(id)), { waitUntil: 'domcontentloaded' });
+  const raw = await page.evaluate(probeScript(DICE_VIEW_PROBE.main, DICE_SEL, DICE_VIEW_PROBE.helpers));
+  let { verdict, needs_home_check } = diceViewVerdict({ ...raw, http_status: resp?.status() ?? raw.http_status });
+  if (needs_home_check && await signedInAtHome(page).catch(() => false)) verdict = 'ok';
+  return interpretDiceView(raw, id, verdict);
+}
+
+// ---------- library API: the chrome driver (a bridge run, scripts/lib/bridge.mjs) ----------
+const payloadOf = (r) => { if (r.env.status !== 'ok') throw new Error(`page script error: ${r.env.error}`); return r.env.payload; };
+export function chromeReaders(run) {
+  const home = async () => signedInOnHome(payloadOf(await run.page({ kind: 'load', url: DICE_HOME, host: 'dice.com', ...DICE_HOME_PROBE, arg: DICE_SEL, summary: 'Check the Dice sign-in on the home feed (read-only)' })));
+  return {
+    signedIn: home,
+    searchJobs: async (_page, url) => {
+      const r = interpretDiceSearch(payloadOf(await run.page({ kind: 'load', url, host: 'dice.com', ...DICE_SEARCH_PROBE, arg: DICE_SEL, summary: 'Read a Dice job search page (read-only)' })));
+      return finishDiceSearch(r, r.needs_home_check && await home().catch(() => false));
+    },
+    viewJob: async (_page, id) => {
+      const raw = payloadOf(await run.page({ kind: 'load', url: diceJobUrl(diceGuid(id)), host: 'dice.com', ...DICE_VIEW_PROBE, arg: DICE_SEL, summary: `Read Dice job ${id} (read-only)` }));
+      let { verdict, needs_home_check } = diceViewVerdict(raw);
+      if (needs_home_check && await home().catch(() => false)) verdict = 'ok';
+      return interpretDiceView(raw, id, verdict);
+    },
   };
 }
 
@@ -326,6 +388,43 @@ async function main() {
     const state = loadState(STATE_PATH);
     const stop = runStop(state.sources?.dice, readPause(), Date.now());
     if (stop) fail(`${cmd} refused: ${stop.reason}`, stop);
+  }
+
+  // The chrome driver: the operator signs in to Dice in their own Chrome; whoami confirms it through
+  // the bridge (it records the session the ticks wait for); search and view read through it.
+  if (sessionDriver(flags) === 'chrome') {
+    if (cmd === 'login') return out({ success: true, action: 'login', driver: 'chrome', manual: true, note: `Sign in to Dice as ${operatorName()} in your own Chrome (https://www.dice.com/dashboard/login), then confirm it: npm run -s browser -- start dice -- whoami` });
+    let s;
+    try { s = await openSession(DICE_PLATFORM, { flags, command: 'dice', source: 'dice', checkSession: cmd !== 'whoami', readers: { cloak: {}, chrome: chromeReaders } }); } catch (err) {
+      if (err instanceof SessionRefused) { out(err.result); process.exit(err.code); }
+      fail(err.message);
+    }
+    try {
+      let result;
+      if (cmd === 'whoami') {
+        const ok = await s.io.signedIn();
+        result = { success: ok, loggedIn: ok, driver: 'chrome', ...(ok ? {} : { loginRequired: true }) };
+      } else if (cmd === 'search') {
+        const url = buildDiceUrl(loadSearchConfig('dice-searches.json'), { keywords: flags.query, employment: flags.employment || 'contract' }, { tprSeconds: Number(flags.tpr) || 604800 });
+        const r = await s.io.searchJobs(null, url);
+        recordPost('dice_jobs', 'searches_per_day', { query: flags.query, via: 'cli' });
+        result = { success: r.status === 'ok' || r.status === 'empty', driver: 'chrome', requested: url, ...r, count: r.cards.length };
+      } else {
+        const r = await s.io.viewJob(null, String(flags.id));
+        recordPost('dice_jobs', 'job_views_per_day', { jobId: String(flags.id), via: 'cli' });
+        result = { success: r.status === 'ok', driver: 'chrome', ...r };
+      }
+      if (result.status === 'login') result.loginRequired = true;
+      if (cmd === 'whoami' || result.loginRequired) recordSession('dice', !result.loginRequired);
+      return out(result);
+    } catch (err) {
+      if (err instanceof BrowserUnavailableError) {
+        if (err.loaded && cmd !== 'whoami') recordPost('dice_jobs', cmd === 'search' ? 'searches_per_day' : 'job_views_per_day', { via: 'cli' });
+        out({ success: false, browser: 'unavailable', why: err.why });
+        process.exit(3);
+      }
+      fail(`${cmd} failed: ${err.message}`);
+    }
   }
 
   const headed = cmd === 'login' || !!flags.headed || !!flags.pause;
