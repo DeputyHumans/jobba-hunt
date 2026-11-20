@@ -10,7 +10,7 @@ Paths: repo-relative (`scripts/...`, `bin/...`) or workspace-relative (`workspac
 |---|---|---|
 | Required | git | Step 1. On macOS it comes with Apple's Command Line Tools (about 1.3 GB) |
 | Required | Node.js 22.13 or newer | The minimum is `package.json` `engines.node` (pdfjs-dist needs 22.13). `.nvmrc` says 22. Step 2 |
-| Required | An agent harness: Claude Code, or another that reads `AGENTS.md` | Step 6. Claude Code needs macOS 13 or newer and a paid Claude plan or a Console account |
+| Required | An agent harness: Claude Code, or another that reads `AGENTS.md` | Step 6. Claude Code needs macOS 13 or newer and a paid Claude plan or a Console account. The claude.ai connectors (the Gmail connector) need a paid plan signed in through `/login` |
 | Required | macOS, or a Linux desktop session with a display | Logins, first dry runs and bot checks happen in a visible browser window. A headless server cannot do them |
 | Required | About 0.5 GB of disk | The bundled Chromium (about 350 MB) and `node_modules` (about 150 MB), measured on macOS. Plus the Command Line Tools on a new Mac |
 | Bundled | Chromium (CloakBrowser), playwright-core, the bikeshed CLI, the Google Workspace CLI (`gws`), pdf-lib, pdfjs-dist, docx, marked, OFL fonts | Installed into this folder by `./bin/bootstrap`. Nothing is installed globally |
@@ -47,7 +47,7 @@ Pick one route. On a new Mac, use nvm.
 ## 3. Clone
 
 ```sh
-git clone <repository URL> jobba-hunt
+git clone https://github.com/DeputyHumans/jobba-hunt.git
 cd jobba-hunt
 ```
 
@@ -104,7 +104,7 @@ The installer puts `claude` in `$HOME/.local/bin` and does not add that folder t
 | zsh (the macOS default) | `echo 'export PATH="$HOME/.local/bin:$PATH"' >> $HOME/.zshrc` |
 | bash | `echo 'export PATH="$HOME/.local/bin:$PATH"' >> $HOME/.bashrc` |
 
-Claude Code needs macOS 13 or newer and a Pro, Max, Ultra, Team, Enterprise or Console account. The free Claude plan does not include it. Details: https://code.claude.com/docs/en/setup.
+Claude Code needs macOS 13 or newer and a Pro, Max, Ultra, Team, Enterprise or Console account. The free Claude plan does not include it. With a Console account (an API key) the claude.ai connectors, such as Gmail, do not load: they need a paid plan signed in through `/login`. Details: https://code.claude.com/docs/en/setup.
 
 Then run `claude` in the repo folder. The first start signs in through the browser and asks whether you trust the folder. It loads `CLAUDE.md`, a one-line import of `AGENTS.md`, and the skills through `.claude/skills/`. Another harness: install it from its own docs and start it from `AGENTS.md`.
 

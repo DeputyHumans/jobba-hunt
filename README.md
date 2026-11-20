@@ -64,7 +64,7 @@ The full rules are in [AGENTS.md](AGENTS.md). In short:
 |---|---|---|
 | Required | git | macOS: `xcode-select --install` (Apple's Command Line Tools, before nvm). Linux: your package manager |
 | Required | Node.js 22.13 or newer (`package.json` `engines`; `.nvmrc` says 22) | [nvm](https://github.com/nvm-sh/nvm) (on a new Mac, `touch $HOME/.zshrc` first), [fnm](https://github.com/Schniz/fnm), Homebrew, or your OS package manager. Exact lines: [docs/setup.md](docs/setup.md) step 2 |
-| Required | Claude Code, or another agent harness that reads `AGENTS.md` | `curl -fsSL https://claude.ai/install.sh \| bash`, then add `$HOME/.local/bin` to `PATH` ([docs](https://code.claude.com/docs/en/setup)). Needs a paid Claude plan or a Console account |
+| Required | Claude Code, or another agent harness that reads `AGENTS.md` | `curl -fsSL https://claude.ai/install.sh \| bash`, then add `$HOME/.local/bin` to `PATH` ([docs](https://code.claude.com/docs/en/setup)). Needs a paid Claude plan (Pro, Max, Ultra, Team or Enterprise) or a Console account. The claude.ai connectors, such as Gmail, load only with a paid plan signed in through `/login` |
 | Required | macOS, or a Linux desktop with a display | Logins and first dry runs happen in a visible browser window |
 | Required | About 0.5 GB of disk | The bundled Chromium (about 350 MB) and `node_modules` (about 150 MB), measured on macOS. A new Mac also needs about 1.3 GB for the Command Line Tools |
 | Bundled | Chromium (CloakBrowser), playwright-core, bikeshed CLI, Google Workspace CLI, pdf-lib, pdfjs-dist, docx, marked, fonts | `./bin/bootstrap` installs them into this folder |
@@ -79,7 +79,7 @@ Nothing is installed globally. The Chromium download, CLI credentials and your w
 With git, Node and Claude Code installed ([docs/setup.md](docs/setup.md) steps 1, 2 and 6):
 
 ```sh
-git clone <your-copy-of-this-repo> jobba-hunt
+git clone https://github.com/DeputyHumans/jobba-hunt.git
 cd jobba-hunt
 ./bin/bootstrap        # checks the host, npm ci, downloads Chromium, links skills, runs doctor
 claude                 # open the folder in Claude Code (or your harness)
