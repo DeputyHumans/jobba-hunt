@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { emptyState, upsertCards, setPrefilter, setDetail } from '../scripts/lib/state.mjs';
-import { tierFor, validateTriage, pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, applyGate, recordAttempt, autoApplyBlockers, markNotSent, triageLanes } from '../scripts/lib/triage.mjs';
+import { tierFor, validateTriage, pendingForTriage, applyTriage, applyDecision, approveApplication, approveDocs, applyGate, recordAttempt, autoApplyBlockers, markNotSent, triageLanes, markSubmitPending, recoverPending } from '../scripts/lib/triage.mjs';
 import { money } from '../scripts/lib/profile.mjs';
 
 const T = '2026-10-27T15:00:00.000Z';
@@ -324,4 +324,30 @@ test('pause: no real submit and no auto-apply while paused; dry runs still allow
   assert.equal(applyGate(s.jobs['9000000050'], { dryRun: false, pause: { paused: false } }), null);
   assert.deepEqual(autoApplyBlockers(autoJob(), RULE, ok), []);
   assert.deepEqual(autoApplyBlockers(autoJob(), RULE, { ...ok, pause }), ['submissions paused: CV refresh']);
+});
+
+test('a submit requested on disk blocks every later run until recover records it submit-unverified', () => {
+  const s = pursued();
+  applyDecision(s, '9000000050', 'pursue', '', T);
+  approveApplication(s, '9000000050', { cv: 'workspace/data/out/cv/share/jordan-example-cv-x.pdf', note: 'Apply' }, T);
+  markSubmitPending(s, '9000000050', { dir: 'data/applications/9000000050/run-1', at: T });
+  assert.deepEqual(s.jobs['9000000050'].application.submit_pending, { dir: 'data/applications/9000000050/run-1', at: T });
+  assert.equal(applyGate(s.jobs['9000000050'], { dryRun: true }), 'submit-pending');
+  assert.equal(applyGate(s.jobs['9000000050'], { dryRun: false }), 'submit-pending');
+  recoverPending(s, '9000000050', T);
+  const a = s.jobs['9000000050'].application;
+  assert.equal(a.status, 'submit-unverified');
+  assert.equal(a.submit_pending, undefined);
+  assert.equal(a.attempts.at(-1).outcome, 'submit-unverified');
+  assert.equal(a.attempts.at(-1).dir, 'data/applications/9000000050/run-1');
+  assert.throws(() => recoverPending(s, '9000000050', T), /no pending submit/);
+});
+
+test('a run that finishes clears its pending submit, whatever the outcome', () => {
+  const s = pursued();
+  applyDecision(s, '9000000050', 'pursue', '', T);
+  markSubmitPending(s, '9000000050', { dir: 'd', at: T });
+  recordAttempt(s, '9000000050', { mode: 'submit', outcome: 'needs_answers', dir: 'd' }, T);
+  assert.equal(s.jobs['9000000050'].application.submit_pending, undefined);
+  assert.equal(applyGate(s.jobs['9000000050'], { dryRun: true }), null);
 });

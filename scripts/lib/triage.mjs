@@ -197,6 +197,9 @@ export function pickCv(ranked = [], { lane, archetype, pool, lanes = triageLanes
 
 export function applyGate(j, { dryRun, pause = null, sameCompany = [] }) {
   if (j?.triage?.decision !== 'pursue') return 'not-pursued';
+  // A run asked for a Submit and never finished: whether it went out is unknown, so nothing runs
+  // again until `apply -- recover` records it submit-unverified for the operator to check.
+  if (j.application?.submit_pending) return 'submit-pending';
   // While paused (config/pause.json) nothing is sent; a dry run still runs.
   if (!dryRun && pause?.paused) return `paused: ${pause.reason || 'no reason given'}`;
   if (FINAL.has(j.application?.status)) return 'already-applied';
@@ -260,9 +263,28 @@ export function withdrawApplication(state, id, { note }, now) {
   return j;
 }
 
+// Written to the state file right before any Submit click, by either browser driver: if the run dies
+// after it, the submit is never retried (applyGate refuses it) and `apply -- recover` records it.
+export function markSubmitPending(state, id, { dir, at }) {
+  const j = state.jobs[id];
+  j.application = j.application || { status: 'open', attempts: [] };
+  j.application.submit_pending = { dir, at };
+  return j;
+}
+
+// The pending submit of a run that never finished becomes submit-unverified: the operator checks
+// the platform by hand (confirm or not-sent), never a retry.
+export function recoverPending(state, id, now) {
+  const j = state.jobs[id];
+  const p = j?.application?.submit_pending;
+  if (!p) throw new Error(`no pending submit for ${id}`);
+  return recordAttempt(state, id, { mode: 'submit', outcome: 'submit-unverified', detail: `the run that asked for Submit at ${p.at} never finished; check the platform by hand, never retry`, dir: p.dir }, now);
+}
+
 export function recordAttempt(state, id, { mode, outcome, detail = null, dir = null, channel = null }, now) {
   const j = state.jobs[id];
   j.application = j.application || { status: 'open', attempts: [] };
+  delete j.application.submit_pending;
   j.application.attempts.push({ at: now, mode, outcome, channel, detail, dir });
   if (outcome === 'closed') { j.application.status = 'closed'; j.status = 'closed'; }
   if (FINAL.has(outcome)) {

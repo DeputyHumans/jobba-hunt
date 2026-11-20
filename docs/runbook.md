@@ -221,6 +221,7 @@ The last JSON line of a tick, sweep or probe names the guard in `aborted`; the s
 | `not-pursued` | No `pursue` decision | Record the operator's decision first |
 | `not-approved` | A real submit without `triage -- approve` | `approve` only after an unambiguous Apply |
 | `already-applied` | The job is `submitted`, `submitted-by-hand`, `already-applied` or `submit-unverified` | Never re-run |
+| `submit-pending` | An earlier run asked for Submit (`submit_pending` in the job state, `submit-requested.json` in its run folder) and never finished: whether it went out is unknown | `npm run apply -- recover --job <id>` records it `submit-unverified`. Then as exit 6: the screenshot or the operator decides, never a retry |
 | `paused: <reason>` | The pause holds every real submit | Wait for the operator to lift it. Dry runs still run |
 | `same-company: <id> <status>` | Another application at this company was already sent (`companies.limit`) | Never re-run. Tell the operator |
 | `halted until <time>`, `Dice halted until <time>` | That source's halt. Dry runs are refused too | Wait for `halt_until` |

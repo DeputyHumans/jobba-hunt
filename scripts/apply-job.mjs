@@ -63,7 +63,7 @@ import { notify } from './lib/notify.mjs';
 import { logAction } from './lib/actions-log.mjs';
 import { letterNeedsReview } from './lib/cover.mjs';
 import { STATE_PATH, loadState, saveStateAtomic, sourceState, carryRun } from './lib/state.mjs';
-import { applyGate, recordAttempt, sameCompanyRoles } from './lib/triage.mjs';
+import { applyGate, recordAttempt, sameCompanyRoles, markSubmitPending, recoverPending } from './lib/triage.mjs';
 import { loadCompanyOpts } from './lib/company.mjs';
 import { readPause } from './lib/pause.mjs';
 import { isHalted, haltUntil } from './lib/tick-plan.mjs';
@@ -134,6 +134,21 @@ if (positional[0] === 'verify') {
   saveConfig('apply.json', own);
   logAction({ actor: 'user', action: 'channel.verified', source: name, job_id: r.job_id ?? null, detail: { evidence: display(dir) }, ref: display(dir) });
   out({ success: true, channel: name, verified: true, evidence: display(dir) });
+  process.exit(0);
+}
+
+// recover: a run that asked for Submit and never finished (the process ended after the submit was
+// requested on disk) left the job submit-pending, which every later run refuses. This records it
+// submit-unverified: the operator checks the platform by hand (triage confirm or not-sent). Never a retry.
+if (positional[0] === 'recover') {
+  const rid = String(flags.job || '');
+  const st = loadState(STATE_PATH);
+  if (!st.jobs?.[rid]?.application?.submit_pending) { out({ success: false, refused: true, error: `no pending submit for ${rid || '(no --job)'}` }); process.exit(2); }
+  const dir = st.jobs[rid].application.submit_pending.dir;
+  recoverPending(st, rid, new Date().toISOString());
+  saveStateAtomic(STATE_PATH, st);
+  logAction({ actor: 'agent', action: 'apply.recovered', source: 'apply', job_id: rid, detail: { outcome: 'submit-unverified', dir } });
+  out({ success: true, job_id: rid, outcome: 'submit-unverified', dir, next: 'check the platform by hand: npm run triage -- confirm or not-sent' });
   process.exit(0);
 }
 
@@ -710,7 +725,7 @@ async function easyApply(page) {
       await rootBtn(page, submit).scrollIntoViewIfNeeded().catch(() => {});
       await screenshot(page, 'final-submit');
       if (dryRun) { await discardEasyApply(page); return [0, { outcome: 'dry-run-complete', channel, detail: `stopped before "${submit}"`, filled }]; }
-      submitClicked = true;
+      markSubmit();
       await rootBtn(page, submit).click();
       await page.waitForTimeout(jitter([4000, 6000]));
       const text = await page.evaluate(() => document.body.innerText.slice(0, 8000));
@@ -886,7 +901,7 @@ async function diceEasyApply(page, apply) {
       await rootBtn(page, submit).scrollIntoViewIfNeeded().catch(() => {});
       await screenshot(page, 'final-submit');
       if (dryRun) return [0, { outcome: 'dry-run-complete', channel, detail: `stopped before "${submit}"`, filled }];
-      submitClicked = true;
+      markSubmit();
       await rootBtn(page, submit).click();
       await page.waitForTimeout(jitter([5000, 8000]));
       // Read again for up to ~25 s more: the first read can still show the Submit spinner.
@@ -1466,7 +1481,7 @@ async function atsApply(site) {
         }
         return [0, { outcome: 'dry-run-complete', channel: ats, ats_url: url, detail: `stopped before "${submit}"`, filled }];
       }
-      submitClicked = true;
+      markSubmit();
       const submitAt = Date.now();
       // clickSubmit: a button Playwright cannot scroll to is clicked from the
       // page; a disabled one, or one no click reached, means nothing was sent, not submit-unverified.
@@ -2092,7 +2107,7 @@ async function workdayWizard(site, url, filled, done) {
       await nextBtn.scrollIntoViewIfNeeded().catch(() => {});
       await screenshot(site, 'final-submit');
       if (dryRun) return done(0, { outcome: 'dry-run-complete', detail: `stopped before "${submit}" on ${label || 'Review'}` });
-      submitClicked = true;
+      markSubmit();
       await nextBtn.click({ timeout: 15000 });
       await site.waitForTimeout(jitter([6000, 9000]));
       const text = await pollText(() => site.evaluate(() => document.body.innerText.slice(0, 8000)), (t) => confirmationIn(t) || /\/jobTasks\/completed/i.test(site.url()), { tries: 6, waitMs: 5000 });
@@ -2191,6 +2206,17 @@ let result = { outcome: 'error' };
 // plain error: it becomes submit-unverified, which blocks a retry (a retry could send a
 // duplicate application): one was sent, then a post-submit click timed out.
 let submitClicked = false;
+// Right before any Submit click: the request goes to disk first, in the run folder and the job state
+// (submit_pending), so a run that dies after the click is never retried: applyGate refuses it and
+// `apply -- recover` records it submit-unverified. finish() clears it (recordAttempt).
+function markSubmit() {
+  const at = new Date().toISOString();
+  writeFileSync(join(outDir, 'submit-requested.json'), JSON.stringify({ job_id: id, at }, null, 2));
+  const fresh = loadState(STATE_PATH);
+  markSubmitPending(fresh, id, { dir: display(outDir), at });
+  saveStateAtomic(STATE_PATH, fresh);
+  submitClicked = true;
+}
 // The company-site URL the run reached, kept on an error too: the next run starts there (recordedAtsUrl).
 let reachedAts = null;
 try {

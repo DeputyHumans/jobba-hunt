@@ -336,3 +336,20 @@ test('doctor: the Gmail connector fails until mail-guard denied its write tools;
   writeJson(join(ws.home, '.secrets', 'gws', 'credentials.enc'), {});
   assert.deepEqual(doctor().map((x) => x.status), ['ok', 'ok']);
 });
+
+test('apply: a pending submit refuses every run (exit 2); apply -- recover records it submit-unverified', () => {
+  const ws = workspace();
+  const id = '9000000777';
+  const job = { id, title: 'Staff Engineer', company: 'Acme Corp', status: 'viewed', triage: { decision: 'pursue', score: 80 }, application: { status: 'open', attempts: [], approved_at: '2026-11-19T10:00:00Z', submit_pending: { dir: 'data/applications/9000000777/run-1', at: '2026-11-20T10:00:00Z' } } };
+  writeJson(join(ws.data, 'state', 'jobs.json'), jobsState({ jobs: { [id]: job } }));
+  const run = cli(ws, 'apply-job.mjs', '--job', id, '--dry-run');
+  assert.equal(run.code, 2);
+  assert.match(run.json.reason || run.json.error || '', /submit-pending/);
+  const r = cli(ws, 'apply-job.mjs', 'recover', '--job', id);
+  assert.equal(r.code, 0, JSON.stringify(r.json));
+  assert.equal(r.json.outcome, 'submit-unverified');
+  const saved = JSON.parse(readFileSync(join(ws.data, 'state', 'jobs.json'), 'utf8')).jobs[id].application;
+  assert.equal(saved.status, 'submit-unverified');
+  assert.equal(saved.submit_pending, undefined);
+  assert.equal(cli(ws, 'apply-job.mjs', 'recover', '--job', id).code, 2, 'nothing pending: refused');
+});
